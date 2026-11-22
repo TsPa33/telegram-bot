@@ -23,13 +23,18 @@ def _settings():
     if (parts.scheme != "https" or not parts.hostname or parts.username or parts.password
             or parts.query or parts.fragment or parts.path not in ("", "/") or not secret):
         raise HTTPException(503, "Oracle adapter connection unavailable")
-    return raw.rstrip("/"), secret
+    # Only this named Railway-private HTTP proxy is permitted. It CONNECTs to the
+    # HTTPS Oracle URL; the application still authenticates the Oracle certificate.
+    proxy = os.getenv("ORACLE_HTTP_PROXY", "")
+    if proxy and proxy != "http://carpot-oracle-relay.railway.internal:1055":
+        raise HTTPException(503, "Oracle private network proxy unavailable")
+    return raw.rstrip("/"), secret, (proxy or None)
 
 
 def _request(path, params):
-    base, secret = _settings()
+    base, secret, proxy = _settings()
     try:
-        with httpx.Client(follow_redirects=False, trust_env=False,
+        with httpx.Client(follow_redirects=False, trust_env=False, proxy=proxy,
                           timeout=httpx.Timeout(5.0, connect=2.0)) as client:
             with client.stream("GET", base + path, params=params,
                                headers={"X-Oracle-Adapter-Key": secret,
