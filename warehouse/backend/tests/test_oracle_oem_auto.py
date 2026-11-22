@@ -90,6 +90,26 @@ def test_offline_oracle_offers_are_source_linked_and_bounded(monkeypatch):
     assert provider.calls.count((1, "20064", 120)) == 1
 
 
+def test_selected_stock_article_is_prioritized_within_product(monkeypatch):
+    enable_oracle(monkeypatch)
+    class Adapter:
+        def __init__(self):
+            self.calls=[]
+        def oracle_oem_by_article(self, sid, article, mid):
+            self.calls.append((sid,article,mid))
+            return ["272440"] if article == "20064" else []
+    provider=Adapter()
+    offers={106:[
+        dict(supplier_id=1,article_nr="WRONG",brand="BOSCH",oem_numbers=[]),
+        dict(supplier_id=1,article_nr="20064",brand="BOSCH",oem_numbers=[]),
+    ]}
+    auto_oem.SourceCache(provider).enrich_oracle_offers(
+        {"manufacturer_id":120},offers,priority={106:("bosch","20064")})
+    assert provider.calls == [(1,"20064",120)]
+    assert offers[106][0]["oem_numbers"] == []
+    assert offers[106][1]["oem_numbers"] == ["272440"]
+
+
 def test_exact_supplier_article_falls_back_to_oracle_without_fitment(monkeypatch):
     enable_oracle(monkeypatch)
     class Adapter:
