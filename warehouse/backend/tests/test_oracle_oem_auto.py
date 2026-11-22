@@ -11,6 +11,25 @@ def enable_oracle(monkeypatch):
     monkeypatch.setenv("WAREHOUSE_ORACLE_OEM_ENABLED", "true")
 
 
+def test_oracle_gateway_timeout_is_longer_than_gateway_handshake(monkeypatch):
+    monkeypatch.setenv("WAREHOUSE_CATALOGUE_URL", "https://catalogue.example.test")
+    monkeypatch.setenv("WAREHOUSE_CATALOGUE_HOST", "catalogue.example.test")
+    monkeypatch.setenv("WAREHOUSE_CATALOGUE_KEY", "test-token")
+    observed = []
+    def respond(request):
+        observed.append((request.url.path, request.extensions["timeout"].copy()))
+        return httpx.Response(200, json={"ok": True})
+    adapter = CatalogueAdapter(transport=httpx.MockTransport(respond))
+    assert adapter.get("global:oracle/oem/by-article") == {"ok": True}
+    assert adapter.get("global:vehicles/directory") == {"ok": True}
+    assert observed[0][0] == "/api/v1/oracle/oem/by-article"
+    assert observed[0][1]["connect"] == 11
+    assert observed[0][1]["read"] == 14
+    assert observed[1][0] == "/api/v1/vehicles/directory"
+    assert observed[1][1]["connect"] == 2
+    assert observed[1][1]["read"] == 5
+
+
 def test_catalogue_adapter_oracle_contract_and_credentials(monkeypatch):
     monkeypatch.setenv("WAREHOUSE_CATALOGUE_URL", "https://catalogue.example.test")
     monkeypatch.setenv("WAREHOUSE_CATALOGUE_HOST", "catalogue.example.test")
