@@ -4,6 +4,7 @@ on:
     branches:
       - feature/carpot-warehouse-oracle-auto-oem-stage6-20261122
       - fix/carpot-warehouse-oracle-timeout-stage6b-20261122
+      - fix/carpot-vin-exact-modification-stage7-20261122
     paths:
       - warehouse/backend/**
       - .github/workflows/carpot-warehouse-oracle-oem-stage6.yml
@@ -46,4 +47,4 @@ jobs:
       - name: Install locked dependencies
         run: python -m pip install --require-hashes -r requirements.lock
       - name: Run only Oracle + existing OEM regressions
-        run: python -m pytest -q tests/test_oracle_oem_auto.py tests/test_unified_catalogue.py tests/test_oem_diagnostics.py --maxfail=1
+        run: python -m pytest -q tests/test_oracle_oem_auto.py tests/test_unified_catalogue.py tests/test_oem_diagnostics.py tests/test_vin_catalogue_identity_stage7.py --maxfail=1
