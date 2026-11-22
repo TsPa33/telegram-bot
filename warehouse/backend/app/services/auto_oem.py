@@ -47,6 +47,10 @@ def valid_reference(v,row,ref):
         return False
     if ref.get('status')=='user_selected_cross_reference':
         return True
+    if (ref.get('status')==AUTO_STATUS and
+            ref.get('modification_selection')=='auto_assumed' and
+            not (v.dismantling_v3 or {}).get('global_selection')):
+        return False
     identity=source_identity(v)
     if not identity and ((v.dismantling_v3 or {}).get('global_selection') or catalogue.saved_state(v)):
         return False
@@ -211,6 +215,10 @@ def transferable_reference(ref):
 
 def automatic_identity(v):
     saved=(v.dismantling_v3 or {}).get(IDENTITY_KEY) or {}
+    # Old first-by-year guesses remain in audit history but cannot drive new
+    # automatic OEM. Existing explicitly pinned global_selection is separate.
+    if saved.get('confirmation')=='auto_assumed':
+        return None
     if saved.get('vehicle_basis')==basis(v) and saved.get('engine_variant')==normalized(v.engine_variant):
         return saved
 
@@ -718,7 +726,9 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 manufacturer_id=payload['manufacturer_id'],snapshot_sha=payload['source_snapshot_sha'],
                 global_source=identity[4],modification_description=payload['modification'].get('description'),
                 vehicle_basis=old_basis,engine_variant=old_variant,
-                confirmation='auto_assumed' if assumed else 'catalogue_evidence',vin_verified=False)
+                # A new automatic identity requires uniquely best technical
+                # evidence; it is still NOT VIN-verified exact factory fitment.
+                confirmation='catalogue_evidence',vin_verified=False)
             changed=True
         if changed:
             v.dismantling_v3=state
