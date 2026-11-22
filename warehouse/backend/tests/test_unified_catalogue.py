@@ -915,7 +915,7 @@ def test_auto_oem_directory_parses_tecdoc_model_platform_without_losing_generati
         modification={'description':'2.0 T5 AWD','constructioninterval':'03.2017 -'},
         specifications=[])
     v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='2',
-        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='',engine_displacement_l=None)
+        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='T5',engine_displacement_l=None)
     cache=SourceCache();cache.directory=[source]
     assert cache.resolve_directory(v)[0]==126480
     v.generation='I'
