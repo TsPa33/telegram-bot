@@ -3,6 +3,7 @@
 No direct MySQL connection and no automatic Warehouse OEM mutations.
 """
 import json
+import logging
 import os
 from urllib.parse import urlsplit
 
@@ -10,6 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 MAX_BODY = 96 * 1024
+logger = logging.getLogger("carpot.oracle_gateway")
 
 
 def _settings():
@@ -35,11 +37,12 @@ def _request(path, params):
     base, secret, proxy = _settings()
     try:
         with httpx.Client(follow_redirects=False, trust_env=False, proxy=proxy,
-                          timeout=httpx.Timeout(5.0, connect=2.0)) as client:
+                          timeout=httpx.Timeout(10.0, connect=8.0)) as client:
             with client.stream("GET", base + path, params=params,
                                headers={"X-Oracle-Adapter-Key": secret,
                                         "Accept": "application/json"}) as response:
                 if response.status_code != 200:
+                    logger.warning("oracle_gateway_upstream_status status=%d", response.status_code)
                     raise ValueError("Remote adapter is unavailable")
                 if "application/json" not in response.headers.get("content-type", ""):
                     raise ValueError("Adapter returned non-JSON")
@@ -57,7 +60,9 @@ def _request(path, params):
         if not isinstance(items, list) or len(items) > 50:
             raise ValueError("Unexpected adapter result count")
         return value
-    except (httpx.HTTPError, ValueError, json.JSONDecodeError):
+    except (httpx.HTTPError, ValueError, json.JSONDecodeError) as exc:
+        # Log the exception CLASS only: errors can embed URLs, credentials or proxy internals.
+        logger.warning("oracle_gateway_upstream_error kind=%s", type(exc).__name__)
         raise HTTPException(503, "Oracle catalogue unavailable") from None
 
 
