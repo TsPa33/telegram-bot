@@ -541,7 +541,7 @@ class SourceCache:
                 try:
                     candidate=self.adapter.article(supplier_id,article,brand)
                     if not candidate.get('truncated'):
-                        result={**candidate,'manufacturer_id':120,'supplier_id':supplier_id,
+                        result={**candidate,'manufacturer':make,'manufacturer_id':120,'supplier_id':supplier_id,
                                 'supplier_name':brand,'article_number':article}
                 except catalogue.CatalogueUnavailable:
                     pass
