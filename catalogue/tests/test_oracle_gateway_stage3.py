@@ -77,3 +77,23 @@ def test_http_is_never_fallback(monkeypatch):
     monkeypatch.setenv("ORACLE_ADAPTER_URL", "http://127.0.0.1:8081")
     with pytest.raises(HTTPException):
         gateway._settings()
+
+
+def test_explicit_private_proxy_is_required(monkeypatch):
+    enabled(monkeypatch)
+    monkeypatch.setenv("ORACLE_HTTP_PROXY", "http://carpot-oracle-relay.railway.internal:1055")
+    base, key, proxy = gateway._settings()
+    assert base == "https://example.org"
+    assert key == "test-secret"
+    assert proxy == "http://carpot-oracle-relay.railway.internal:1055"
+
+
+def test_untrusted_proxy_is_rejected(monkeypatch):
+    enabled(monkeypatch)
+    for proxy in ("http://evil.example:1055",
+                  "http://127.0.0.1:1055",
+                  "https://carpot-oracle-relay.railway.internal:1055"):
+        monkeypatch.setenv("ORACLE_HTTP_PROXY", proxy)
+        with pytest.raises(HTTPException) as error:
+            gateway._settings()
+        assert error.value.status_code == 503
