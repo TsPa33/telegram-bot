@@ -400,3 +400,8 @@ def exact_article_oem(manufacturer:str=Query(min_length=1,max_length=100),
     return dict(manufacturer=make['name_source'],manufacturer_id=make['id'],
         supplier_id=article['supplier_id'],supplier_name=article['supplier_name'],
         article_number=article_number,oem_numbers=[r['oem_number'] for r in rows],vin_verified=False)
+
+
+# Additive, feature-disabled-by-default Oracle preview routes. No Warehouse writes.
+from oracle_gateway import build_router as build_oracle_gateway_router
+app.include_router(build_oracle_gateway_router(authorize))
