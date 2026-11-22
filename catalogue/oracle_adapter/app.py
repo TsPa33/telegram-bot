@@ -151,3 +151,86 @@ def vehicle_prd(car_id: int, limit: int = Query(default=20, ge=1, le=ROW_LIMIT))
         result = bounded_lookup(conn, sql, (car_id,), limit)
     return {"source_modification_id": car_id, **result,
             "source_association_only": True, "fitment_verified": False}
+
+
+# Read-only indexed vehicle identity discovery. These endpoints intentionally do
+# not consult article_li/article_links during the running 50+ GiB migration.
+# Their IDs are candidate catalogue identities, not verified VIN fitment.
+@app.get("/api/v1/oracle/vehicles/manufacturers", dependencies=[Depends(authorize)])
+def vehicle_manufacturers(
+    name: str = Query(min_length=2, max_length=40, pattern=r"^[A-Za-z0-9 .-]+$"),
+    kind: str = Query(pattern=r"^(passenger|commercial)$"),
+    limit: int = Query(default=20, ge=1, le=ROW_LIMIT),
+):
+    # The maker dimension is ~4,380 rows. Keep this one small-table lookup
+    # bounded. Never query unindexed article tables or the active import.
+    flag = "ispassengercar" if kind == "passenger" else "iscommercialvehicle"
+    sql = f"""SELECT id, description AS name FROM manufacturers
+              WHERE {flag}='True' AND description LIKE CONCAT(%s,'%%')
+                AND description IS NOT NULL AND description!=''
+              ORDER BY id LIMIT %s"""
+    with database() as conn:
+        result = bounded_lookup(conn, sql, (valid_identifier(name),), limit)
+    return {"source": "oracle", "kind": kind, **result,
+            "vehicle_identity_only": True, "fitment_verified": False}
+
+
+@app.get("/api/v1/oracle/vehicles/models", dependencies=[Depends(authorize)])
+def vehicle_models(
+    manufacturer_id: int = Query(ge=1),
+    kind: str = Query(pattern=r"^(passenger|commercial)$"),
+    after: int = Query(default=0, ge=0),
+    limit: int = Query(default=30, ge=1, le=ROW_LIMIT),
+):
+    flag = "ispassengercar" if kind == "passenger" else "iscommercialvehicle"
+    sql = f"""SELECT id, description AS name, constructioninterval AS construction_interval
+              FROM models FORCE INDEX (manufacturerid)
+              WHERE manufacturerid=%s AND {flag}='True' AND id>%s
+                AND description IS NOT NULL AND description!=''
+              ORDER BY id LIMIT %s"""
+    with database() as conn:
+        result = bounded_lookup(conn, sql, (manufacturer_id, after), limit)
+    return {"source": "oracle", "manufacturer_id": manufacturer_id,
+            "kind": kind, "next_after": result["items"][-1]["id"] if result["truncated"] else None,
+            **result, "vehicle_identity_only": True, "fitment_verified": False}
+
+
+@app.get("/api/v1/oracle/vehicles/modifications", dependencies=[Depends(authorize)])
+def vehicle_modifications(
+    model_id: int = Query(ge=1),
+    kind: str = Query(pattern=r"^(passenger|commercial)$"),
+    after: int = Query(default=0, ge=0),
+    limit: int = Query(default=30, ge=1, le=ROW_LIMIT),
+):
+    table = "passanger_cars" if kind == "passenger" else "commercial_vehicles"
+    sql = f"""SELECT id, modelid AS model_id, description AS name,
+                     constructioninterval AS construction_interval
+              FROM {table} FORCE INDEX (modelid)
+              WHERE modelid=%s AND id>%s
+                AND description IS NOT NULL AND description!=''
+              ORDER BY id LIMIT %s"""
+    with database() as conn:
+        result = bounded_lookup(conn, sql, (model_id, after), limit)
+    return {"source": "oracle", "model_id": model_id,
+            "kind": kind, "next_after": result["items"][-1]["id"] if result["truncated"] else None,
+            **result, "vehicle_identity_only": True, "fitment_verified": False}
+
+
+@app.get("/api/v1/oracle/vehicles/attributes", dependencies=[Depends(authorize)])
+def vehicle_attributes(
+    car_id: int = Query(ge=1),
+    kind: str = Query(pattern=r"^(passenger|commercial)$"),
+    limit: int = Query(default=50, ge=1, le=ROW_LIMIT),
+):
+    table, column = (("passanger_car_attributes", "passangercarid") if kind == "passenger"
+                     else ("commercial_vehicle_attributes", "commercialvehicleid"))
+    sql = f"""SELECT attributetype AS attribute_type, displayvalue AS display_value
+              FROM {table} FORCE INDEX ({column})
+              WHERE {column}=%s AND attributetype IS NOT NULL
+                AND displayvalue IS NOT NULL
+              LIMIT %s"""
+    with database() as conn:
+        result = bounded_lookup(conn, sql, (car_id,), limit)
+    return {"source": "oracle", "source_modification_id": car_id,
+            "kind": kind, **result, "vehicle_identity_only": True,
+            "fitment_verified": False}
