@@ -69,3 +69,16 @@ def test_daf_without_imported_commercial_candidate_is_not_guessed():
               year=2007,engine_code="",fuel_type="diesel",
               drive_type="RWD",engine_variant="",engine_displacement_l=12.9)
     assert cache.resolve_directory(v) is None
+
+
+def test_saved_legacy_first_match_is_not_reused_for_oem():
+    from app.services.auto_oem import automatic_identity
+    donor=SimpleNamespace(dismantling_v3={
+        "automatic_catalogue_identity": {
+            "confirmation": "auto_assumed",
+            "car_id":126480,
+            "model_id":37773,
+            "manufacturer_id":120,
+        }
+    })
+    assert automatic_identity(donor) is None
