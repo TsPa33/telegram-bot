@@ -29,6 +29,12 @@ IDENTITY_KEY='automatic_catalogue_identity'
 CANDIDATES_KEY='other_modification_oems'
 AUTO_STATUS='auto_selected_cross_reference'
 OUTCOMES_KEY='oem_lookup_outcomes'
+ORACLE_LOOKUP_LIMIT=24  # Maximum read-only Oracle lookups per donor enrichment pass.
+
+
+def oracle_enabled():
+    # Explicit staging-only opt-in; production cannot be activated by accident.
+    return is_staging() and os.getenv('WAREHOUSE_ORACLE_OEM_ENABLED','false').lower()=='true'
 
 def basis(v):
     return generator_basis(v)
@@ -272,7 +278,7 @@ def receipt_oem(db,row,part):
 class SourceCache:
     def __init__(self,adapter=None):
         self.adapter=adapter or catalogue.CatalogueAdapter()
-        self.plans={};self.offers={};self.exact={};self.lock=threading.Lock();self.directory=None;self.directories={}
+        self.plans={};self.offers={};self.exact={};self.oracle_refs={};self.lock=threading.Lock();self.directory=None;self.directories={}
     def directory_candidates(self,v):
         """Rank source modifications by matching vehicle facts, then by source IDs."""
         code=lambda s:''.join(c for c in normalized(s) if c.isalnum())
@@ -451,22 +457,108 @@ class SourceCache:
                 result[pid].extend((car,eligible[pid],item) for item in items)
         return result
 
-    def exact_lookup(self,make,brand,article,supplier_id):
-        key=(make,brand,article,supplier_id)
+    def oracle_numbers(self, manufacturer_id, supplier_id, article_number):
+        """Exact manufacturer/supplier/article cross references, never VIN fitment.
+
+        Cache successful empty results as well; transient failures are retried on
+        future sweeps. No call can reach Oracle except via CatalogueAdapter.
+        """
+        if (not oracle_enabled() or type(manufacturer_id) is not int or manufacturer_id<1
+                or type(supplier_id) is not int or not 1<=supplier_id<=65535
+                or not isinstance(article_number,str) or not 1<=len(article_number)<=64):
+            return None
+        key=(manufacturer_id,supplier_id,article_number)
+        with self.lock:
+            if key in self.oracle_refs:return self.oracle_refs[key]
+        try:
+            numbers=self.adapter.oracle_oem_by_article(supplier_id,article_number,manufacturer_id)
+        except (catalogue.CatalogueUnavailable,AttributeError):
+            return None
+        if (not isinstance(numbers,list) or len(numbers)>50
+                or any(not isinstance(n,str) or not 1<=len(n)<=64 for n in numbers)):
+            return None
+        numbers=sorted(set(numbers))
+        with self.lock:
+            if len(self.oracle_refs)>=4096:self.oracle_refs.clear()
+            self.oracle_refs[key]=numbers
+        return numbers
+
+    def enrich_oracle_offers(self,payload,data,priority=None):
+        """Fill missing OEMs only on already modification-linked catalogue articles.
+
+        One candidate per PRD type first, then other supplier articles, with an
+        enforced per-donor network budget. Never enrich sibling modifications.
+        """
+        if not oracle_enabled() or not isinstance(data,dict):return data
+        manufacturer_id=payload.get('manufacturer_id')
+        if type(manufacturer_id) is not int or manufacturer_id<1:return data
+        priority=priority or {}
+        rounds={}
+        for pid,offers in data.items():
+            if not isinstance(offers,list) or any(o.get('oem_numbers') for o in offers):
+                continue
+            ordered=[o for o in offers if (
+                isinstance(o,dict) and isinstance(o.get('brand'),str) and o['brand']
+                and type(o.get('supplier_id')) is int
+                and isinstance(o.get('article_nr'),str) and o['article_nr']
+            )]
+            preferred=priority.get(pid)
+            if preferred:
+                ordered.sort(key=lambda o: (
+                    normalized(o['brand'])!=preferred[0] or
+                    normalized(o['article_nr'])!=preferred[1],
+                    o['supplier_id'],o['article_nr']))
+            rounds[pid]=ordered
+        attempts=0;failures=0
+        for index in range(20):
+            for pid in sorted(rounds, key=lambda p:(p not in priority,p)):
+                offers=rounds[pid]
+                if index>=len(offers) or any(o.get('oem_numbers') for o in data[pid]):
+                    continue
+                if attempts>=ORACLE_LOOKUP_LIMIT or failures>=2:return data
+                offer=offers[index]
+                attempts+=1
+                numbers=self.oracle_numbers(manufacturer_id,offer['supplier_id'],offer['article_nr'])
+                if numbers is None:
+                    failures+=1
+                elif numbers:
+                    offer['oem_numbers']=numbers
+                    sources=dict(offer.get('oem_sources') or {})
+                    sources.update({n:'oracle_gateway_cross_reference' for n in numbers})
+                    offer['oem_sources']=sources
+        return data
+
+    def exact_lookup(self,make,brand,article,supplier_id,manufacturer_id=None):
+        key=(make,brand,article,supplier_id,manufacturer_id)
         with self.lock:
             if key in self.exact:return self.exact[key]
-        try:result=self.adapter.exact_oem(make,brand,article,supplier_id)
+        result=None
+        try:
+            result=self.adapter.exact_oem(make,brand,article,supplier_id)
         except catalogue.CatalogueUnavailable:
-            # Compatibility while the older Catalogue service is deployed:
-            # only Volvo and only when an exact supplier ID is already available.
-            if normalized(make)!='volvo' or not supplier_id:return None
-            try:result={**self.adapter.article(supplier_id,article,brand),'manufacturer_id':120,
-                        'supplier_id':supplier_id,'supplier_name':brand,'article_number':article}
-            except catalogue.CatalogueUnavailable:return None
-            if result.get('truncated'):return None
-        with self.lock:
-            if len(self.exact)>=512:self.exact.clear()
-            self.exact[key]=result
+            # Older Volvo pilot contract, only with a known exact supplier ID.
+            if normalized(make)=='volvo' and supplier_id:
+                try:
+                    candidate=self.adapter.article(supplier_id,article,brand)
+                    if not candidate.get('truncated'):
+                        result={**candidate,'manufacturer_id':120,'supplier_id':supplier_id,
+                                'supplier_name':brand,'article_number':article}
+                except catalogue.CatalogueUnavailable:
+                    pass
+        if (supplier_id and not (result or {}).get('oem_numbers')
+                and type(manufacturer_id) is int and manufacturer_id>0):
+            old_make_id=(result or {}).get('manufacturer_id')
+            if old_make_id is None or old_make_id==manufacturer_id:
+                numbers=self.oracle_numbers(manufacturer_id,supplier_id,article)
+                if numbers:
+                    result=dict(manufacturer=make,manufacturer_id=manufacturer_id,
+                        supplier_id=supplier_id,supplier_name=brand,
+                        article_number=article,oem_numbers=numbers,
+                        oem_source='oracle_gateway_cross_reference')
+        if result is not None:
+            with self.lock:
+                if len(self.exact)>=512:self.exact.clear()
+                self.exact[key]=result
         return result
 
 def exact_key(part,vehicle):
@@ -478,7 +570,7 @@ def exact_key(part,vehicle):
 def fill_exact(db,v,part,result):
     numbers=sorted(set(result.get('oem_numbers',[])))
     if not numbers or len(numbers)>1000 or any(not isinstance(n,str) or not n or len(n)>150 for n in numbers):return False
-    alternatives=[dict(oem_number=n,supplier_id=result['supplier_id'],source_article=result['article_number'],source_brand=result['supplier_name']) for n in numbers]
+    alternatives=[dict(oem_number=n,supplier_id=result['supplier_id'],source_article=result['article_number'],source_brand=result['supplier_name'],**({'oem_source':result['oem_source']} if result.get('oem_source') else {})) for n in numbers]
     before=snapshot(part);part.oem_number=numbers[0]
     part.oem_provenance=dict(**alternatives[0],source='carpot.catalogue',status='auto_selected_cross_reference',
         vin_verified=False,oem_manufacturer_id=result['manufacturer_id'],vehicle_basis=basis(v),
@@ -550,6 +642,13 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             remaining={pid:p for pid,p in needed.items() if pid not in data}
             with ThreadPoolExecutor(max_workers=4) as pool:
                 data.update({pid:offers for pid,offers in zip(remaining,pool.map(offers_for,remaining.values())) if offers is not None})
+            focus={}
+            for row in type_rows:
+                product=matches(row,products,bindings)
+                part=linked.get(row.part_id)
+                if product and part and part.article_number and part.article_brand:
+                    focus[product['product_id']]=(normalized(part.article_brand),normalized(part.article_number))
+            cache.enrich_oracle_offers(payload,data,priority=focus)
             try:
                 possible={pid for pid,offers in data.items() if not choices(offers,product=products[pid])}
                 possible.update(
@@ -568,7 +667,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
     if exact:
         unique=list(set(exact.values()))
         with ThreadPoolExecutor(max_workers=4) as pool:
-            exact_data=dict(zip(unique,pool.map(lambda k:cache.exact_lookup(*k),unique)))
+            make_id=identity[2] if identity and type(identity[2]) is int else None
+            exact_data=dict(zip(unique,pool.map(lambda k:cache.exact_lookup(*k,manufacturer_id=make_id),unique)))
     if not payload and not can_copy and not any(exact_data.values()):return 0
     with Session(engine) as db:
         db.execute(text("SET LOCAL lock_timeout = '2s'"))
