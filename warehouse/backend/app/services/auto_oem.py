@@ -367,11 +367,17 @@ class SourceCache:
             log.info('OEM Volvo source candidates vehicle=%s requested_model=%s year=%s generation=%s remote_entries=%d source_models=%s evidence_matches=%d fallback_matches=%d',
                 getattr(v,'id',None),model,v.year,generation,len(entries),
                 sorted({code(e.get('model')) for e in entries})[:16],len(candidates),len(relaxed))
-        # Prefer evidence-backed matches. If the VIN information is incomplete
-        # or conflicts with the imported variant descriptions, provide a usable
-        # *assumed* modification by make + model/generation + production year.
-        # This remains vin_verified=False and is user-changeable.
-        return [identity for _,identity in sorted(candidates)] or sorted(set(relaxed))
+        # VIN identity must not degrade into "the first engine for this model
+        # and year". This used to silently map B5 mild hybrids to T5 AWD and
+        # diesel/unknown DAFs to an unrelated model when exact facts disagreed.
+        # Only one uniquely best *evidence-backed* candidate can be automatic.
+        # Unknown/tied engine versions remain registered without an OEM identity.
+        ranked=sorted(candidates)
+        if not ranked:return []
+        best=ranked[0][0][:2]  # engine code evidence, then independent attributes
+        top=[identity for score,identity in ranked if score[:2]==best]
+        if best==(0,0) or len(set(top))!=1:return []
+        return top
 
     def resolve_directory(self,v):
         options=self.directory_candidates(v)
