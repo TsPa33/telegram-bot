@@ -165,7 +165,7 @@ def vehicle_manufacturers(
     # The maker dimension is ~4,380 rows. Keep this one small-table lookup
     # bounded. Never query unindexed article tables or the active import.
     flag = "ispassengercar" if kind == "passenger" else "iscommercialvehicle"
-    sql = f"""SELECT id, description AS name FROM manufacturers
+    sql = f"""SELECT DISTINCT id, description AS name FROM manufacturers
               WHERE {flag}='True' AND description LIKE CONCAT(%s,'%%')
                 AND description IS NOT NULL AND description!=''
               ORDER BY id LIMIT %s"""
@@ -183,7 +183,7 @@ def vehicle_models(
     limit: int = Query(default=30, ge=1, le=ROW_LIMIT),
 ):
     flag = "ispassengercar" if kind == "passenger" else "iscommercialvehicle"
-    sql = f"""SELECT id, description AS name, constructioninterval AS construction_interval
+    sql = f"""SELECT DISTINCT id, description AS name, constructioninterval AS construction_interval
               FROM models FORCE INDEX (manufacturerid)
               WHERE manufacturerid=%s AND {flag}='True' AND id>%s
                 AND description IS NOT NULL AND description!=''
