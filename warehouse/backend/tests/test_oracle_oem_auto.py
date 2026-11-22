@@ -100,7 +100,7 @@ def test_exact_supplier_article_falls_back_to_oracle_without_fitment(monkeypatch
             return ["31256232", "272440", "31256231"]
     cache = auto_oem.SourceCache(Adapter())
     result = cache.exact_lookup("Volvo", "BOSCH", "20064", 1, manufacturer_id=120)
-    assert result["oem_numbers"] == ["31256232", "272440", "31256231"]
+    assert result["oem_numbers"] == ["272440", "31256231", "31256232"]
     assert result["oem_source"] == "oracle_gateway_cross_reference"
     assert result["manufacturer_id"] == 120
     assert cache.exact_lookup("Volvo", "BOSCH", "20064", 1, manufacturer_id=120) == result
@@ -118,6 +118,8 @@ def test_oracle_fail_closed_outside_staging(monkeypatch):
 def test_oracle_requires_source_manufacturer_and_supplier(monkeypatch):
     enable_oracle(monkeypatch)
     class ForbiddenAdapter:
+        def exact_oem(self, *args):
+            raise CatalogueUnavailable("not available")
         def oracle_oem_by_article(self, *args):
             raise AssertionError("missing verified identity")
     cache = auto_oem.SourceCache(ForbiddenAdapter())
