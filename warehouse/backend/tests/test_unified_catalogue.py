@@ -876,7 +876,7 @@ def test_auto_oem_generation_alias_is_applied_to_catalogue_http_filter():
             self.queries.append(kwargs)
             return {'items':[entry], 'next_after':None}
     v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='2',
-        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='',
+        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='T5',
         engine_displacement_l=None)
     adapter=DirectoryAdapter()
     cache=SourceCache(adapter=adapter)
