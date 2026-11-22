@@ -278,7 +278,7 @@ def receipt_oem(db,row,part):
 class SourceCache:
     def __init__(self,adapter=None):
         self.adapter=adapter or catalogue.CatalogueAdapter()
-        self.plans={};self.offers={};self.exact={};self.oracle_refs={};self.lock=threading.Lock();self.directory=None;self.directories={}
+        self.plans={};self.offers={};self.exact={};self.oracle_refs={};self.oracle_cursors={};self.lock=threading.Lock();self.directory=None;self.directories={}
     def directory_candidates(self,v):
         """Rank source modifications by matching vehicle facts, then by source IDs."""
         code=lambda s:''.join(c for c in normalized(s) if c.isalnum())
@@ -486,8 +486,9 @@ class SourceCache:
     def enrich_oracle_offers(self,payload,data,priority=None):
         """Fill missing OEMs only on already modification-linked catalogue articles.
 
-        One candidate per PRD type first, then other supplier articles, with an
-        enforced per-donor network budget. Never enrich sibling modifications.
+        One candidate per PRD type first, then other supplier articles.
+        The rotating cursor prevents the fixed per-pass budget from starving
+        later parts, including when earlier source articles have no OEM.
         """
         if not oracle_enabled() or not isinstance(data,dict):return data
         manufacturer_id=payload.get('manufacturer_id')
@@ -495,7 +496,8 @@ class SourceCache:
         priority=priority or {}
         rounds={}
         for pid,offers in data.items():
-            if not isinstance(offers,list) or any(o.get('oem_numbers') for o in offers):
+            if not isinstance(offers,list) or any(
+                    isinstance(o,dict) and o.get('oem_numbers') for o in offers):
                 continue
             ordered=[o for o in offers if (
                 isinstance(o,dict) and isinstance(o.get('brand'),str) and o['brand']
@@ -509,23 +511,33 @@ class SourceCache:
                     normalized(o['article_nr'])!=preferred[1],
                     o['supplier_id'],o['article_nr']))
             rounds[pid]=ordered
-        attempts=0;failures=0
+        candidates=[]
         for index in range(20):
             for pid in sorted(rounds, key=lambda p:(p not in priority,p)):
-                offers=rounds[pid]
-                if index>=len(offers) or any(o.get('oem_numbers') for o in data[pid]):
-                    continue
-                if attempts>=ORACLE_LOOKUP_LIMIT or failures>=2:return data
-                offer=offers[index]
-                attempts+=1
-                numbers=self.oracle_numbers(manufacturer_id,offer['supplier_id'],offer['article_nr'])
-                if numbers is None:
-                    failures+=1
-                elif numbers:
-                    offer['oem_numbers']=numbers
-                    sources=dict(offer.get('oem_sources') or {})
-                    sources.update({n:'oracle_gateway_cross_reference' for n in numbers})
-                    offer['oem_sources']=sources
+                if index<len(rounds[pid]):
+                    candidates.append((pid,rounds[pid][index]))
+        if not candidates:return data
+        cursor_key=(payload.get('car_id'),payload.get('source_snapshot_sha'))
+        with self.lock:
+            offset=self.oracle_cursors.get(cursor_key,0)%len(candidates)
+        rotated=candidates[offset:]+candidates[:offset]
+        attempts=0;failures=0
+        for pid,offer in rotated:
+            if attempts>=ORACLE_LOOKUP_LIMIT or failures>=2:break
+            if any(isinstance(o,dict) and o.get('oem_numbers') for o in data[pid]):
+                continue
+            attempts+=1
+            numbers=self.oracle_numbers(manufacturer_id,offer['supplier_id'],offer['article_nr'])
+            if numbers is None:
+                failures+=1
+            elif numbers:
+                offer['oem_numbers']=numbers
+                sources=dict(offer.get('oem_sources') or {})
+                sources.update({n:'oracle_gateway_cross_reference' for n in numbers})
+                offer['oem_sources']=sources
+        with self.lock:
+            if len(self.oracle_cursors)>=2048:self.oracle_cursors.clear()
+            self.oracle_cursors[cursor_key]=(offset+attempts)%len(candidates)
         return data
 
     def exact_lookup(self,make,brand,article,supplier_id,manufacturer_id=None):
