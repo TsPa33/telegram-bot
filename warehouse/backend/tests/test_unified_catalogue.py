@@ -742,7 +742,7 @@ def test_selection_switch_refreshes_automatic_oem_and_keeps_manual_history(logge
 
     assert enrich_vehicle(engine(),account,vehicle['id'])==1
     state=logged.get(url+'/global-dismantling').json()
-    assert state['selection']['confirmation']=='auto_assumed'
+    assert state['selection']['confirmation']=='catalogue_evidence'
     assert state['selection']['car_id']==126480
     assert state['oems']['106']['oem_number']=='FIXTURE-126480'
     row_key=state['keys']['106']
@@ -751,7 +751,7 @@ def test_selection_switch_refreshes_automatic_oem_and_keeps_manual_history(logge
     with Session(engine()) as db:
         part=db.scalar(select(Part))
         part_id=part.id
-        assert part.oem_provenance['modification_selection']=='auto_assumed'
+        assert part.oem_provenance['modification_selection']=='catalogue_evidence'
 
     def switch(entry):
         result=logged.post(url+'/catalogue-selection',json={
