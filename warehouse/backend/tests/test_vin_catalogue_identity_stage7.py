@@ -82,3 +82,7 @@ def test_saved_legacy_first_match_is_not_reused_for_oem():
         }
     })
     assert automatic_identity(donor) is None
+    from app.services.auto_oem import source_identity
+    # Even if a previous guess also persisted a Catalogue plan snapshot,
+    # the old automatic identity must not be treated as confirmed.
+    assert source_identity(donor) is None
