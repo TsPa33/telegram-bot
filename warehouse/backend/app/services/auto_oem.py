@@ -545,13 +545,19 @@ class SourceCache:
                                 'supplier_name':brand,'article_number':article}
                 except catalogue.CatalogueUnavailable:
                     pass
+        # A verified legacy exact-article response can also supply the maker ID
+        # when the donor has no pinned modification yet. Never guess the ID by name.
+        resolved_make_id=manufacturer_id
+        old_make_id=(result or {}).get('manufacturer_id')
+        if (resolved_make_id is None and type(old_make_id) is int and old_make_id>0
+                and normalized((result or {}).get('manufacturer'))==normalized(make)):
+            resolved_make_id=old_make_id
         if (supplier_id and not (result or {}).get('oem_numbers')
-                and type(manufacturer_id) is int and manufacturer_id>0):
-            old_make_id=(result or {}).get('manufacturer_id')
-            if old_make_id is None or old_make_id==manufacturer_id:
-                numbers=self.oracle_numbers(manufacturer_id,supplier_id,article)
+                and type(resolved_make_id) is int and resolved_make_id>0):
+            if old_make_id is None or old_make_id==resolved_make_id:
+                numbers=self.oracle_numbers(resolved_make_id,supplier_id,article)
                 if numbers:
-                    result=dict(manufacturer=make,manufacturer_id=manufacturer_id,
+                    result=dict(manufacturer=make,manufacturer_id=resolved_make_id,
                         supplier_id=supplier_id,supplier_name=brand,
                         article_number=article,oem_numbers=numbers,
                         oem_source='oracle_gateway_cross_reference')
