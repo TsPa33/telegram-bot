@@ -64,6 +64,40 @@ class CatalogueAdapter:
             raise CatalogueUnavailable('article_identity_unverified')
         return data
 
+    def oracle_oem_by_article(self, supplier_id, article_number, manufacturer_id):
+        """Read-only OEM cross references from Oracle via the existing Catalogue gateway.
+
+        All requests use the already configured authenticated HTTPS Catalogue host.
+        The returned numbers are NOT proof of vehicle/VIN fitment. An incomplete
+        result is not eligible for automatic OEM selection.
+        """
+        if (type(supplier_id) is not int or not 1 <= supplier_id <= 65535
+                or type(manufacturer_id) is not int or manufacturer_id < 1
+                or not isinstance(article_number, str) or not 1 <= len(article_number) <= 64):
+            raise CatalogueUnavailable('oracle_invalid_article_identity')
+        data = self.get('global:oracle/oem/by-article', {
+            'supplier_id': supplier_id,
+            'article_number': article_number,
+            'manufacturer_id': manufacturer_id,
+            'limit': 50,
+        })
+        if (not isinstance(data, dict) or data.get('source') != 'oracle'
+                or data.get('supplier_id') != supplier_id
+                or data.get('article_number') != article_number
+                or data.get('manufacturer_id') != manufacturer_id
+                or data.get('fitment_verified') is not False
+                or type(data.get('truncated')) is not bool
+                or not isinstance(data.get('items'), list) or len(data['items']) > 50
+                or any(not isinstance(item, dict)
+                       or not isinstance(item.get('oem_number'), str)
+                       or not 1 <= len(item['oem_number']) <= 64
+                       for item in data['items'])):
+            raise CatalogueUnavailable('oracle_oem_contract_invalid')
+        if data['truncated']:
+            raise CatalogueUnavailable('oracle_oem_list_incomplete')
+        return sorted({item['oem_number'] for item in data['items']})
+
+
     def modifications(self, model_id):
         result = self.get('modifications', {'model_id': model_id})
         if not isinstance(result, dict) or not isinstance(result.get('items'), list) or len(result['items'])>100:
