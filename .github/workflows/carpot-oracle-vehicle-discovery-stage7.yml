@@ -1,0 +1,27 @@
+name: CarPot Oracle vehicle discovery — isolated staging tests
+on:
+  push:
+    branches:
+      - feature/carpot-oracle-vehicle-discovery-20261122
+    paths:
+      - catalogue/**
+      - .github/workflows/carpot-oracle-vehicle-discovery-stage7.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  vehicle-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: catalogue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dependencies
+        run: python -m pip install -r requirements.txt pytest
+      - name: Focused offline source and gateway regressions
+        run: python -m pytest -q tests/test_oracle_vehicle_discovery_stage7.py tests/test_oracle_adapter_stage2.py tests/test_oracle_gateway_stage3.py tests/test_oracle_proxy_timeout_stage5.py --maxfail=1
