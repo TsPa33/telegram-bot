@@ -84,6 +84,34 @@ def _validated_items(data, fields):
     return result
 
 
+def _vehicle_items(data, fields):
+    """Require a complete, well-typed identity-only result, with no VIN claim."""
+    if data.get("fitment_verified") is not False or data.get("vehicle_identity_only") is not True:
+        raise HTTPException(503, "Invalid Oracle vehicle response")
+    result = []
+    for item in data["items"]:
+        if not isinstance(item, dict):
+            raise HTTPException(503, "Invalid Oracle vehicle response")
+        entry = {}
+        for key, kind in fields.items():
+            value = item.get(key)
+            if kind == "id":
+                if type(value) is not int or value < 1:
+                    raise HTTPException(503, "Invalid Oracle vehicle identity")
+            elif kind == "name":
+                if not isinstance(value, str) or not 1 <= len(value) <= 128:
+                    raise HTTPException(503, "Invalid Oracle vehicle name")
+            elif kind == "interval":
+                if value is not None and (not isinstance(value, str) or len(value) > 32):
+                    raise HTTPException(503, "Invalid Oracle vehicle interval")
+            elif kind == "attr":
+                if not isinstance(value, str) or not 1 <= len(value) <= 256:
+                    raise HTTPException(503, "Invalid Oracle vehicle attribute")
+            entry[key] = value
+        result.append(entry)
+    return result
+
+
 def build_router(catalogue_auth):
     router = APIRouter(prefix="/api/v1/oracle", tags=["Oracle preview"],
                        dependencies=[Depends(catalogue_auth)])
@@ -124,5 +152,71 @@ def build_router(catalogue_auth):
         return {"source": "oracle", "source_modification_id": car_id,
                 "items": items, "truncated": data["truncated"],
                 "source_association_only": True, "fitment_verified": False}
+
+    # Discovery only: source vehicle identities cannot be used to assert VIN
+    # compatibility or request a plan until a verified source graph exists.
+    @router.get("/vehicles/manufacturers")
+    def makers(name: str = Query(min_length=2, max_length=40, pattern=r"^[A-Za-z0-9 .-]+$"),
+               kind: str = Query(pattern=r"^(passenger|commercial)$"),
+               limit: int = Query(default=20, ge=1, le=50)):
+        data = _request("/api/v1/oracle/vehicles/manufacturers",
+                        {"name": name, "kind": kind, "limit": limit})
+        items = _vehicle_items(data, {"id": "id", "name": "name"})
+        return dict(source="oracle", kind=kind, items=items,
+                    truncated=data["truncated"], vehicle_identity_only=True,
+                    fitment_verified=False)
+
+    @router.get("/vehicles/models")
+    def models(manufacturer_id: int = Query(ge=1),
+               kind: str = Query(pattern=r"^(passenger|commercial)$"),
+               after: int = Query(default=0, ge=0),
+               limit: int = Query(default=30, ge=1, le=50)):
+        data = _request("/api/v1/oracle/vehicles/models",
+                        {"manufacturer_id": manufacturer_id, "kind": kind,
+                         "after": after, "limit": limit})
+        items = _vehicle_items(data, {"id": "id", "name": "name",
+                                      "construction_interval": "interval"})
+        if any(item["id"] <= after for item in items):
+            raise HTTPException(503, "Invalid Oracle vehicle pagination")
+        next_after = data.get("next_after")
+        if (data["truncated"] and (not items or type(next_after) is not int
+                                  or next_after != items[-1]["id"])) or (
+                                  not data["truncated"] and next_after is not None):
+            raise HTTPException(503, "Invalid Oracle vehicle cursor")
+        return dict(source="oracle", manufacturer_id=manufacturer_id, kind=kind,
+                    items=items, truncated=data["truncated"], next_after=next_after,
+                    vehicle_identity_only=True, fitment_verified=False)
+
+    @router.get("/vehicles/modifications")
+    def modifications(model_id: int = Query(ge=1),
+                      kind: str = Query(pattern=r"^(passenger|commercial)$"),
+                      after: int = Query(default=0, ge=0),
+                      limit: int = Query(default=30, ge=1, le=50)):
+        data = _request("/api/v1/oracle/vehicles/modifications",
+                        {"model_id": model_id, "kind": kind,
+                         "after": after, "limit": limit})
+        items = _vehicle_items(data, {"id": "id", "model_id": "id",
+                                      "name": "name", "construction_interval": "interval"})
+        if any(item["model_id"] != model_id or item["id"] <= after for item in items):
+            raise HTTPException(503, "Invalid Oracle modification identity")
+        next_after = data.get("next_after")
+        if (data["truncated"] and (not items or type(next_after) is not int
+                                  or next_after != items[-1]["id"])) or (
+                                  not data["truncated"] and next_after is not None):
+            raise HTTPException(503, "Invalid Oracle modification cursor")
+        return dict(source="oracle", model_id=model_id, kind=kind, items=items,
+                    truncated=data["truncated"], next_after=next_after,
+                    vehicle_identity_only=True, fitment_verified=False)
+
+    @router.get("/vehicles/attributes")
+    def attributes(car_id: int = Query(ge=1),
+                   kind: str = Query(pattern=r"^(passenger|commercial)$"),
+                   limit: int = Query(default=50, ge=1, le=50)):
+        data = _request("/api/v1/oracle/vehicles/attributes",
+                        {"car_id": car_id, "kind": kind, "limit": limit})
+        items = _vehicle_items(data, {"attribute_type": "attr", "display_value": "attr"})
+        return dict(source="oracle", source_modification_id=car_id, kind=kind,
+                    items=items, truncated=data["truncated"],
+                    vehicle_identity_only=True, fitment_verified=False)
 
     return router
