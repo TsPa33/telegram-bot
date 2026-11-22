@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/carpot-warehouse-oracle-auto-oem-stage6-20261122
+      - fix/carpot-warehouse-oracle-timeout-stage6b-20261122
     paths:
       - warehouse/backend/**
       - .github/workflows/carpot-warehouse-oracle-oem-stage6.yml
