@@ -537,11 +537,10 @@ def test_auto_oem_directory_stably_ranks_matching_modifications():
     cache=SourceCache();cache.directory=[entry]
     assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
     cache.directory.insert(0,{**entry,'source_modification_id':89})
-    assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
-    # A conflicting VIN decoder value must not prevent a clearly labelled
-    # auto_assumed catalogue variant; it does not claim VIN-verified fitment.
+    # Equal engine/technical evidence is ambiguous even when source IDs differ.
+    assert cache.resolve_directory(v) is None
     v.engine_code='CONFLICTING'
-    assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
+    assert cache.resolve_directory(v) is None
     v.engine_code='EP6 FDT'
     cache.directory=[entry];v.year=2014;assert cache.resolve_directory(v) is None
 
@@ -656,7 +655,7 @@ def test_auto_oem_xc60_directory_matches_missing_generation_with_available_facts
     v.generation='II (2017)'
     assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
     v.generation='';cache.directory.insert(0,{**entry,'source_modification_id':126481})
-    assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
+    assert cache.resolve_directory(v) is None
 
 
 def test_xc60_confirmed_modification_builds_plan_and_oem_without_vin_guess(logged, monkeypatch):
@@ -715,6 +714,7 @@ def test_selection_switch_refreshes_automatic_oem_and_keeps_manual_history(logge
 
     response=logged.post('/api/v1/vehicles',json={
         'manufacturer':'Volvo','model':'XC60','year':2022,'vin':'YV4L12RK6N1970668',
+        'engine_variant':'Variant 1',
     })
     assert response.status_code==201,response.text
     vehicle=response.json()
@@ -794,6 +794,15 @@ def test_sibling_oem_candidates_are_visible_but_never_copied_to_stock(logged,mon
         items=detail_items()
         items[0]['oem']=[] if car==126480 else [{'manufacturerId':120,'OENbr':'OTHER-MODIFICATION'}]
         return {106:items}
+    # No VIN evidence for either sibling: explicitly select the source under
+    # review; do not let the auto matcher arbitrarily pick the first variant.
+    from app.services import unified_catalogue as catalogue
+    with Session(engine()) as db:
+        vehicle=db.get(Vehicle,vehicle_id)
+        vehicle.dismantling_v3={'global_selection':dict(
+            car_id=126480,model_id=13084,manufacturer_id=120,
+            source_snapshot_sha='a'*64,vehicle_basis=catalogue.vehicle_basis(vehicle))}
+        db.commit()
     monkeypatch.setattr(CatalogueAdapter,'directory',lambda *args,**kwargs:{'items':entries})
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kwargs:envelope(car))
     monkeypatch.setattr(CatalogueAdapter,'article_batch',batch)
@@ -844,7 +853,8 @@ def test_auto_oem_directory_fallback_requires_exact_model_year_not_brand_only():
         year=2022,engine_code='',fuel_type='petrol',drive_type='',engine_variant='',
         engine_displacement_l=None)
     cache=SourceCache();cache.directory=[item]
-    assert cache.resolve_directory(v)==(126478,37773,120,'a'*64,True)
+    # Diesel D4 must not be selected for a VIN decoded as petrol.
+    assert cache.resolve_directory(v) is None
     v.model='XC90'
     assert cache.resolve_directory(v) is None
     v.model='XC60';v.year=2010
