@@ -115,6 +115,8 @@ def test_exact_supplier_article_falls_back_to_oracle_without_fitment(monkeypatch
     class Adapter:
         def exact_oem(self, *args):
             raise CatalogueUnavailable("old catalogue missing")
+        def article(self, *args):
+            raise CatalogueUnavailable("old Volvo pilot missing")
         def oracle_oem_by_article(self, sid, article, mid):
             assert (sid, article, mid) == (1, "20064", 120)
             return ["31256232", "272440", "31256231"]
