@@ -24,16 +24,24 @@ class CatalogueAdapter:
         # Exact single admin-configured HTTPS host; no credentials/paths/redirects.
         if not key or not allowed or url.scheme != 'https' or url.hostname != allowed or url.netloc != allowed or url.path not in ('', '/') or url.query or url.fragment:
             raise CatalogueUnavailable('not_configured')
+        # The Oracle hop traverses Catalogue -> Tailscale Relay -> Oracle.
+        # Gateway may spend up to 8s connecting, so the old 5s Warehouse
+        # deadline caused HTTP 499 even when the Gateway was healthy.
+        is_oracle = path.startswith('global:oracle/')
+        timeout = 14 if is_oracle else 5
+        connect_timeout = 11 if is_oracle else 2
         started=time.monotonic()
         try:
-            with httpx.Client(transport=self.transport, timeout=httpx.Timeout(5, connect=2), follow_redirects=False, trust_env=False) as client:
+            with httpx.Client(transport=self.transport,
+                              timeout=httpx.Timeout(timeout, connect=connect_timeout),
+                              follow_redirects=False, trust_env=False) as client:
                 with client.stream('GET', origin.rstrip('/') + '/api/v1/' + (path.removeprefix('global:') if path.startswith('global:') else 'volvo/' + path),
                                    params=params, headers={'X-Catalogue-Key': key}) as response:
                     if response.status_code != 200:
                         raise CatalogueUnavailable('unavailable')
                     body = bytearray()
                     for chunk in response.iter_bytes():
-                        if time.monotonic()-started>5:raise CatalogueUnavailable('deadline_exceeded')
+                        if time.monotonic()-started>timeout:raise CatalogueUnavailable('deadline_exceeded')
                         body.extend(chunk)
                         if len(body) > 8 * 1024 * 1024:
                             raise CatalogueUnavailable('response_too_large')
