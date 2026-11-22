@@ -50,7 +50,7 @@ def test_daf_manufacturer_small_table_select_no_vin_claim(monkeypatch):
     assert res.status_code==200, res.text
     assert res.json()["items"]==[{"id":88,"name":"DAF"}]
     assert res.json()["fitment_verified"] is False
-    assert "manufacturers" in conn.calls[0][0]
+    assert "SELECT DISTINCT id, description AS name FROM manufacturers" in conn.calls[0][0]
     assert "iscommercialvehicle='True'" in conn.calls[0][0]
     assert conn.calls[0][1]==("DAF",21)
 
@@ -62,6 +62,7 @@ def test_daf_commercial_model_and_modification_uses_source_indexes(monkeypatch):
         params={"manufacturer_id":88,"kind":"commercial"},headers=HEADERS)
     assert r.status_code==200, r.text
     assert r.json()["items"][0]["id"]==901
+    assert "SELECT DISTINCT id, description AS name" in conn.calls[0][0]
     assert "models FORCE INDEX (manufacturerid)" in conn.calls[0][0]
     assert conn.calls[0][1]==(88,0,31)
     assert "article_links" not in conn.calls[0][0]
