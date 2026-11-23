@@ -189,6 +189,11 @@ def test_stage11_pinned_review_source_receipt_requires_physical_confirmation(fre
         assert part.quantity == 1 and part.vehicle_id == vehicle_id
         assert db.scalar(select(func.count()).select_from(Operation).where(
             Operation.type == 'receipt', Operation.part_id == part.id)) == 1
+    part_data = logged.get('/api/v1/parts/' + part.id)
+    assert part_data.status_code == 200, part_data.text
+    assert part_data.json()['stock_received_at'] is not None
+    assert part_data.json()['created_at'] is not None
+
     repeated = logged.post(base+'/bulk', json=body)
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()['updated'] == 1
