@@ -1,0 +1,46 @@
+name: CarPot Warehouse Stage 8 PRD provenance gates
+on:
+  push:
+    branches:
+      - fix/carpot-oem-stage8-prd-provenance-20261123
+    paths:
+      - warehouse/backend/**
+      - .github/workflows/carpot-warehouse-stage8-prd.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prd-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: warehouse
+          POSTGRES_PASSWORD: testonly
+          POSTGRES_DB: warehouse_oracle_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U warehouse -d warehouse_oracle_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      WAREHOUSE_TEST_DATABASE_URL: postgresql+psycopg://warehouse:testonly@127.0.0.1:5432/warehouse_oracle_test
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:testonly@127.0.0.1:5432/warehouse_oracle_test
+      WAREHOUSE_ORACLE_OEM_ENABLED: "false"
+      WAREHOUSE_CATALOGUE_WORKER_ENABLED: "false"
+    defaults:
+      run:
+        working-directory: warehouse/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements.lock
+      - name: Run OEM provenance and Stage 7 regression
+        run: python -m pytest -q tests/test_oem_stage8_prd_provenance.py tests/test_oracle_oem_auto.py tests/test_oem_diagnostics.py tests/test_vin_catalogue_identity_stage7.py --maxfail=1
