@@ -129,11 +129,29 @@ def canonical_prd_bindings(db,rows):
     return bindings
 
 
-def matches(row,products,bindings=None):
+def matches(row,products,bindings=None,*,source_modification_id=None):
     product_id=catalogue.row_product_id(row)
     if product_id is not None:
         product=products.get(product_id)
-        return product if eligible_product(product) else None
+        # A source catalogue row has a hard modification + PRD identity.
+        # A stale row from another modification must never inherit its OEM
+        # merely because the two vehicles share the same PRD type number.
+        source_bound=(getattr(row,'source',None)=='carpot.catalogue.v1')
+        if source_bound and source_modification_id is not None:
+            if getattr(row,'catalog_key',None)!=f'car:{source_modification_id}:product:{product_id}':
+                return None
+        if eligible_product(product):
+            return product
+        # Unreviewed taxonomy does not erase a *proven exact source PRD link*.
+        # Only the original row, pinned to this very same modification and
+        # carrying article-linked evidence, can receive an OEM cross-reference.
+        # This is NOT VIN/physical fitment and never enables lexical inference.
+        if (source_bound and type(source_modification_id) is int
+                and getattr(row,'catalog_key',None)==f'car:{source_modification_id}:product:{product_id}'
+                and isinstance(product,dict) and product.get('kind')=='review'
+                and type(product.get('article_count')) is int and product['article_count']>0):
+            return product
+        return None
     if bindings:
         canonical=(getattr(row,'plan_v3',None) or {}).get('canonical_part_type_id')
         linked=[products[pid] for pid,sha in bindings.get(canonical,())
@@ -671,7 +689,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 if create_plan and eligible_product(product) and product['article_count']>0
             }
             for row in type_rows:
-                p=matches(row,products,bindings)
+                p=matches(row,products,bindings,source_modification_id=payload['car_id'])
                 if p:needed[p['product_id']]=p
             def offers_for(product):
                 try:return cache.get_offers(payload,product)
@@ -682,7 +700,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 data.update({pid:offers for pid,offers in zip(remaining,pool.map(offers_for,remaining.values())) if offers is not None})
             focus={}
             for row in type_rows:
-                product=matches(row,products,bindings)
+                product=matches(row,products,bindings,source_modification_id=payload['car_id'])
                 part=linked.get(row.part_id)
                 if product and part and part.article_number and part.article_brand:
                     focus[product['product_id']]=(normalized(part.article_brand),normalized(part.article_number))
@@ -691,7 +709,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 possible={pid for pid,offers in data.items() if not choices(offers,product=products[pid])}
                 possible.update(
                     product['product_id'] for row in type_rows
-                    if (product:=matches(row,products,bindings))
+                    if (product:=matches(row,products,bindings,source_modification_id=payload['car_id']))
                     and product['product_id'] in data
                     and not choices(data[product['product_id']],linked.get(row.part_id),row,product)
                 )
@@ -748,7 +766,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 continue
             part=parts.get(row.part_id)
             ref=refs.get(row.id)
-            product=matches(row,products,bindings) if payload else None
+            product=matches(row,products,bindings,source_modification_id=payload['car_id']) if payload else None
             pid=product['product_id'] if product else None
             evaluated=payload is not None and (
                 pid in data or pid is None and (catalogue.row_product_id(row) is not None or
