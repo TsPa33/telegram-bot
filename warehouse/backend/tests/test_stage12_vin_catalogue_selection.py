@@ -59,6 +59,22 @@ def test_generic_directory_matches_any_manufacturer(make, model):
     assert result["items"][0]["vin_fitment_verified"] is False
 
 
+
+def test_bounded_paging_does_not_skip_unconsumed_modifications():
+    rows = [directory_entry("DAF","XF",car_id=1000+i) for i in range(92)]
+    src = Source(rows)
+    seen = []
+    cursor = 0
+    for _ in range(3):
+        page = matching.search_candidates(src,manufacturer="DAF",model="XF",after=cursor,limit=40)
+        seen.extend(r["source_modification_id"] for r in page["items"])
+        if page["next_after"] is None:
+            break
+        cursor = page["next_after"]
+    assert len(seen) == len(set(seen)) == 92
+    assert seen == list(range(1000,1092))
+
+
 def test_catalogue_does_not_accept_chassis_or_fuzzy_model_as_exact():
     assert not matching.same_model("FT", "XF")
     assert matching.same_model("XC90", "XC90 II")
