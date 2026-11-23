@@ -16,6 +16,7 @@ from app.models import Vehicle,DismantlingItem,Part,Account,Operation,now
 from app.models.canonical import CanonicalType
 from app.services import unified_catalogue as catalogue
 from app.services.dismantling_plan_v3 import generator_basis
+from app.services import plan_item_binding
 from app.services.catalogue_format import digest
 from app.services.volvo_oem_review import overlay,normalized,row_identity,reference_matches
 from app.services.inventory import record,snapshot
@@ -45,13 +46,20 @@ def valid_reference(v,row,ref):
         return False
     if 'engine_variant' in ref and ref['engine_variant']!=normalized(v.engine_variant):
         return False
-    if ref.get('status')=='user_selected_cross_reference':
+    if ref.get('status')=='user_selected_cross_reference' and row.source!='carpot.catalogue.v1':
         return True
     if (ref.get('status')==AUTO_STATUS and
             ref.get('modification_selection')=='auto_assumed' and
             not (v.dismantling_v3 or {}).get('global_selection')):
         return False
     identity=source_identity(v)
+    history=(v.dismantling_v3 or {}).get(plan_item_binding.KEY, {}).get(row.id)
+    if history:
+        active = history[-1] or {}
+        if not identity or (active.get('source_modification_id'), active.get('snapshot_sha'), active.get('product_id')) != (
+            identity[0], identity[3], ref.get('product_id')
+        ):
+            return False
     if not identity and ((v.dismantling_v3 or {}).get('global_selection') or catalogue.saved_state(v)):
         return False
     automatic=automatic_identity(v)
@@ -85,7 +93,7 @@ def source_identity(v):
     if saved:
         if catalogue.needs_review(v):return None
         p=saved['payload']
-        return (p['car_id'],p['model_id'],p['manufacturer_id'],p['source_snapshot_sha'],p.get('schema')=='carpot.vehicle.plan.v1')
+        return (p['car_id'],p['model_id'],p['manufacturer_id'],p.get('source_snapshot_sha'),p.get('schema')=='carpot.vehicle.plan.v1')
     automatic=automatic_identity(v)
     if automatic:
         return tuple(automatic[k] for k in ('car_id','model_id','manufacturer_id','snapshot_sha','global_source'))
@@ -129,7 +137,7 @@ def canonical_prd_bindings(db,rows):
     return bindings
 
 
-def matches(row,products,bindings=None,*,source_modification_id=None):
+def matches(row,products,bindings=None,*,source_modification_id=None,source_snapshot_sha=None,item_bindings=None):
     product_id=catalogue.row_product_id(row)
     if product_id is not None:
         product=products.get(product_id)
@@ -138,7 +146,13 @@ def matches(row,products,bindings=None,*,source_modification_id=None):
         # merely because the two vehicles share the same PRD type number.
         source_bound=(getattr(row,'source',None)=='carpot.catalogue.v1')
         if source_bound and source_modification_id is not None:
-            if getattr(row,'catalog_key',None)!=f'car:{source_modification_id}:product:{product_id}':
+            history = (item_bindings or {}).get(getattr(row, 'id', None))
+            if history:
+                active = history[-1] or {}
+                current = (active.get('source_modification_id'), active.get('product_id'), active.get('snapshot_sha'))
+                if current != (source_modification_id, product_id, source_snapshot_sha):
+                    return None
+            elif getattr(row,'catalog_key',None)!=f'car:{source_modification_id}:product:{product_id}':
                 return None
         if eligible_product(product):
             return product
@@ -147,7 +161,6 @@ def matches(row,products,bindings=None,*,source_modification_id=None):
         # carrying article-linked evidence, can receive an OEM cross-reference.
         # This is NOT VIN/physical fitment and never enables lexical inference.
         if (source_bound and type(source_modification_id) is int
-                and getattr(row,'catalog_key',None)==f'car:{source_modification_id}:product:{product_id}'
                 and isinstance(product,dict) and product.get('kind')=='review'
                 and type(product.get('article_count')) is int and product['article_count']>0):
             return product
@@ -260,10 +273,19 @@ def ref_for(v,row,payload,product,alternatives):
         product_id=product['product_id'],snapshot_sha=payload['source_snapshot_sha'],observed_at=payload['observed_at'],retrieved_at=now().isoformat(),
         vehicle_basis=basis(v),engine_variant=normalized(v.engine_variant),row_identity=row_identity(row),alternatives=alternatives,selection_rule=RULE)
 
+def physical_oem_confirmed(part):
+    provenance = part.oem_provenance or {}
+    return bool(part.oem_number and (
+        provenance.get('physical_number_confirmed_by_user') is True
+        or (provenance.get('source') == 'manual' and provenance.get('status') == 'user_confirmed')
+    ))
+
+
 def replaceable_stock(part,row):
     previous=part.oem_provenance or {}
     return (not part.archived and part.quantity>0 and not part.reserved_quantity
             and part.availability!='absent' and previous.get('source')=='carpot.catalogue'
+            and not physical_oem_confirmed(part)
             and previous.get('status')==AUTO_STATUS and previous.get('plan_item_id')==row.id)
 
 
@@ -273,16 +295,16 @@ def refresh_stock_reference(db,v,row,part,ref):
     if not replaceable_stock(part,row):
         return bool(ref and fill_part(db,v,row,part,ref))
     previous=part.oem_provenance
-    if valid_reference(v,row,previous):
+    if not ref or valid_reference(v,row,previous):
         return False
-    if ref and part.article_number and (
+    if part.article_number and (
         normalized(part.article_brand)!=normalized(ref.get('source_brand'))
         or normalized(part.article_number)!=normalized(ref.get('source_article'))
     ):
         return False
     before=snapshot(part)
-    part.oem_number=ref['oem_number'] if ref else ''
-    part.oem_provenance={**ref,'plan_item_id':row.id,'physical_number_confirmed_by_user':False} if ref else None
+    part.oem_number=ref['oem_number']
+    part.oem_provenance={**ref,'plan_item_id':row.id,'physical_number_confirmed_by_user':False}
     record(db,v.account_id,part,'part_update','Оновлено каталожний OEM за модифікацією',before,after_extra={'automatic_oem':True})
     return True
 
@@ -652,6 +674,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id)))
         bindings=canonical_prd_bindings(db,rows)
         old_refs=references(v)
+        item_bindings = (v.dismantling_v3 or {}).get(plan_item_binding.KEY, {})
+        selection_revision = (v.dismantling_v3 or {}).get('catalogue_selection_revision', 0)
         linked={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id))}
         exact={p.id:k for p in linked.values() if (k:=exact_key(p,v))}
         needs=[]
@@ -689,7 +713,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 if create_plan and eligible_product(product) and product['article_count']>0
             }
             for row in type_rows:
-                p=matches(row,products,bindings,source_modification_id=payload['car_id'])
+                p=matches(row,products,bindings,source_modification_id=payload['car_id'],
+                    source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings)
                 if p:needed[p['product_id']]=p
             def offers_for(product):
                 try:return cache.get_offers(payload,product)
@@ -700,7 +725,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 data.update({pid:offers for pid,offers in zip(remaining,pool.map(offers_for,remaining.values())) if offers is not None})
             focus={}
             for row in type_rows:
-                product=matches(row,products,bindings,source_modification_id=payload['car_id'])
+                product=matches(row,products,bindings,source_modification_id=payload['car_id'],
+                    source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings)
                 part=linked.get(row.part_id)
                 if product and part and part.article_number and part.article_brand:
                     focus[product['product_id']]=(normalized(part.article_brand),normalized(part.article_number))
@@ -709,7 +735,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 possible={pid for pid,offers in data.items() if not choices(offers,product=products[pid])}
                 possible.update(
                     product['product_id'] for row in type_rows
-                    if (product:=matches(row,products,bindings,source_modification_id=payload['car_id']))
+                    if (product:=matches(row,products,bindings,source_modification_id=payload['car_id'],
+                    source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings))
                     and product['product_id'] in data
                     and not choices(data[product['product_id']],linked.get(row.part_id),row,product)
                 )
@@ -733,6 +760,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         db.scalar(select(Account).where(Account.id==account_id).with_for_update(read=True,key_share=True))
         v=db.scalar(select(Vehicle).where(Vehicle.id==vehicle_id,Vehicle.account_id==account_id,Vehicle.archived.is_(False)).with_for_update())
         if not v or basis(v)!=old_basis or normalized(v.engine_variant)!=old_variant or source_identity(v)!=direct_identity:return 0
+        if (v.dismantling_v3 or {}).get('catalogue_selection_revision', 0) != selection_revision:
+            return 0
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
         parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id).order_by(Part.id).with_for_update())}
         if (payload and create_plan and accepts_automatic_plan(v) and not rows and not parts
@@ -759,24 +788,26 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         sold=set(db.scalars(select(Operation.part_id).where(
             Operation.account_id==account_id,Operation.part_id.in_(parts),Operation.type=='sale'
         ))) if parts else set()
+        item_bindings = dict(state.get(plan_item_binding.KEY, {}))
         candidates=dict(state.get(CANDIDATES_KEY) or {})
         outcomes=dict(state.get(OUTCOMES_KEY) or {})
         for row in rows:
-            if not eligible_row(row) or row.part_id in sold:
+            if not eligible_row(row) or (row.part_id in sold and row.id not in item_bindings):
                 continue
             part=parts.get(row.part_id)
             ref=refs.get(row.id)
-            product=matches(row,products,bindings,source_modification_id=payload['car_id']) if payload else None
+            product=matches(row,products,bindings,source_modification_id=payload['car_id'],
+                    source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings) if payload else None
             pid=product['product_id'] if product else None
             evaluated=payload is not None and (
                 pid in data or pid is None and (catalogue.row_product_id(row) is not None or
                     ref and ref.get('status')==AUTO_STATUS and not valid_reference(v,row,ref))
             )
             if evaluated:
-                alternatives=choices(data.get(pid,[]),part,row,product)
+                alternatives=choices(data.get(pid,[]),None if row.id in item_bindings else part,row,product)
                 valid=valid_reference(v,row,ref)
                 if (not valid or not options(ref)) and alternatives:
-                    if valid or part and (part.oem_number or part.oem_provenance) and not replaceable_stock(part,row):
+                    if valid or (row.id not in item_bindings and part and (part.oem_number or part.oem_provenance) and not replaceable_stock(part,row)):
                         chosen=ref['oem_number'] if valid else part.oem_number
                         match=next((a for a in alternatives if a['oem_number']==chosen),None)
                         alternatives=[match,*[a for a in alternatives if a!=match]] if match else []
@@ -808,17 +839,21 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                     outcomes[row.id]=outcome;changed=True
             elif valid_reference(v,row,ref) and row.id in outcomes:
                 outcomes.pop(row.id);changed=True
-            if part and (ref or evaluated) and refresh_stock_reference(db,v,row,part,ref):
+            if pid in data and row.id in item_bindings:
+                changed |= plan_item_binding.record_evidence(
+                    item_bindings, row.id, data[pid], ref if valid_reference(v,row,ref) else None)
+            if part and row.part_id not in sold and (ref or evaluated) and refresh_stock_reference(db,v,row,part,ref):
                 stock_changes+=1
         for pid,key in exact.items():
             part=parts.get(pid);result=exact_data.get(key)
             if part and pid not in sold and result and exact_key(part,v)==key and fill_exact(db,v,part,result):stock_changes+=1
         if changed:
+            if item_bindings:
+                state[plan_item_binding.KEY] = item_bindings
             v.dismantling_v3={**state,REF_KEY:refs,CANDIDATES_KEY:candidates,OUTCOMES_KEY:outcomes}
             record(db,account_id,v,'vehicle_update','Каталожні OEM',before,after_extra={'automatic_oem':True})
         db.commit()
-        # Operational acceptance must count nonempty persisted OEM fields,
-        # not mutations: a stock update can legitimately clear an invalid number.
+        # A populated legacy stock field is not evidence of current fitment.
         active=[p for p in parts.values() if not p.archived and p.quantity>0 and p.availability!='absent']
         valid_refs=sum(bool(eligible_row(row) and valid_reference(v,row,refs.get(row.id))
                             and transferable_reference(refs.get(row.id))) for row in rows)

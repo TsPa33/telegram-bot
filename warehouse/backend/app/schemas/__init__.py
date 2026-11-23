@@ -251,6 +251,7 @@ class PartCharacteristicsInput(Input):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
     values: dict[Literal['oem_number','color_name','paint_code'], str | None]
     expected: dict[Literal['oem_number','color_name','paint_code'], str | None]
+    confirm_physical_oem: bool = False
 
     @model_validator(mode='after')
     def validate_fields(self):
@@ -261,4 +262,6 @@ class PartCharacteristicsInput(Input):
                 if value is not None and (len(value)>{'oem_number':150,'color_name':80,'paint_code':40}[key] or any(ord(c)<32 for c in value)):
                     raise ValueError('Некоректна довжина або керувальні символи у характеристиці')
         self.values={key:((value or '').strip() or ('' if key=='oem_number' else None)) for key,value in self.values.items()}
+        if self.confirm_physical_oem and not self.values.get('oem_number'):
+            raise ValueError('Підтвердьте непорожній фізичний OEM')
         return self

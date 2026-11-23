@@ -162,6 +162,8 @@ def make_preview(db,v,who,data,*,virtual_base=False):
 
 def replay(db,v,who,data,kind):
     key=str(data.request_key);payload=data.model_dump(mode='json')
+    if kind == 'catalogue-selection' and payload.get('expected_selection_revision') is None:
+        payload.pop('expected_selection_revision', None)
     if kind=='bulk':
         if not payload.get('confirm_physical'):payload.pop('confirm_physical',None)
         for line in payload.get('lines',[]):

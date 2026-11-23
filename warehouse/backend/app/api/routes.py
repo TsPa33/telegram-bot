@@ -658,7 +658,10 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
 def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: Auth):
     row=owned(db,Part,id,who.workspace_account_id,lock=True,active=True)
     before=snapshot(row)
-    if all(getattr(row,k)==v for k,v in data.values.items()):
+    from app.services.auto_oem import physical_oem_confirmed
+
+    needs_confirmation = data.confirm_physical_oem and not physical_oem_confirmed(row)
+    if not needs_confirmation and all(getattr(row,k)==v for k,v in data.values.items()):
         return {**before,'available_quantity':row.available_quantity}
     if any(getattr(row,k)!=v for k,v in data.expected.items()):
         raise HTTPException(409,'Характеристики вже змінено. Перечитайте картку та порівняйте значення.')
@@ -666,7 +669,14 @@ def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: A
     if 'oem_number' in data.values:
         previous=before.get('oem_provenance') or {}
         option=next((a for a in previous.get('alternatives',[]) if a.get('oem_number')==row.oem_number),None)
-        row.oem_provenance={**previous,**option,'status':'user_selected_cross_reference'} if option else dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.oem_number else 'cleared')
+        if data.confirm_physical_oem or not option:
+            row.oem_provenance = dict(source='manual', confirmed_by=who.actor_id,
+                confirmed_at=datetime.now(timezone.utc).isoformat(),
+                status='user_confirmed' if row.oem_number else 'cleared')
+            if data.confirm_physical_oem:
+                row.oem_provenance['physical_number_confirmed_by_user'] = True
+        else:
+            row.oem_provenance = {**previous, **option, 'status': 'user_selected_cross_reference'}
     record(db,who.workspace_account_id,row,'part_update','Оновлено OEM / колір деталі',before)
     db.commit()
     return {**snapshot(row),'available_quantity':row.available_quantity}
