@@ -28,12 +28,13 @@ export default function VinCataloguePicker({manufacturer,model,selectedId,onSele
   const [items,setItems]=useState<CatalogueCandidate[]>([]);
   const [cursor,setCursor]=useState<number|null>(null);
   const [choice,setChoice]=useState('');
+  const [sourceModel,setSourceModel]=useState('');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [searched,setSearched]=useState(false);
   const normalized=manufacturer.trim();
   useEffect(()=>{
-    setItems([]);setCursor(null);setChoice('');setError('');setSearched(false);
+    setItems([]);setCursor(null);setChoice('');setSourceModel('');setError('');setSearched(false);
     if(normalized.length<2)return;
     let alive=true;
     const timer=window.setTimeout(async()=>{
@@ -67,15 +68,23 @@ export default function VinCataloguePicker({manufacturer,model,selectedId,onSele
     return Number(bMatch)-Number(aMatch)||a.model.localeCompare(b.model,'uk')||a.modification.localeCompare(b.modification,'uk');
   });
   const current=items.find(v=>String(v.source_modification_id)===choice);
+  const models=[...new Set(items.map(v=>v.model))].sort((a,b)=>a.localeCompare(b,'uk'));
+  const visible=sorted.filter(v=>!sourceModel||v.model===sourceModel);
   const selected=items.find(v=>v.source_modification_id===selectedId);
   return <fieldset className="vin-catalogue-select" aria-label="Точна модифікація з каталогу">
     <legend>Модифікація з каталогу CarPot</legend>
     <p>Оберіть конкретну модифікацію, якщо VIN не визначив її однозначно. Пошук доступний для всіх марок, представлених у каталозі.</p>
     {busy&&<small role="status">Шукаємо модифікації…</small>}
+    <label>Модель із каталогу
+      <select aria-label="Вибрати модель каталогу" value={sourceModel} disabled={busy||!models.length} onChange={e=>{setSourceModel(e.target.value);setChoice('')}}>
+        <option value="">Усі доступні моделі</option>
+        {models.map(value=><option key={value} value={value}>{value}</option>)}
+      </select>
+    </label>
     <label>Доступні модифікації
       <select aria-label="Вибрати каталожну модифікацію" value={choice} disabled={busy||!items.length} onChange={e=>setChoice(e.target.value)}>
         <option value="">Оберіть модель та модифікацію</option>
-        {sorted.map(item=><option key={item.source_modification_id} value={item.source_modification_id}>
+        {visible.map(item=><option key={item.source_modification_id} value={item.source_modification_id}>
           {item.manufacturer} {item.model} {item.generation||''} — {item.modification} · {item.type_count} типів
         </option>)}
       </select>
