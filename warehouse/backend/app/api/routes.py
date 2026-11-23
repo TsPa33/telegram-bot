@@ -340,6 +340,21 @@ def _new_vehicle_oem_enrichment(account_id: str, vehicle_id: str):
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: BackgroundTasks):
     values = data.model_dump()
+    # Catalogue selections are not Vehicle columns. Revalidate by ID and
+    # snapshot; never trust source names or attributes supplied by the browser.
+    selection = data.catalogue_selection
+    values.pop("catalogue_selection", None)
+    source_entry = source_plan = None
+    if selection is not None:
+        from app.permissions import require_permission
+        from app.services.unified_catalogue import CatalogueAdapter
+        from app.services.vin_catalogue_matching import validate_selection
+        require_permission(who, "vehicles.create", "catalog.view", "dismantling.manage")
+        source_entry, source_plan = validate_selection(
+            CatalogueAdapter(), selection=selection,
+            manufacturer=values["manufacturer"], model=values["model"],
+            generation=values.get("generation") or "", year=values.get("year"),
+        )
     if values["donor_id"] is None:
         values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
     # Serialize allocation even when callers supply their own donor_id.
@@ -352,6 +367,26 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
     row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
     db.add(row)
+    if selection is not None:
+        # One donor, one versioned source plan. Potential dismantling types are
+        # NOT physical stock and require later explicit confirmation for receipt.
+        from app.services import unified_catalogue as catalogue
+        from app.services.dismantling_plan_v3 import generator_basis
+        db.flush()
+        payload = source_plan["payload"]
+        row.dismantling_v3 = {**(row.dismantling_v3 or {}), "global_selection": dict(
+            car_id=selection.source_modification_id,
+            model_id=selection.model_id,
+            manufacturer_id=selection.manufacturer_id,
+            source_snapshot_sha=selection.source_snapshot_sha,
+            modification_description=payload["modification"].get("description"),
+            source_specifications=(source_entry.get("specifications") or [])[:100],
+            vehicle_basis=catalogue.vehicle_basis(row),
+            identity_fingerprint=generator_basis(row),
+            confirmation="user_selected",
+            vin_verified=False,
+        )}
+        catalogue.persist(db, row, source_plan, allow_partial=True)
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
     db.commit()
     # Staging-only OEM enrichment starts immediately AFTER the vehicle is committed.
@@ -364,6 +399,21 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         background_tasks.add_task(_new_vehicle_oem_enrichment,who.workspace_account_id,row.id)
     return vehicle_view(db, row, who.workspace_account_id)
 
+
+
+@router.get("/vehicles/vin/catalogue-candidates", tags=["Vehicles"])
+def vin_catalogue_candidates(
+    db: DB, who: Auth,
+    manufacturer: str = Query(min_length=2, max_length=100),
+    model: str = Query(default="", max_length=100),
+    after: int = Query(default=0, ge=0),
+):
+    """Read-only candidates for all makes. Never infer vehicle fitment from a model name."""
+    from app.permissions import require_permission
+    from app.services.unified_catalogue import CatalogueAdapter
+    from app.services.vin_catalogue_matching import search_candidates
+    require_permission(who, "vehicles.view", "catalog.view")
+    return search_candidates(CatalogueAdapter(), manufacturer=manufacturer, model=model, after=after)
 
 
 @router.get("/vehicles/vin/decode", tags=["Vehicles"])
@@ -398,6 +448,8 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
+    if changes.pop("catalogue_selection", None) is not None:
+        raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")
     if changes.get('vin'):
         existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==changes['vin'],Vehicle.id!=id))
         if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})

@@ -88,7 +88,17 @@ class VinDetails(Input):
         return self
 
 
+class VinCatalogueSelection(Input):
+    """Explicit choice from the authenticated, immutable Catalogue directory."""
+    source_modification_id: int = Field(strict=True, gt=0)
+    model_id: int = Field(strict=True, gt=0)
+    manufacturer_id: int = Field(strict=True, gt=0)
+    source_snapshot_sha: str = Field(pattern=r"^[a-f0-9]{64}$")
+    confirmed: Literal[True]
+
+
 class VehicleInput(Input):
+    catalogue_selection: VinCatalogueSelection | None = None
     vin_details: VinDetails | None = None
     ktype: Annotated[int, Field(gt=0, le=2147483647, strict=True)] | None = None
     manufacturer: Text100
