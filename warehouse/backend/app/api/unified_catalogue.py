@@ -115,7 +115,12 @@ def saved_articles(product, state, *, oem_manufacturer_id=None, adapter=None, li
         # Read compatibility only: previously saved raw snapshots are not rewritten.
         items=[payload['articles'][key] for key in product['articles']]
     result=[]
+    identities = set()
     for i,item in enumerate(items):
+        identity = (item['supplier_id'], item['article_number'])
+        if identity in identities or type(identity[0]) is not int or not isinstance(identity[1], str) or not identity[1]:
+            raise HTTPException(503,'Некоректна відповідь збереженої версії каталогу')
+        identities.add(identity)
         supplier=item.get('supplier',[])
         article=item.get('article',[])
         oem_sources = {
@@ -375,20 +380,42 @@ def global_saved(id: str, db: DB, who: Auth):
     state=service.saved_state(v)
     from sqlalchemy import select
     from app.models import DismantlingItem,Part
-    from app.services.auto_oem import CANDIDATES_KEY,references,options,valid_reference
+    from app.services.auto_oem import CANDIDATES_KEY,references,options,valid_reference,physical_oem_confirmed
+    from app.services.plan_item_binding import KEY
     rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==v.account_id,DismantlingItem.source=='carpot.catalogue.v1'))) if state else []
     keys={service.row_product_id(r):'catalogue:'+r.id for r in rows if service.row_product_id(r)}
     oems={}
+    catalogue_oems={}
     if 'inventory.view' in who.permissions:
         parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id,Part.id.in_([r.part_id for r in rows if r.part_id])))}
         refs=references(v)
         for row in rows:
             ref=refs.get(row.id);part=parts.get(row.part_id)
-            if part and (part.oem_number or part.oem_provenance):oems[service.row_product_id(row)]=dict(item_id=row.id,part_id=part.id,oem_number=part.oem_number,oem_options=options(part.oem_provenance))
-            elif valid_reference(v,row,ref):oems[service.row_product_id(row)]=dict(item_id=row.id,part_id=None,oem_number=ref['oem_number'],oem_options=options(ref))
+            product_id = service.row_product_id(row)
+            applicable = valid_reference(v, row, ref)
+            if applicable:
+                catalogue_oems[product_id] = dict(
+                    oem_number=ref['oem_number'], candidates=options(ref), evidence=ref)
+            if part and (part.oem_number or part.oem_provenance):
+                provenance = part.oem_provenance or {}
+                status = 'unverified'
+                if physical_oem_confirmed(part):
+                    status = 'physical_confirmed'
+                elif provenance.get('source') == 'carpot.catalogue':
+                    status = 'catalogue_candidate'
+                    if provenance.get('source_modification_id'):
+                        status = 'catalogue_applicable' if valid_reference(v, row, provenance) else 'historical'
+                oems[product_id] = dict(item_id=row.id, part_id=part.id,
+                    oem_number=part.oem_number, oem_options=options(provenance), oem_status=status)
+            elif applicable:
+                oems[product_id] = dict(item_id=row.id, part_id=None, oem_number=ref['oem_number'],
+                    oem_options=options(ref), oem_status='catalogue_applicable')
     from app.services.dismantling_plan_v3 import generator_basis
     return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),saved=state,
-        keys=keys,oems=oems,unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
+        keys=keys,oems=oems,catalogue_oems=catalogue_oems,
+        selection_revision=(v.dismantling_v3 or {}).get('catalogue_selection_revision', 0),
+        item_bindings=(v.dismantling_v3 or {}).get(KEY, {}) if 'inventory.view' in who.permissions else {},
+        unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
         legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
 
 
@@ -401,6 +428,7 @@ class ExistingVehicleSelection(Input):
     source_snapshot_sha: str = Field(pattern=r'^[a-f0-9]{64}$')
     expected_basis: str = Field(pattern=r'^[a-f0-9]{64}$')
     confirm_exact_modification: bool = False
+    expected_selection_revision: int | None = Field(default=None, strict=True, ge=0)
 
 
 @router.post('/{id}/catalogue-selection')
@@ -413,6 +441,9 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     prior,sha=replay(db,v,who,data,'catalogue-selection')
     if prior is not None:return prior
+    revision = (v.dismantling_v3 or {}).get('catalogue_selection_revision', 0)
+    if data.expected_selection_revision is not None and data.expected_selection_revision != revision:
+        raise HTTPException(409,'Вибір модифікації змінився. Оновіть каталог')
     if data.expected_basis!=generator_basis(v):raise HTTPException(409,'Характеристики автомобіля змінилися. Повторіть вибір модифікації')
     try:
         plan=service.CatalogueAdapter().plan(data.source_modification_id,global_source=True)
@@ -441,9 +472,9 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     if previous_model and data.model_id!=previous_model or not previous_model and not same_model:
         raise HTTPException(409,'Виберіть модифікацію тієї самої моделі')
     before=snapshot(v)
-    if saved and saved['payload']['source_snapshot_sha']!=data.source_snapshot_sha:
+    if saved and (saved['payload']['car_id'], saved['payload']['source_snapshot_sha']) != (data.source_modification_id, data.source_snapshot_sha):
         service.persist(db,v,plan,allow_partial=True,replace_selection=True)
-    v.dismantling_v3={**(v.dismantling_v3 or {}),CANDIDATES_KEY:{},OUTCOMES_KEY:{},'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='user_selected',vin_verified=False)}
+    v.dismantling_v3={**(v.dismantling_v3 or {}),CANDIDATES_KEY:{},OUTCOMES_KEY:{},'catalogue_selection_revision':revision+1,'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='user_selected',vin_verified=False)}
     record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)
     result=finish(db,v,who,data,sha,dict(saved=True,vehicle_id=v.id))
     db.commit();return result

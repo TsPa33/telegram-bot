@@ -147,7 +147,9 @@ class CatalogueAdapter:
         ids={str(pid) for pid in product_ids}
         if (not isinstance(data,dict) or data.get('car_id')!=car_id or data.get('snapshot_sha')!=snapshot_sha
                 or not isinstance(data.get('items'),dict) or set(data['items'])!=ids
-                or any(not isinstance(items,list) for items in data['items'].values())):
+                or any(not isinstance(items,list) or any(
+                    not isinstance(item, dict) or item.get('car_id') != car_id for item in items
+                ) for items in data['items'].values())):
             raise CatalogueUnavailable('invalid_article_batch')
         return {int(pid):items for pid,items in data['items'].items()}
 
@@ -250,7 +252,17 @@ def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=Fal
     existing_rows = db.scalars(select(DismantlingItem).where(
         DismantlingItem.account_id==vehicle.account_id,DismantlingItem.vehicle_id==vehicle.id
     )).all() if existing else []
+    from app.services.plan_item_binding import KEY, update_bindings
+
     existing_products = {row_product_id(row) for row in existing_rows}
+    # Only exact source rows can acquire a binding. Ambiguous duplicate PRDs
+    # retain their existing workflow rows without assigning a new identity.
+    rows_by_product = {}
+    for row in existing_rows:
+        if row.source == 'carpot.catalogue.v1':
+            pid = row_product_id(row)
+            rows_by_product[pid] = row if pid not in rows_by_product else None
+    rows_by_product = {pid: row for pid, row in rows_by_product.items() if pid and row is not None}
     for row in payload['categories']:
         if row['product_id'] in existing_products or None in existing_products:
             continue
@@ -260,14 +272,19 @@ def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=Fal
         if not allow_partial and (not row.get('name_uk') or len(path)!=3):
             raise HTTPException(409,'Категоризація потребує перевірки')
         stable = lambda text: hashlib.sha256(text.encode()).hexdigest()[:24]
-        db.add(DismantlingItem(account_id=vehicle.account_id, vehicle_id=vehicle.id,
+        item = DismantlingItem(account_id=vehicle.account_id, vehicle_id=vehicle.id,
             source='carpot.catalogue.v1', catalog_key=f"car:{payload['car_id']}:product:{row['product_id']}",
             category_key=stable(root), category_name=root, subcategory_key=stable(root + '/' + sub),
-            subcategory_name=sub, name=row.get('name_uk') or row.get('name_source') or 'Потребує уточнення', position='', quantity=1))
+            subcategory_name=sub, name=row.get('name_uk') or row.get('name_source') or 'Потребує уточнення', position='', quantity=1)
+        db.add(item)
+        rows_by_product[row['product_id']] = item
+    db.flush()
+    bindings = update_bindings(vehicle, existing_rows, rows_by_product,
+                               existing['payload'] if existing else None, payload)
     projection=compact_payload(payload)
     local_sha=hashlib.sha256(json.dumps(projection,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     envelope={'payload':projection,'sha256':local_sha,'vehicle_basis':vehicle_basis(vehicle)}
-    vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), 'unified_catalogue': envelope}
+    vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), 'unified_catalogue': envelope, KEY: bindings}
     record(db, vehicle.account_id, vehicle, 'unified_catalogue_save',
            'Збережено потенційний план Catalogue; склад не змінено', before)
     db.flush()

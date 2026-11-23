@@ -133,6 +133,12 @@ def receipt(db, row, data, account_id, *, confirmed=False):
         record(db, account_id, part, 'part_create', 'Позиція розбору перед явним надходженням', {})
     from app.services.auto_oem import receipt_oem
     receipt_oem(db,row,part)
+    from app.services.plan_item_binding import active_binding
+    vehicle = db.get(Vehicle, row.vehicle_id)
+    binding = active_binding(vehicle, row.id) if vehicle else None
+    source_at_receipt = {key: binding[key] for key in (
+        'source_modification_id', 'product_id', 'snapshot_sha', 'manufacturer_id'
+    )} if binding else None
     part_before = snapshot(part)
     if data.condition is not None:
         part.condition = data.condition
@@ -152,7 +158,8 @@ def receipt(db, row, data, account_id, *, confirmed=False):
                               reason=f'Розбір: {row.source}/{row.catalog_key}'), account_id)
     row.part_id, row.received_at = part.id, now()
     row.status, row.quantity, row.condition = 'dismantled', data.quantity, part.condition
-    record(db, account_id, row, 'dismantling_receipt', 'Явно оприбутковано через складське надходження', before)
+    record(db, account_id, row, 'dismantling_receipt', 'Явно оприбутковано через складське надходження', before,
+           after_extra={'catalogue_binding_at_receipt': source_at_receipt} if source_at_receipt else None)
     return True
 
 
