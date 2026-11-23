@@ -448,6 +448,8 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
+    if changes.pop("catalogue_selection", None) is not None:
+        raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")
     if changes.get('vin'):
         existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==changes['vin'],Vehicle.id!=id))
         if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
