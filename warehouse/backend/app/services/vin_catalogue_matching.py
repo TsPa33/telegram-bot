@@ -82,6 +82,10 @@ def search_candidates(adapter, *, manufacturer, model="", after=0, limit=40, max
             raise HTTPException(503, "Каталог модифікацій тимчасово недоступний") from None
         if not isinstance(page, dict) or not isinstance(page.get("items"), list):
             raise HTTPException(503, "Некоректна відповідь каталогу модифікацій")
+        page_next = page.get("next_after")
+        if page_next is not None and (type(page_next) is not int or page_next <= cursor):
+            raise HTTPException(503, "Некоректна пагінація каталогу")
+        stopped = False
         for item in page["items"]:
             if not valid_candidate(item) or normalized(item["manufacturer"]) != make:
                 continue
@@ -91,12 +95,16 @@ def search_candidates(adapter, *, manufacturer, model="", after=0, limit=40, max
             seen.add(sid)
             found.append(candidate_public(item, model))
             if len(found) >= limit:
+                # The upstream page may hold more valid candidates. Resume at
+                # the last *consumed* identity, never jump to page_next.
+                next_after = sid
+                stopped = True
                 break
         scanned += len(page["items"])
-        next_after = page.get("next_after")
-        if next_after is not None and (type(next_after) is not int or next_after <= cursor):
-            raise HTTPException(503, "Некоректна пагінація каталогу")
-        if next_after is None or len(found) >= limit:
+        if stopped:
+            break
+        next_after = page_next
+        if next_after is None:
             break
         cursor = next_after
     found.sort(key=lambda v:(not v["model_matches"], normalized(v["model"]), normalized(v["modification"]), v["source_modification_id"]))
