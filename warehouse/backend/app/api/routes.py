@@ -591,6 +591,16 @@ def part_create(data: PartInput, db: DB, who: Auth):
 def part_get(id: str, request: Request, db: DB, who: Auth):
     row = owned(db, Part, id, who.workspace_account_id)
     result={**snapshot(row), "available_quantity": row.available_quantity}
+    # The first explicit stock receipt is the actual intake timestamp. A part
+    # card may have existed before this; never label creation as receipt.
+    result["stock_received_at"] = db.scalar(
+        select(Operation.created_at)
+        .where(Operation.account_id == who.workspace_account_id,
+               Operation.part_id == row.id,
+               Operation.type == "receipt")
+        .order_by(Operation.created_at.asc())
+        .limit(1)
+    )
     # Previous UI labels every price UAH. Do not expose USD as a misleading
     # hryvnia amount to that client; the exact stored value is never changed.
     if row.currency!='UAH' and request.headers.get('X-Warehouse-Client')!='5':
