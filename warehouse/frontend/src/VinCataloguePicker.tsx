@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {api} from './api';
+import VinSourcePicker,{type SourceIdentity} from './VinSourcePicker';
 
 export type CatalogueCandidate={
   source_modification_id:number;
@@ -22,9 +23,11 @@ type Props={
   model:string;
   selectedId:number|null;
   onSelect:(item:CatalogueCandidate|null)=>void;
+  selectedSource:SourceIdentity|null;
+  onSelectSource:(item:SourceIdentity|null)=>void;
 };
 
-export default function VinCataloguePicker({manufacturer,model,selectedId,onSelect}:Props){
+export default function VinCataloguePicker({manufacturer,model,selectedId,onSelect,selectedSource,onSelectSource}:Props){
   const [items,setItems]=useState<CatalogueCandidate[]>([]);
   const [cursor,setCursor]=useState<number|null>(null);
   const [choice,setChoice]=useState('');
@@ -73,28 +76,29 @@ export default function VinCataloguePicker({manufacturer,model,selectedId,onSele
   const selected=items.find(v=>v.source_modification_id===selectedId);
   return <fieldset className="vin-catalogue-select" aria-label="Точна модифікація з каталогу">
     <legend>Модифікація з каталогу CarPot</legend>
-    <p>Оберіть конкретну модифікацію, якщо VIN не визначив її однозначно. Пошук доступний для всіх марок, представлених у каталозі.</p>
+    <p>Оберіть модель і конкретну модифікацію з доступного джерела. Якщо підтвердженого каталогу запчастин немає, використовується довідник автомобілів.</p>
     {busy&&<small role="status">Шукаємо модифікації…</small>}
-    <label>Модель із каталогу
+    {!!items.length&&<label>Модель із каталогу
       <select aria-label="Вибрати модель каталогу" value={sourceModel} disabled={busy||!models.length} onChange={e=>{setSourceModel(e.target.value);setChoice('')}}>
         <option value="">Усі доступні моделі</option>
         {models.map(value=><option key={value} value={value}>{value}</option>)}
       </select>
-    </label>
-    <label>Доступні модифікації
+    </label>}
+    {!!items.length&&<label>Доступні модифікації
       <select aria-label="Вибрати каталожну модифікацію" value={choice} disabled={busy||!items.length} onChange={e=>setChoice(e.target.value)}>
         <option value="">Оберіть модель та модифікацію</option>
         {visible.map(item=><option key={item.source_modification_id} value={item.source_modification_id}>
           {item.manufacturer} {item.model} {item.generation||''} — {item.modification} · {item.type_count} типів
         </option>)}
       </select>
-    </label>
+    </label>}
     {current&&<p role="status">Обрано: {current.model} — {current.modification}. Каталог: {current.type_count} типів, {current.coverage==='partial'?'часткове покриття':'повноту потрібно перевірити'}. Це вибір за даними користувача, а не підтвердження сумісності за VIN.</p>}
     {current&&<button type="button" disabled={busy} onClick={()=>onSelect(current)}>Підтвердити вибір модифікації</button>}
     {selected&&<p className="vin-catalogue-confirmed" role="status">Вибір збережено у формі: {selected.model} — {selected.modification}. Каталог буде прикріплено після додавання автомобіля.</p>}
-    {searched&&!items.length&&!busy&&!error&&<small>У переглянутій частині джерела модифікацій цієї марки немає. Можна продовжити пошук або додати автомобіль із базовим каталогом.</small>}
+    {searched&&!items.length&&!busy&&<VinSourcePicker manufacturer={manufacturer} selected={selectedSource} onSelect={onSelectSource}/>}
+    {searched&&!!items.length&&<details className="vin-source-alternative"><summary>Інші моделі з довідника автомобілів</summary><VinSourcePicker manufacturer={manufacturer} selected={selectedSource} onSelect={onSelectSource}/></details>}
     {cursor!==null&&<button type="button" disabled={busy} onClick={()=>void loadMore()}>Шукати далі у каталозі</button>}
-    {searched&&cursor===null&&<small>Перегляд доступних каталожних записів завершено. Відсутність модифікації не означає, що автомобіль не існує.</small>}
+    {searched&&cursor===null&&!!items.length&&<small>Перегляд доступних підтверджених каталожних записів завершено.</small>}
     {error&&<small role="alert">Каталог тимчасово недоступний: {error}. VIN і ручне додавання залишаються доступними.</small>}
   </fieldset>;
 }

@@ -343,7 +343,18 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     # Catalogue selections are not Vehicle columns. Revalidate by ID and
     # snapshot; never trust source names or attributes supplied by the browser.
     selection = data.catalogue_selection
+    oracle_selection = data.source_identity
+    if selection is not None and oracle_selection is not None:
+        raise HTTPException(422,"Оберіть одну джерельну модифікацію")
     values.pop("catalogue_selection", None)
+    values.pop("source_identity", None)
+    oracle_identity = None
+    if oracle_selection is not None:
+        from app.permissions import require_permission
+        from app.services.vin_source_directory import confirm_identity
+        require_permission(who,"vehicles.create","catalog.view")
+        oracle_identity=confirm_identity(
+            oracle_selection,manufacturer=values["manufacturer"],model=values["model"])
     source_entry = source_plan = None
     if selection is not None:
         from app.permissions import require_permission
@@ -387,6 +398,14 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
             vin_verified=False,
         )}
         catalogue.persist(db, row, source_plan, allow_partial=True)
+    elif oracle_identity is not None:
+        # Exact Oracle source identity is intentionally separate from the pinned
+        # part graph. No synthetic Catalogue/OEM applicability is created.
+        from app.services.dismantling_plan_v3 import generator_basis
+        db.flush()
+        row.dismantling_v3={**(row.dismantling_v3 or {}),
+            "oracle_vehicle_identity":{**oracle_identity,
+                "identity_fingerprint":generator_basis(row)}}
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
     db.commit()
     # Staging-only OEM enrichment starts immediately AFTER the vehicle is committed.
@@ -399,6 +418,34 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         background_tasks.add_task(_new_vehicle_oem_enrichment,who.workspace_account_id,row.id)
     return vehicle_view(db, row, who.workspace_account_id)
 
+
+
+@router.get("/vehicles/vin/source-manufacturers", tags=["Vehicles"])
+def vin_source_manufacturers(who: Auth, manufacturer: str=Query(min_length=2,max_length=40)):
+    from app.permissions import require_permission
+    from app.services.vin_source_directory import manufacturer_choices
+    require_permission(who,"vehicles.view","catalog.view")
+    return manufacturer_choices(manufacturer)
+
+
+@router.get("/vehicles/vin/source-models", tags=["Vehicles"])
+def vin_source_models(who: Auth, manufacturer_id: int=Query(gt=0),
+                      kind: Literal["passenger","commercial"]=Query(),
+                      after: int=Query(default=0,ge=0)):
+    from app.permissions import require_permission
+    from app.services.vin_source_directory import source_page
+    require_permission(who,"vehicles.view","catalog.view")
+    return source_page("models",source_id=manufacturer_id,kind=kind,after=after)
+
+
+@router.get("/vehicles/vin/source-modifications", tags=["Vehicles"])
+def vin_source_modifications(who: Auth, model_id: int=Query(gt=0),
+                             kind: Literal["passenger","commercial"]=Query(),
+                             after: int=Query(default=0,ge=0)):
+    from app.permissions import require_permission
+    from app.services.vin_source_directory import source_page
+    require_permission(who,"vehicles.view","catalog.view")
+    return source_page("modifications",source_id=model_id,kind=kind,after=after)
 
 
 @router.get("/vehicles/vin/catalogue-candidates", tags=["Vehicles"])
@@ -448,7 +495,7 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
-    if changes.pop("catalogue_selection", None) is not None:
+    if changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
         raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")
     if changes.get('vin'):
         existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==changes['vin'],Vehicle.id!=id))

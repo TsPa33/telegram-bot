@@ -76,6 +76,9 @@ def source_identity(v):
     Never infer another make/model's modification from its name alone.
     """
     state=v.dismantling_v3 or {}
+    # A source-only Oracle identity is NOT a verified vehicle-to-parts graph.
+    if state.get("oracle_vehicle_identity") and not state.get("global_selection"):
+        return None
     selection=state.get('global_selection')
     # The older automatic resolver sometimes saved a T5 plan for a B5 VIN.
     # A saved snapshot is NOT proof of an explicitly verified modification.
@@ -692,10 +695,11 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                      and transferable_reference(old_refs.get(r.id)) for r in needs)
         saved_identity=automatic_identity(v)
         has_selection=(v.dismantling_v3 or {}).get('global_selection') or catalogue.saved_state(v)
-        discover=not has_selection and not saved_identity
+        source_only=bool((v.dismantling_v3 or {}).get("oracle_vehicle_identity"))
+        discover=not has_selection and not saved_identity and not source_only
         if saved_identity and not identity and not has_selection:
             identity=tuple(saved_identity[k] for k in ('car_id','model_id','manufacturer_id','snapshot_sha','global_source'))
-        create_plan = accepts_automatic_plan(v) and not rows and not linked and not catalogue.has_plan_history(db, v)
+        create_plan = not source_only and accepts_automatic_plan(v) and not rows and not linked and not catalogue.has_plan_history(db, v)
         if not exact and not needs and not discover and not create_plan:return 0
     assumed=None
     if discover:

@@ -88,6 +88,15 @@ class VinDetails(Input):
         return self
 
 
+class VinSourceIdentity(Input):
+    """Oracle discovery is an identity only, not a validated parts graph."""
+    kind: Literal["passenger","commercial"]
+    manufacturer_id: int = Field(strict=True,gt=0)
+    model_id: int = Field(strict=True,gt=0)
+    source_modification_id: int = Field(strict=True,gt=0)
+    confirmed: Literal[True]
+
+
 class VinCatalogueSelection(Input):
     """Explicit choice from the authenticated, immutable Catalogue directory."""
     source_modification_id: int = Field(strict=True, gt=0)
@@ -98,6 +107,7 @@ class VinCatalogueSelection(Input):
 
 
 class VehicleInput(Input):
+    source_identity: VinSourceIdentity | None = None
     catalogue_selection: VinCatalogueSelection | None = None
     vin_details: VinDetails | None = None
     ktype: Annotated[int, Field(gt=0, le=2147483647, strict=True)] | None = None
