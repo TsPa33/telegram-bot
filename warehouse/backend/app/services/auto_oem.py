@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 from app.models import Vehicle,DismantlingItem,Part,Account,Operation,now
 from app.models.canonical import CanonicalType
-from app.services import unified_catalogue as catalogue
+from app.services import unified_catalogue as catalogue, source_first_pilot
 from app.services.dismantling_plan_v3 import generator_basis
 from app.services import plan_item_binding
 from app.services.catalogue_format import digest
@@ -710,7 +710,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             payload=cache.plan(identity);products={p['product_id']:p for p in payload['categories']}
             needed = {
                 pid: product for pid, product in products.items()
-                if create_plan and eligible_product(product) and product['article_count']>0
+                if create_plan and (eligible_product(product) or (source_first_pilot.enabled() and source_first_pilot.source_type(product))) and product['article_count']>0
             }
             for row in type_rows:
                 p=matches(row,products,bindings,source_modification_id=payload['car_id'],
@@ -747,6 +747,14 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             # Exact-article lookup remains independent of snapshot availability.
             log.warning('OEM snapshot lookup deferred for donor %s',vehicle_id)
             payload=None;products={};data={}
+    # A failed, truncated or below-threshold snapshot cannot create a Source-First plan.
+    # Read coverage before opening the write transaction; retain the *original* source SHA.
+    pilot_assessment=(source_first_pilot.evaluate(payload,data)
+        if payload and create_plan and source_first_pilot.enabled() else None)
+    if pilot_assessment is not None:
+        log.info('Source-First gate vehicle=%s modification=%s eligible=%s reason=%s prd=%s prd_oem_pct=%s article_oem_pct=%s',
+            vehicle_id,payload['car_id'],pilot_assessment['eligible'],pilot_assessment['reason'],
+            pilot_assessment['source_prd_types'],pilot_assessment['prd_oem_pct'],pilot_assessment['article_oem_pct'])
     if exact:
         unique=list(set(exact.values()))
         with ThreadPoolExecutor(max_workers=4) as pool:
@@ -765,9 +773,19 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
         parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id).order_by(Part.id).with_for_update())}
         if (payload and create_plan and accepts_automatic_plan(v) and not rows and not parts
-                and any(eligible_product(product) for product in products.values())
+                and (pilot_assessment['eligible'] if pilot_assessment is not None
+                     else (not source_first_pilot.enabled() and
+                           any(eligible_product(product) for product in products.values())))
                 and not catalogue.has_plan_history(db, v)):
-            catalogue.persist(db, v, {'payload':payload, 'sha256':digest(payload)}, allow_partial=True)
+            # Stage 10 is an admission/filter layer ONLY. Reuse Stage 2's
+            # versioned source bindings and the existing single plan writer.
+            # Exclude equipment/unlinked rows, but retain the original
+            # source_snapshot_sha; digest of this projection stays separate.
+            pilot_payload=({**payload, 'categories':[
+                p for p in payload['categories']
+                if source_first_pilot.source_type(p) and p['article_count']>0
+            ]} if pilot_assessment is not None else payload)
+            catalogue.persist(db, v, {'payload':pilot_payload, 'sha256':digest(pilot_payload)}, allow_partial=True)
             rows = list(db.scalars(select(DismantlingItem).where(
                 DismantlingItem.account_id==account_id, DismantlingItem.vehicle_id==v.id
             ).order_by(DismantlingItem.id)))
