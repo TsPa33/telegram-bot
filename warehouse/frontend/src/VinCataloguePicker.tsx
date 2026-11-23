@@ -95,7 +95,7 @@ export default function VinCataloguePicker({manufacturer,model,selectedId,onSele
     {current&&<p role="status">Обрано: {current.model} — {current.modification}. Каталог: {current.type_count} типів, {current.coverage==='partial'?'часткове покриття':'повноту потрібно перевірити'}. Це вибір за даними користувача, а не підтвердження сумісності за VIN.</p>}
     {current&&<button type="button" disabled={busy} onClick={()=>onSelect(current)}>Підтвердити вибір модифікації</button>}
     {selected&&<p className="vin-catalogue-confirmed" role="status">Вибір збережено у формі: {selected.model} — {selected.modification}. Каталог буде прикріплено після додавання автомобіля.</p>}
-    {searched&&!items.length&&!busy&&!error&&<VinSourcePicker manufacturer={manufacturer} selected={selectedSource} onSelect={onSelectSource}/>}
+    {searched&&!items.length&&!busy&&<VinSourcePicker manufacturer={manufacturer} selected={selectedSource} onSelect={onSelectSource}/>}
     {searched&&!!items.length&&<details className="vin-source-alternative"><summary>Інші моделі з довідника автомобілів</summary><VinSourcePicker manufacturer={manufacturer} selected={selectedSource} onSelect={onSelectSource}/></details>}
     {cursor!==null&&<button type="button" disabled={busy} onClick={()=>void loadMore()}>Шукати далі у каталозі</button>}
     {searched&&cursor===null&&!!items.length&&<small>Перегляд доступних підтверджених каталожних записів завершено.</small>}
