@@ -8,6 +8,7 @@ from collections import Counter
 from datetime import datetime, timezone
 import json
 import os
+import inspect
 
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
@@ -17,7 +18,7 @@ from app.config import database_url, is_staging
 from app.models import Vehicle, DismantlingItem
 from app.services import unified_catalogue as catalogue
 from app.services.auto_oem import (
-    SourceCache, canonical_prd_bindings, eligible_row, matches,
+    SourceCache, canonical_prd_bindings, eligible_row, matches as runtime_matches,
     source_identity, references, valid_reference, oracle_enabled,
 )
 from app.services.volvo_oem_review import candidates
@@ -25,6 +26,39 @@ from app.services.volvo_oem_review import candidates
 MAX_DONORS = 3
 MAX_ROWS = 250
 MAX_GAPS = 200
+
+
+def match_provenance(row, products, bindings, source_modification_id):
+    """Reproduce the Stage 8 source gate on either a live Stage 7 or Stage 8 runtime.
+
+    The live Stage 7 matcher lacks the source_modification_id argument. This
+    adapter is read-only, never writes/enriches OEM, and is intentionally
+    stricter than Stage 7 for stale source keys.
+    """
+    product_id = catalogue.row_product_id(row)
+    source_bound = getattr(row, "source", None) == "carpot.catalogue.v1"
+    if product_id is not None and source_bound:
+        if getattr(row, "catalog_key", None) != (
+            f"car:{source_modification_id}:product:{product_id}"
+        ):
+            return None
+    if "source_modification_id" in inspect.signature(runtime_matches).parameters:
+        return runtime_matches(
+            row, products, bindings, source_modification_id=source_modification_id
+        )
+    selected = runtime_matches(row, products, bindings)
+    if selected is not None:
+        return selected
+    # Stage 7 cannot recognize an exact source-bound unreviewed PRD with
+    # article links; Stage 8 recognizes it only as an OEM cross-reference
+    # candidate, NEVER as verified physical fitment.
+    product = products.get(product_id) if product_id is not None else None
+    if (source_bound and type(source_modification_id) is int
+            and isinstance(product, dict) and product.get("kind") == "review"
+            and type(product.get("article_count")) is int
+            and product["article_count"] > 0):
+        return product
+    return None
 
 
 def explain(row, products, bindings, car_id):
@@ -56,8 +90,7 @@ def summarize(rows, products, bindings, source_car_id, refs, vehicle):
     for row in rows:
         if not eligible_row(row):
             continue
-        selected = matches(row, products, bindings,
-                           source_modification_id=source_car_id)
+        selected = match_provenance(row, products, bindings, source_car_id)
         ref = refs.get(row.id)
         counted["included_rows"] += 1
         if valid_reference(vehicle, row, ref):

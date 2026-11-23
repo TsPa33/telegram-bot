@@ -40,3 +40,40 @@ def test_unproven_canonical_mapping_is_never_taken_as_oem_fitment(monkeypatch):
     result = gap.summarize([row(canonical_id="legacy")], {}, {}, 107555, {}, object())
     assert result["counts"]["canonical_without_source_prd_proof"] == 1
     assert result["counts"]["mapped_source_prd"] == 0
+
+
+def test_live_stage7_matcher_compatibility_no_stage8_deploy(monkeypatch):
+    """Legacy matcher accepts only three arguments; source gate is preserved."""
+    monkeypatch.setattr(gap, "valid_reference", lambda *_: False)
+    product = {188: {"product_id": 188, "kind": "part", "article_count": 3}}
+    monkeypatch.setattr(
+        gap, "runtime_matches", lambda r, products, bindings: products.get(188)
+    )
+    stale = gap.summarize(
+        [row(source="carpot.catalogue.v1", car=999999)],
+        product, {}, 107555, {}, object()
+    )
+    assert stale["counts"]["stale_modification_prd_key"] == 1
+    exact = gap.summarize(
+        [row(source="carpot.catalogue.v1", car=107555)],
+        product, {}, 107555, {}, object()
+    )
+    assert exact["counts"]["mapped_source_prd"] == 1
+
+
+def test_live_stage7_fallback_does_not_promote_manual_or_unlinked(monkeypatch):
+    monkeypatch.setattr(gap, "valid_reference", lambda *_: False)
+    monkeypatch.setattr(gap, "runtime_matches", lambda r, products, bindings: None)
+    product = {188: {"product_id": 188, "kind": "review", "article_count": 1}}
+    exact = gap.summarize(
+        [row(source="carpot.catalogue.v1")],
+        product, {}, 107555, {}, object()
+    )
+    assert exact["counts"]["mapped_source_prd"] == 1
+    manual = gap.summarize([row(source="manual")], product, {}, 107555, {}, object())
+    assert manual["counts"]["mapped_source_prd"] == 0
+    product[188]["article_count"] = 0
+    empty = gap.summarize(
+        [row(source="carpot.catalogue.v1")], product, {}, 107555, {}, object()
+    )
+    assert empty["counts"]["mapped_source_prd"] == 0
