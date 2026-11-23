@@ -81,6 +81,9 @@ def summarize(rows, products, bindings, source_car_id, refs, vehicle):
                 "review_only_product_ids": hints[:8],
                 "not_fitment_verified": True,
             })
+    for key in ("mapped_source_prd", "mapped_with_article_candidates",
+                "unmatched_source_prd", "valid_saved_refs"):
+        counted.setdefault(key, 0)
     return {
         "counts": dict(counted),
         "unmatched_examples": gaps,
