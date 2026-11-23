@@ -97,6 +97,8 @@ def route_permissions(method,path,body):
     if '/dismantling-workspace' in path:return ['vehicles.view','catalog.view','inventory.view'] if read else ['vehicles.view','dismantling.manage']
     if path.startswith('/oem/admin/'):
         return ['vehicles.view']
+    if path in ('/vehicles/vin/source-manufacturers','/vehicles/vin/source-models','/vehicles/vin/source-modifications'):
+        return ['vehicles.view','catalog.view']
     if path=='/vehicles/vin/catalogue-candidates':
         return ['vehicles.view','catalog.view']
     if path.startswith('/vehicles/vin/vincario/'):
