@@ -24,4 +24,4 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt pytest
       - name: Validate Stage 7 and Stage 8 Oracle source contracts
-        run: python -m pytest -q tests/test_stage8_live_oem_audit.py tests/test_oracle_vehicle_discovery_stage7.py tests/test_oracle_adapter_stage2.py tests/test_oracle_gateway_stage3.py --maxfail=1
+        run: python -m pytest -q tests/test_stage8_live_oem_audit.py tests/test_stage8_source_graph_audit.py tests/test_oracle_vehicle_discovery_stage7.py tests/test_oracle_adapter_stage2.py tests/test_oracle_gateway_stage3.py --maxfail=1
