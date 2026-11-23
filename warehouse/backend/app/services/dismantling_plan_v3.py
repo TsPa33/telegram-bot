@@ -30,7 +30,7 @@ def state(db,v,rows=None):
 def inspection(r):return r.plan_v3.get('inspection') or ('present' if r.received_at or r.status=='dismantled' else 'absent' if r.status=='absent' else 'unchecked')
 def protected(r):return bool(r.received_at or r.part_id)
 def listing(db,v):
-    from app.services.dismantling_bulk import eligibility
+    from app.services.dismantling_bulk import eligibility, source_receipt_eligible
     rows=rows_for(db,v);parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id))}
     sales=defaultdict(int);other_decreases=set()
     for op in db.scalars(select(Operation).where(Operation.account_id==v.account_id,Operation.vehicle_id==v.id,Operation.type.in_(['sale','write_off','correction']))):
@@ -42,11 +42,15 @@ def listing(db,v):
             if op.type=='sale':sales[op.part_id]+=decrease
             else:other_decreases.add(op.part_id)
     generator_stale=bool(v.dismantling_v3.get('universal_generator') and v.dismantling_v3.get('generator_basis')!=generator_basis(v))
+    from app.services.unified_catalogue import saved_state
+    payload=(saved_state(v) or {}).get('payload') or {}
+    source_products={p['product_id']:p for p in payload.get('categories',[])}
     items=[]
     for r in rows:
         p=parts.get(r.part_id)
+        source_receipt=source_receipt_eligible(v,r,source_products)
         operational='sold' if p and p.quantity==0 and sales[p.id]>=r.quantity and p.id not in other_decreases else 'received' if r.received_at else 'dismantled' if r.status=='dismantled' else 'not_dismantled'
-        items.append(dict(source_confirmed=not generator_stale and bool(r.plan_v3.get('snapshot',{}).get('source_confirmed')),sources=r.plan_v3.get('snapshot',{}).get('source',[]),id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),part_archived=bool(p and p.archived),selectable=not v.archived and not protected(r) and bool(r.plan_v3.get('placement_id')),eligibility=eligibility(r,archived=v.archived or bool(p and p.archived)),confirmation_source=r.plan_v3.get('inspection_source') or ('historical_workflow' if inspection(r)=='present' else None),quantity=r.quantity,part_id=r.part_id,applicability='unknown' if generator_stale else r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
+        items.append(dict(source_confirmed=not generator_stale and bool(r.plan_v3.get('snapshot',{}).get('source_confirmed')),sources=r.plan_v3.get('snapshot',{}).get('source',[]),id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),part_archived=bool(p and p.archived),selectable=not v.archived and not protected(r) and (bool(r.plan_v3.get('placement_id')) or source_receipt),eligibility=eligibility(r,archived=v.archived or bool(p and p.archived),source_receipt=source_receipt),confirmation_source=r.plan_v3.get('inspection_source') or ('historical_workflow' if inspection(r)=='present' else None),quantity=r.quantity,part_id=r.part_id,applicability='unknown' if generator_stale else r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
     items.sort(key=lambda i:(i['category'],i['subcategory'],i['name'],i['position'],i['id']))
     canonical=db.get(CanonicalState,1);catalogue=db.get(CatalogueState,1);configuration_source=latest(db,v,v.account_id)
     from app.services.dismantling_catalog import scoped_catalogue_digest

@@ -587,10 +587,24 @@ def part_create(data: PartInput, db: DB, who: Auth):
     return {**snapshot(row), "available_quantity": row.available_quantity}
 
 
+def _part_stock_received_at(db, account_id, part_id):
+    """Actual first receipt timestamp, not the card creation timestamp."""
+    return db.scalar(
+        select(Operation.created_at)
+        .where(Operation.account_id == account_id,
+               Operation.part_id == part_id,
+               Operation.type == "receipt")
+        .order_by(Operation.created_at.asc())
+        .limit(1)
+    )
+
 @router.get("/parts/{id}", tags=["Inventory"])
 def part_get(id: str, request: Request, db: DB, who: Auth):
     row = owned(db, Part, id, who.workspace_account_id)
     result={**snapshot(row), "available_quantity": row.available_quantity}
+    result["stock_received_at"] = _part_stock_received_at(
+        db, who.workspace_account_id, row.id
+    )
     # Previous UI labels every price UAH. Do not expose USD as a misleading
     # hryvnia amount to that client; the exact stored value is never changed.
     if row.currency!='UAH' and request.headers.get('X-Warehouse-Client')!='5':
@@ -651,7 +665,8 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
         row.oem_provenance=dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.oem_number else 'cleared')
     record(db, who.workspace_account_id, row, "part_update", "Оновлено картку запчастини", before)
     db.commit()
-    return {**snapshot(row), "available_quantity": row.available_quantity}
+    return {**snapshot(row), "available_quantity": row.available_quantity,
+            "stock_received_at": _part_stock_received_at(db, who.workspace_account_id, row.id)}
 
 
 @router.patch('/parts/{id}/characteristics', tags=['Inventory'])
@@ -662,7 +677,8 @@ def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: A
 
     needs_confirmation = data.confirm_physical_oem and not physical_oem_confirmed(row)
     if not needs_confirmation and all(getattr(row,k)==v for k,v in data.values.items()):
-        return {**before,'available_quantity':row.available_quantity}
+        return {**before,'available_quantity':row.available_quantity,
+                'stock_received_at':_part_stock_received_at(db,who.workspace_account_id,row.id)}
     if any(getattr(row,k)!=v for k,v in data.expected.items()):
         raise HTTPException(409,'Характеристики вже змінено. Перечитайте картку та порівняйте значення.')
     for key,value in data.values.items():setattr(row,key,value)
@@ -679,7 +695,8 @@ def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: A
             row.oem_provenance = {**previous, **option, 'status': 'user_selected_cross_reference'}
     record(db,who.workspace_account_id,row,'part_update','Оновлено OEM / колір деталі',before)
     db.commit()
-    return {**snapshot(row),'available_quantity':row.available_quantity}
+    return {**snapshot(row),'available_quantity':row.available_quantity,
+            'stock_received_at':_part_stock_received_at(db,who.workspace_account_id,row.id)}
 
 
 @router.post("/parts/{id}/operations", tags=["Stock operations"])

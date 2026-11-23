@@ -60,8 +60,10 @@ jobs:
         if: always()
         with: {name: warehouse-full-results, path: warehouse/backend/phase2-full.xml}
   frontend-browsers:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Fixed runner image avoids shifting apt dependencies (ubuntu-latest resolved to 26.04).
+    # Playwright WebKit system packages can exceed the previous 20-minute CI ceiling.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:16-alpine
