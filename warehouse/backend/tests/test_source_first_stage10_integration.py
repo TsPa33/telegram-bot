@@ -1,10 +1,11 @@
 """Stage 10 integration: isolated test database and synthetic source snapshot only."""
 import pytest
+from uuid import uuid4
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.db import engine
-from app.models import Vehicle, DismantlingItem, Part
+from app.models import Vehicle, DismantlingItem, Part, Operation
 from app.services import source_first_pilot
 from app.services.auto_oem import enrich_vehicle
 
@@ -141,3 +142,56 @@ def test_stage10_uses_stage2_single_writer_and_keeps_source_sha(fresh_donor, mon
         assert all(history[-1]["snapshot_sha"] == "a" * 64
                    and history[-1]["source_modification_id"] == 107555
                    for history in bindings.values())
+
+
+def test_stage11_pinned_review_source_receipt_requires_physical_confirmation(fresh_donor, logged):
+    """Stage 10 source row is a real, user-receivable prospect, not a v3 placement."""
+    vehicle_id, account = fresh_donor
+    cache = OfflineSnapshot(source_snapshot(), with_oem=40)
+    assert enrich_vehicle(engine(), account, vehicle_id, cache) >= 1
+    base = f"/api/v1/vehicles/{vehicle_id}/dismantling-v3"
+    plan = logged.get(base)
+    assert plan.status_code == 200, plan.text
+    items = plan.json()['items']
+    assert len(items) == 50
+    assert all(item['selectable'] for item in items)
+    row_id = items[0]['id']
+    with Session(engine()) as db:
+        source_row = db.get(DismantlingItem, row_id)
+        assert source_row.source == 'carpot.catalogue.v1'
+        assert not source_row.plan_v3.get('placement_id')
+        assert source_row.part_id is None
+
+    without_confirmation = logged.post(base+'/bulk/preview', json=dict(
+        ids=[row_id], action='receipt', confirm_physical=False))
+    assert without_confirmation.status_code == 200, without_confirmation.text
+    assert not without_confirmation.json()['eligible_ids']
+
+    checked = logged.post(base+'/bulk/preview', json=dict(
+        ids=[row_id], action='receipt', confirm_physical=True))
+    assert checked.status_code == 200, checked.text
+    report = checked.json()
+    assert report['eligible_ids'] == [row_id]
+    body = dict(
+        ids=[row_id], action='receipt', confirm_physical=True,
+        request_key=str(uuid4()), confirm=True,
+        etag=report['etag'], preview_token=report['preview_token'],
+        lines=[dict(id=row_id, quantity=1, confirm_physical=True)]
+    )
+    received = logged.post(base+'/bulk', json=body)
+    assert received.status_code == 200, received.text
+    assert received.json()['updated'] == 1
+    with Session(engine()) as db:
+        row = db.get(DismantlingItem, row_id)
+        assert row.part_id and row.received_at
+        assert not row.plan_v3.get('placement_id')
+        part = db.get(Part, row.part_id)
+        assert part.quantity == 1 and part.vehicle_id == vehicle_id
+        assert db.scalar(select(func.count()).select_from(Operation).where(
+            Operation.type == 'receipt', Operation.part_id == part.id)) == 1
+    repeated = logged.post(base+'/bulk', json=body)
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()['updated'] == 1
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Operation).where(
+            Operation.type == 'receipt')) == 1
