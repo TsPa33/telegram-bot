@@ -8,18 +8,63 @@ from types import SimpleNamespace
 from fastapi import HTTPException
 from app.services import dismantling_plan_v3 as plan
 from app.services.catalogue_format import digest
+from app.services.plan_item_binding import active_binding
+from app.services import unified_catalogue as catalogue
 ACTIONS=('present','absent','not_applicable','unchecked','exclude','restore','dismantled','receipt')
 
 
-def eligibility(row,archived=False):
+def source_receipt_eligible(vehicle, row, products=None):
+    """Pinned source PRD types may be received ONLY after physical confirmation.
+
+    A source association is not VIN fitment or a reviewed part classification.
+    Never allow unbound, stale, excluded, sold, or protected rows.
+    """
+    if (row.source != 'carpot.catalogue.v1' or row.part_id or row.received_at
+            or not row.included or row.status == 'absent' or vehicle.archived
+            or (row.plan_v3 or {}).get('placement_id')):
+        return False
+    saved = catalogue.saved_state(vehicle)
+    if not saved or catalogue.needs_review(vehicle):
+        return False
+    payload = saved.get('payload') or {}
+    source_sha = payload.get('source_snapshot_sha')
+    if not isinstance(source_sha, str) or len(source_sha) != 64:
+        return False
+    product_id = catalogue.row_product_id(row)
+    if product_id is None:
+        return False
+    if row.catalog_key != f"car:{payload.get('car_id')}:product:{product_id}":
+        return False
+    if products is None:
+        products = {p['product_id']: p for p in payload.get('categories', [])}
+    product = products.get(product_id)
+    if not product or product.get('kind') not in ('part', 'review'):
+        return False
+    binding = active_binding(vehicle, row.id)
+    return bool(binding and (
+        binding.get('source_modification_id'),
+        binding.get('product_id'),
+        binding.get('snapshot_sha'),
+        binding.get('manufacturer_id'),
+    ) == (
+        payload.get('car_id'), product_id, source_sha,
+        payload.get('manufacturer_id'),
+    ))
+
+
+def eligibility(row,archived=False,source_receipt=False):
     blocked={a:None for a in ACTIONS}
-    common='Архівовано' if archived else 'Уже оприбутковано; використайте складські операції' if plan.protected(row) else 'Потрібне зіставлення з планом' if not row.plan_v3.get('placement_id') else None
+    common='Архівовано' if archived else 'Уже оприбутковано; використайте складські операції' if plan.protected(row) else 'Потрібне зіставлення з планом' if not row.plan_v3.get('placement_id') and not source_receipt else None
     if common:return {a:common for a in ACTIONS}
     if not row.included:
         for a in ACTIONS:
             if a!='restore':blocked[a]='Виключено з плану; спочатку поверніть'
         return blocked
     blocked['restore']='Уже включено до плану'
+    if source_receipt and not row.plan_v3.get('placement_id'):
+        for action in ACTIONS:
+            if action != 'receipt':
+                blocked[action] = 'Це джерельна позиція: для інших дій потрібне зіставлення плану'
     present=plan.inspection(row)=='present'
     if present:blocked['present']='Наявність уже підтверджено'
     if not present:
@@ -33,15 +78,22 @@ def eligibility(row,archived=False):
 
 def preview(db,v,ids,action,confirm_physical=False):
     rows=plan.rows_for(db,v);by_id={r.id:r for r in rows}
+    payload=(catalogue.saved_state(v) or {}).get('payload') or {}
+    products={p['product_id']:p for p in payload.get('categories',[])}
     if not set(ids)<=by_id.keys():raise HTTPException(404,'Позицію власного плану не знайдено')
     from app.models import Part
     from sqlalchemy import select
     archived=set(db.scalars(select(Part.id).where(Part.account_id==v.account_id,Part.vehicle_id==v.id,Part.archived.is_(True))))
     eligible=[];blocked=[];items=[]
     for id in ids:
-        r=by_id[id];reason=eligibility(r,v.archived or r.part_id in archived)[action]
+        r=by_id[id]
+        source_receipt=source_receipt_eligible(v,r,products)
+        reason=eligibility(r,v.archived or r.part_id in archived,source_receipt)[action]
         needs_confirmation=plan.inspection(r)=='unchecked'
-        if action=='receipt' and confirm_physical and needs_confirmation and not plan.protected(r) and r.included and not v.archived and r.plan_v3.get('placement_id'):
+        if (action=='receipt' and confirm_physical and needs_confirmation
+                and not plan.protected(r) and r.included and not v.archived
+                and r.status != 'absent'
+                and (r.plan_v3.get('placement_id') or source_receipt)):
             reason=None
         (blocked if reason else eligible).append(dict(id=id,name=r.name,reason=reason) if reason else id)
         items.append(dict(id=id,name=r.name,position=r.position,included=r.included,inspection=plan.inspection(r),dismantled=r.status=='dismantled',received=bool(r.received_at),reason=reason,requires_confirmation=needs_confirmation,quantity=r.quantity,condition=r.condition or ('damaged' if r.status=='damaged' else None)))
@@ -76,10 +128,15 @@ def execute(db,v,who,data):
         for id in eligible:
             line=lines[id];r=targets[id]
             if plan.inspection(r)=='unchecked':
-                if not data.confirm_physical or not line.confirm_physical:raise HTTPException(409,'Підтвердьте фактичну наявність і демонтаж кожної нової деталі')
-                before=snapshot(r)
-                r.plan_v3={**r.plan_v3,'inspection':'present','inspection_source':'receipt_confirmation'}
-                record(db,v.account_id,r,'dismantling_v3_decision','Фактичну наявність підтверджено під час надходження',before)
+                if not data.confirm_physical or not line.confirm_physical:
+                    raise HTTPException(409,'Підтвердьте фактичну наявність і демонтаж кожної нової деталі')
+                if r.plan_v3.get('placement_id'):
+                    before=snapshot(r)
+                    r.plan_v3={**r.plan_v3,'inspection':'present','inspection_source':'receipt_confirmation'}
+                    record(db,v.account_id,r,'dismantling_v3_decision',
+                           'Фактичну наявність підтверджено під час надходження',before)
+                # Source-bound legacy items remain legacy rows, not artificial
+                # v3 placements. The explicit receipt below proves physical intake.
             if r.status=='damaged' and r.condition is None:r.condition='damaged'
             # A receipt is an explicit user confirmation of actual dismantling.
             # Keep the same audit trail and transaction as the stock receipt.
