@@ -130,13 +130,12 @@ def execute(db,v,who,data):
             if plan.inspection(r)=='unchecked':
                 if not data.confirm_physical or not line.confirm_physical:
                     raise HTTPException(409,'Підтвердьте фактичну наявність і демонтаж кожної нової деталі')
-                if r.plan_v3.get('placement_id'):
-                    before=snapshot(r)
-                    r.plan_v3={**r.plan_v3,'inspection':'present','inspection_source':'receipt_confirmation'}
-                    record(db,v.account_id,r,'dismantling_v3_decision',
-                           'Фактичну наявність підтверджено під час надходження',before)
-                # Source-bound legacy items remain legacy rows, not artificial
-                # v3 placements. The explicit receipt below proves physical intake.
+                before=snapshot(r)
+                r.plan_v3={**r.plan_v3,'inspection':'present','inspection_source':'receipt_confirmation'}
+                record(db,v.account_id,r,'dismantling_v3_decision',
+                       'Фактичну наявність підтверджено під час надходження',before)
+                # Source-bound rows preserve their original source identity.
+                # This records inspection evidence, NOT a fake v3 placement.
             if r.status=='damaged' and r.condition is None:r.condition='damaged'
             # A receipt is an explicit user confirmation of actual dismantling.
             # Keep the same audit trail and transaction as the stock receipt.
