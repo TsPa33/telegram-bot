@@ -9,14 +9,18 @@ KEY = 'catalogue_item_bindings'
 class PlanItemBinding:
     source_modification_id: int
     product_id: int
-    snapshot_sha: str
+    snapshot_sha: str | None
     manufacturer_id: int
     article_count: int
 
     @classmethod
     def from_product(cls, payload, product):
-        return cls(payload['car_id'], product['product_id'], payload['source_snapshot_sha'],
-                   payload['manufacturer_id'], product['article_count'])
+        count = product.get('article_count')
+        if count is None:
+            count = len(product.get('articles', []))
+        # Legacy raw envelopes predate a separately pinned source SHA.
+        return cls(payload['car_id'], product['product_id'], payload.get('source_snapshot_sha'),
+                   payload['manufacturer_id'], count)
 
 
 def active_binding(vehicle, row_id):

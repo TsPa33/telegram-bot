@@ -472,7 +472,7 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     if previous_model and data.model_id!=previous_model or not previous_model and not same_model:
         raise HTTPException(409,'Виберіть модифікацію тієї самої моделі')
     before=snapshot(v)
-    if saved and (saved['payload']['car_id'], saved['payload']['source_snapshot_sha']) != (data.source_modification_id, data.source_snapshot_sha):
+    if saved and (saved['payload']['car_id'], saved['payload'].get('source_snapshot_sha')) != (data.source_modification_id, data.source_snapshot_sha):
         service.persist(db,v,plan,allow_partial=True,replace_selection=True)
     v.dismantling_v3={**(v.dismantling_v3 or {}),CANDIDATES_KEY:{},OUTCOMES_KEY:{},'catalogue_selection_revision':revision+1,'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='user_selected',vin_verified=False)}
     record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)

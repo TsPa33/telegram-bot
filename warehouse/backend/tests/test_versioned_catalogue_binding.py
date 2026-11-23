@@ -170,3 +170,34 @@ def test_binding_history_and_selection_are_tenant_scoped(catalogue_donor):
         assert other.get(url+'/global-dismantling').status_code == 404
         assert other.post(url+'/catalogue-selection', json=selection(126481, current)).status_code == 404
     assert state()['item_bindings'] == current['item_bindings']
+
+
+def test_legacy_raw_snapshot_without_pinned_sha_can_switch(logged, catalogue_donor):
+    url, enrich, state, selection, _, _ = catalogue_donor
+    original = physical_snapshot()
+    with Session(engine()) as db:
+        row = db.get(DismantlingItem, original[1])
+        vehicle = db.get(Vehicle, row.vehicle_id)
+        previous = dict(vehicle.dismantling_v3)
+        previous.pop('catalogue_item_bindings')
+        saved = dict(previous['unified_catalogue'])
+        payload = dict(saved['payload'])
+        payload.pop('source_snapshot_sha')
+        payload['schema'] = 'carpot.volvo.v1'
+        product = dict(payload['categories'][0])
+        product.pop('article_count')
+        product['articles'] = ['2:EXAMPLE']
+        payload['categories'] = [product]
+        previous['unified_catalogue'] = {**saved, 'payload': payload}
+        vehicle.dismantling_v3 = previous
+        db.commit()
+
+    response = logged.post(url+'/catalogue-selection', json=selection(126481, state()))
+    assert response.status_code == 200, response.text
+    enrich()
+    previous, active = state()['item_bindings'][original[1]]
+    assert previous['source_modification_id'] == 126480
+    assert previous['snapshot_sha'] is None
+    assert previous['article_count'] == 1
+    assert active['snapshot_sha'] == '2'*64
+    assert physical_snapshot() == original

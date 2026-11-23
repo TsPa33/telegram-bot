@@ -93,7 +93,7 @@ def source_identity(v):
     if saved:
         if catalogue.needs_review(v):return None
         p=saved['payload']
-        return (p['car_id'],p['model_id'],p['manufacturer_id'],p['source_snapshot_sha'],p.get('schema')=='carpot.vehicle.plan.v1')
+        return (p['car_id'],p['model_id'],p['manufacturer_id'],p.get('source_snapshot_sha'),p.get('schema')=='carpot.vehicle.plan.v1')
     automatic=automatic_identity(v)
     if automatic:
         return tuple(automatic[k] for k in ('car_id','model_id','manufacturer_id','snapshot_sha','global_source'))
