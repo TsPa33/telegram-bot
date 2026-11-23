@@ -77,7 +77,7 @@ def search_candidates(adapter, *, manufacturer, model="", after=0, limit=40, max
     next_after = None
     for _ in range(max_pages):
         try:
-            page = adapter.directory(after=cursor, maker_key=manufacturer)
+            page = adapter.directory(after=cursor, maker_key=make)
         except catalogue.CatalogueUnavailable:
             raise HTTPException(503, "Каталог модифікацій тимчасово недоступний") from None
         if not isinstance(page, dict) or not isinstance(page.get("items"), list):
