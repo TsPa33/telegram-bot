@@ -93,7 +93,7 @@ def audit(snapshot, enrich, request):
     supplemental = []
     for label, kind, car_id in [
         ("XC90_T6", "passenger", 107555),
-        ("XC60_B5_candidate", "passenger", 126480),
+        ("XC60_T5_reference_NOT_B5", "passenger", 126480),
         ("DAF_XF105_candidate", "commercial", 8387),
     ]:
         try:
