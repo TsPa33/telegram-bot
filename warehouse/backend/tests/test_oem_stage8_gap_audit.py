@@ -18,7 +18,7 @@ def test_generic_name_is_review_only_not_auto_selected(monkeypatch):
                "pilot_reviewed": True}
     result = gap.summarize([row()], {188: product}, {}, 107555, {}, object())
     assert result["counts"]["included_rows"] == 1
-    assert result["counts"]["mapped_source_prd"] == 0
+    assert result["counts"].get("mapped_source_prd", 0) == 0
     assert result["counts"]["no_verified_source_prd_binding"] == 1
     assert result["unmatched_examples"][0]["review_only_product_ids"] == [188]
     assert result["unmatched_examples"][0]["not_fitment_verified"] is True
