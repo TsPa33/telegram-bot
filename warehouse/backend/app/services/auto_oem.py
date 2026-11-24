@@ -77,7 +77,7 @@ def source_identity(v):
     """
     state=v.dismantling_v3 or {}
     # A source-only Oracle identity is NOT a verified vehicle-to-parts graph.
-    if state.get("oracle_vehicle_identity") and not state.get("global_selection"):
+    if (state.get("oracle_vehicle_identity") or state.get("vin_intake")) and not state.get("global_selection"):
         return None
     selection=state.get('global_selection')
     # The older automatic resolver sometimes saved a T5 plan for a B5 VIN.
@@ -695,12 +695,25 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                      and transferable_reference(old_refs.get(r.id)) for r in needs)
         saved_identity=automatic_identity(v)
         has_selection=(v.dismantling_v3 or {}).get('global_selection') or catalogue.saved_state(v)
-        source_only=bool((v.dismantling_v3 or {}).get("oracle_vehicle_identity"))
+        state = v.dismantling_v3 or {}
+        oracle_identity = state.get("oracle_vehicle_identity") or {}
+        source_only = bool(oracle_identity or state.get("vin_intake"))
+        can_upgrade = (oracle_identity.get("allow_upgrade") is True and not has_selection
+                       and oracle_identity.get("identity_fingerprint") == old_basis)
         discover=not has_selection and not saved_identity and not source_only
         if saved_identity and not identity and not has_selection:
             identity=tuple(saved_identity[k] for k in ('car_id','model_id','manufacturer_id','snapshot_sha','global_source'))
-        create_plan = not source_only and accepts_automatic_plan(v) and not rows and not linked and not catalogue.has_plan_history(db, v)
+        create_plan = ((not source_only and accepts_automatic_plan(v) or can_upgrade)
+                       and not rows and not linked and not catalogue.has_plan_history(db, v))
         if not exact and not needs and not discover and not create_plan:return 0
+    oracle_plan = None
+    oracle_readiness = None
+    if can_upgrade and create_plan:
+        from app.services import vin_resolution
+        oracle_readiness, oracle_plan = vin_resolution.graph_plan(cache.adapter, oracle_identity)
+        if oracle_plan:
+            graph = oracle_plan["payload"]
+            identity = (graph["car_id"], graph["model_id"], graph["manufacturer_id"], graph["source_snapshot_sha"], True)
     assumed=None
     if discover:
         try:assumed=cache.resolve_directory(v)
@@ -711,7 +724,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
     payload=None;products={};data={};exact_data={};siblings={}
     if identity and (type_rows or publish_identity or create_plan):
         try:
-            payload=cache.plan(identity);products={p['product_id']:p for p in payload['categories']}
+            payload = oracle_plan["payload"] if oracle_plan else cache.plan(identity)
+            products = {p["product_id"]: p for p in payload["categories"]}
             needed = {
                 pid: product for pid, product in products.items()
                 if create_plan and (eligible_product(product) or (source_first_pilot.enabled() and source_first_pilot.source_type(product))) and product['article_count']>0
@@ -776,10 +790,13 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             return 0
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
         parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id).order_by(Part.id).with_for_update())}
-        if (payload and create_plan and accepts_automatic_plan(v) and not rows and not parts
+        upgrade_current = (oracle_plan is not None
+                           and (v.dismantling_v3 or {}).get("oracle_vehicle_identity") == oracle_identity
+                           and not (v.dismantling_v3 or {}).get("global_selection"))
+        if (payload and create_plan and (upgrade_current or (not oracle_plan and accepts_automatic_plan(v))) and not rows and not parts
                 and (pilot_assessment['eligible'] if pilot_assessment is not None
-                     else (not source_first_pilot.enabled() and
-                           any(eligible_product(product) for product in products.values())))
+                     else (not source_first_pilot.enabled() and (upgrade_current or
+                           any(eligible_product(product) for product in products.values()))))
                 and not catalogue.has_plan_history(db, v)):
             # Stage 10 is an admission/filter layer ONLY. Reuse Stage 2's
             # versioned source bindings and the existing single plan writer.
@@ -789,10 +806,19 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 p for p in payload['categories']
                 if source_first_pilot.source_type(p) and p['article_count']>0
             ]} if pilot_assessment is not None else payload)
-            catalogue.persist(db, v, {'payload':pilot_payload, 'sha256':digest(pilot_payload)}, allow_partial=True)
+            if upgrade_current:
+                projected = len(pilot_payload["categories"]) != len(payload["categories"])
+                if projected:
+                    pilot_payload = {**pilot_payload, "coverage": "partial", "coverage_verified": False}
+                vin_resolution.persist_graph(db, v, {"payload": pilot_payload, "sha256": digest(pilot_payload)},
+                                             readiness="partial" if projected else oracle_readiness)
+            else:
+                catalogue.persist(db, v, {'payload':pilot_payload, 'sha256':digest(pilot_payload)}, allow_partial=True)
             rows = list(db.scalars(select(DismantlingItem).where(
                 DismantlingItem.account_id==account_id, DismantlingItem.vehicle_id==v.id
             ).order_by(DismantlingItem.id)))
+        if oracle_plan and not (v.dismantling_v3 or {}).get("global_selection"):
+            return 0
         refs=dict(references(v));added=0;changed=False;stock_changes=0
         before=snapshot(v)
         state=dict(v.dismantling_v3 or {})

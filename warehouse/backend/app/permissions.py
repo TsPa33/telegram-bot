@@ -99,7 +99,7 @@ def route_permissions(method,path,body):
         return ['vehicles.view']
     if path in ('/vehicles/vin/source-manufacturers','/vehicles/vin/source-models','/vehicles/vin/source-modifications'):
         return ['vehicles.view','catalog.view']
-    if path=='/vehicles/vin/catalogue-candidates':
+    if path in ('/vehicles/vin/catalogue-candidates','/vehicles/vin/resolution','/vehicles/vin/resolution-graph'):
         return ['vehicles.view','catalog.view']
     if path.startswith('/vehicles/vin/vincario/'):
         return ['vehicles.create']

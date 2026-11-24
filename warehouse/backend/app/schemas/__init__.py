@@ -106,7 +106,21 @@ class VinCatalogueSelection(Input):
     confirmed: Literal[True]
 
 
+class VinClarifications(Input):
+    answers: dict[str, Annotated[str, Field(max_length=160)] | None] = Field(default_factory=dict, max_length=18)
+    reviewed: bool = False
+    model_correction: Annotated[str, Field(min_length=1, max_length=100)] | None = None
+
+
+class VinResolutionInput(Input):
+    context: Annotated[str, Field(min_length=1, max_length=12000)]
+    clarifications: VinClarifications = Field(default_factory=VinClarifications)
+    choice: Annotated[str, Field(min_length=1, max_length=1800)] | None = None
+    graph_sha: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")] | None = None
+
+
 class VehicleInput(Input):
+    vin_resolution: VinResolutionInput | None = None
     source_identity: VinSourceIdentity | None = None
     catalogue_selection: VinCatalogueSelection | None = None
     vin_details: VinDetails | None = None

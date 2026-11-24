@@ -63,6 +63,8 @@ def create(id: str, data: Selection, db: DB, who: Auth):
         if saved['payload']['car_id'] != data.source_modification_id or saved['payload']['model_id'] != data.model_id:
             raise HTTPException(409, 'Наявний план збережено; автоматична заміна модифікації заборонена')
         return dict(saved=True, source='catalogue', created=0)
+    if (v.dismantling_v3 or {}).get("vin_intake") == "reviewed":
+        raise HTTPException(409, "Для цього VIN використовуйте підтверджений каталог автомобіля")
     from app.services.checklists import stored_categories
     saved_pp = bool(v.ktype and (stored_categories(db, v.id, who.workspace_account_id, v.ktype) or (v.checklist_ktype == v.ktype and v.checklist_synced_at)))
     result = service.CatalogueResolver().resolve(make=v.manufacturer, source_modification_id=data.source_modification_id, saved_plan_parts=saved_pp)
@@ -441,6 +443,8 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     prior,sha=replay(db,v,who,data,'catalogue-selection')
     if prior is not None:return prior
+    if (v.dismantling_v3 or {}).get("oracle_vehicle_identity", {}).get("directory_snapshot"):
+        raise HTTPException(409, "Для цієї модифікації план оновлюється з підтвердженого джерела Oracle")
     revision = (v.dismantling_v3 or {}).get('catalogue_selection_revision', 0)
     if data.expected_selection_revision is not None and data.expected_selection_revision != revision:
         raise HTTPException(409,'Вибір модифікації змінився. Оновіть каталог')
@@ -456,6 +460,8 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     payload=plan['payload']
     if not entry or not payload['categories'] or (payload['car_id'],payload['model_id'],payload['manufacturer_id'],payload['source_snapshot_sha'])!=expected or (entry['source_modification_id'],entry['model_id'],entry['manufacturer_id'],entry['snapshot_sha'])!=expected:
         raise HTTPException(409,'Джерельні ID або версія каталогу змінилися')
+    from app.services.vin_resolution import validate_saved_evidence
+    validate_saved_evidence(v, entry)
     normalize=lambda value:''.join(c for c in (value or '').casefold() if c.isalnum())
     if normalize(v.manufacturer)!=normalize(entry['manufacturer']):
         raise HTTPException(409,'Марка джерельної модифікації не відповідає автомобілю')

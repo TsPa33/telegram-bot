@@ -26,6 +26,7 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved,on
     </div><div className="r1146-card-photo"><VehicleImage vehicle={v}/><small className="donor-image-caption">Довідкова ілюстрація</small></div></div>
    <div className="r1146-card-summary">
     {v.dismantling_v3?.global_selection&&<p><strong>Модифікація:</strong> {v.dismantling_v3.global_selection.modification_description||"Немає даних"}</p>}
+    {!v.dismantling_v3?.global_selection&&v.dismantling_v3?.oracle_vehicle_identity&&<p><strong>Модифікація з довідника</strong> · {v.dismantling_v3.oracle_vehicle_identity.modification}</p>}
     {!v.dismantling_v3?.global_selection&&assumed?.modification_description&&<p><strong>Модифікація (автоматично):</strong> {assumed.modification_description} <small>· Не підтверджена за VIN</small></p>}
     {v.ktype&&!assumed&&!v.dismantling_v3?.global_selection&&<p><strong>Модифікація:</strong> {v.engine||"Вибрана"}</p>}
     <VehicleQuickPowertrain vehicle={v} onSaved={onSaved}/>

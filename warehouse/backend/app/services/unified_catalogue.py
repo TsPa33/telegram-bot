@@ -132,14 +132,9 @@ class CatalogueAdapter:
 
     def plan(self, source_modification_id, *, global_source=False):
         data = self.get(f'global:vehicles/{int(source_modification_id)}/plan' if global_source else f'modifications/{int(source_modification_id)}/plan')
-        try:
-            payload = data['payload']
-            actual = hashlib.sha256(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-            if actual!=data['sha256'] or payload['car_id']!=source_modification_id or (not global_source and payload['manufacturer_id']!=120):
-                raise ValueError()
-            validate_plan(payload)
-        except (ValueError,KeyError,TypeError,AttributeError):
-            raise CatalogueUnavailable('invalid_contract') from None
+        payload = checked_plan(data)
+        if payload['car_id'] != source_modification_id or (not global_source and payload['manufacturer_id'] != 120):
+            raise CatalogueUnavailable('invalid_identity')
         return data
 
     def article_batch(self, car_id, product_ids, snapshot_sha):
@@ -166,6 +161,20 @@ class CatalogueAdapter:
             if identity in seen:raise CatalogueUnavailable('duplicate_article_identity')
             seen.add(identity)
         return items
+
+
+def checked_plan(data):
+    try:
+        payload = data["payload"]
+        actual = hashlib.sha256(json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode()).hexdigest()
+        if actual != data["sha256"]:
+            raise ValueError()
+        validate_plan(payload)
+        return payload
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise CatalogueUnavailable("invalid_contract") from None
 
 
 class CatalogueResolver:

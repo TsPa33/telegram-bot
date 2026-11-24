@@ -21,14 +21,16 @@ export async function api<T = Row>(
   method = "GET",
   body?: unknown,
   expectedStatus?: number,
+  options?: { signal?: AbortSignal; headers?: Record<string, string> },
 ): Promise<T> {
   const headers: Record<string, string> = { "X-CSRF-Token": csrf(), "X-Warehouse-Client":"5" };
   if (body && !(body instanceof FormData))
     headers["Content-Type"] = "application/json";
   const response = await fetch("/api/v1" + path, {
     method,
+    signal: options?.signal,
     credentials: "same-origin",
-    headers,
+    headers: {...headers, ...options?.headers},
     body:
       body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   });

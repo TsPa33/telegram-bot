@@ -18,7 +18,7 @@ def clear_cache():
     with _cache_guard:_cache.clear()
 
 
-def _lookup(vin):
+def _lookup(vin, *, public_only=False):
     vehicle={};additional={};sources=[];conflicts={};provenance={};provider_status={};counts={};diagnostics={};year_uncertain=False
     try:
         url='https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/'+vin+'?format=json'
@@ -77,7 +77,7 @@ def _lookup(vin):
     from app.services.vin_carapi import is_enabled as carapi_enabled
     # Keep the monthly free quota for genuinely sparse decodes, not absent optional codes.
     core_missing={k for k in ('manufacturer','model','year','body_class','transmission','engine','fuel_type') if not present(vehicle.get(k))}
-    if len(core_missing) >= 2 and carapi_enabled():
+    if not public_only and len(core_missing) >= 2 and carapi_enabled():
         from app.services.vin_carapi import decode as carapi_decode
         try:
             incoming=carapi_decode(vin)
@@ -99,7 +99,7 @@ def _lookup(vin):
     # An explicitly enabled, credentialed European provider can enrich partial results.
     # Never call it without opt-in: some plans charge per decoded VIN.
     import os
-    european_enabled = (os.getenv('WAREHOUSE_VINCARIO_ENABLED', 'false').lower() == 'true'
+    european_enabled = (not public_only and os.getenv('WAREHOUSE_VINCARIO_ENABLED', 'false').lower() == 'true'
         and bool(os.getenv('WAREHOUSE_VINCARIO_API_KEY', '').strip())
         and bool(os.getenv('WAREHOUSE_VINCARIO_SECRET_KEY', '').strip()))
     if european_enabled and any(not present(vehicle.get(k)) for k in IMPORTANT):
@@ -148,15 +148,16 @@ def _lookup(vin):
         message='Перевірте знайдені характеристики. Невизначені поля можна уточнити.' if vehicle else 'Джерела недоступні або не знайшли даних. Додайте автомобіль вручну.')
 
 
-def lookup(vin):
+def lookup(vin, *, public_only=False):
     vin=vin.strip().upper()
     if not re.fullmatch('[A-HJ-NPR-Z0-9]{17}',vin):raise ValueError('Invalid VIN')
     with _locks[int(hashlib.sha256(vin.encode()).hexdigest()[:8],16)%len(_locks)]:
         now=monotonic()
-        with _cache_guard:entry=_cache.get(vin)
+        cache_key = (vin, public_only)
+        with _cache_guard:entry=_cache.get(cache_key)
         if entry and entry[0]>now:return {**deepcopy(entry[1]),'cached':True}
-        result=_lookup(vin)
+        result=_lookup(vin, public_only=True) if public_only else _lookup(vin)
         with _cache_guard:
             if len(_cache)>=128:_cache.pop(next(iter(_cache)))
-            _cache[vin]=(monotonic()+(300 if result['live_data_received'] else 30),deepcopy(result))
+            _cache[cache_key]=(monotonic()+(300 if result['live_data_received'] else 30),deepcopy(result))
         return {**result,'cached':False}

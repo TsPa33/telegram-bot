@@ -12,8 +12,8 @@ try{
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/\/plan-parts\/|market-refresh|parser-jobs/.test(r.url()))paid.push(r.url())});
  await page.goto('/vehicles');await page.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
  const dialog=page.getByRole('dialog');await dialog.getByLabel('VIN',{exact:true}).fill('YV4A22PK2G1092943');
- await dialog.getByRole('button',{name:'Визначити автомобіль',exact:true}).click();await expect(dialog).toContainText('Локальні синтетичні дані');
- await dialog.getByLabel('Характеристики перевірено, підтверджую додавання').check();await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();await expect(dialog).not.toBeVisible();
+ await dialog.getByRole('button',{name:'Визначити автомобіль',exact:true}).click();await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('Volvo · XC90 (synthetic) · 2016');
+ await dialog.getByLabel('Характеристики перевірено',{exact:true}).check();await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();await expect(dialog).not.toBeVisible();
  await page.getByRole('button',{name:'Розбір і запчастини',exact:true}).click();
  await page.locator('.uf-catalogue-disclosure>summary').click();
  await page.getByRole('button',{name:'Вибрати модифікацію',exact:true}).click();

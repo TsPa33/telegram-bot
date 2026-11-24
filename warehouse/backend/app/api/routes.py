@@ -8,6 +8,7 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
+    Header,
     HTTPException,
     Query,
     Request,
@@ -31,6 +32,7 @@ from app.schemas import (
     Registration,
     StockInput,
     VehicleInput,
+    VinClarifications,
     VehiclePowertrainInput,
     VehicleSpecificationsInput,
 )
@@ -340,6 +342,11 @@ def _new_vehicle_oem_enrichment(account_id: str, vehicle_id: str):
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: BackgroundTasks):
     values = data.model_dump()
+    resolution = data.vin_resolution
+    values.pop("vin_resolution", None)
+    if values.get('vin'):
+        existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==values['vin']))
+        if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
     # Catalogue selections are not Vehicle columns. Revalidate by ID and
     # snapshot; never trust source names or attributes supplied by the browser.
     selection = data.catalogue_selection
@@ -349,6 +356,40 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     values.pop("catalogue_selection", None)
     values.pop("source_identity", None)
     oracle_identity = None
+    stage13_plan = None
+    intake_state = {}
+    if values["vin"] and (selection or oracle_selection):
+        raise HTTPException(422, "Для VIN виберіть модифікацію за перевіреним контекстом")
+    if resolution:
+        from app.permissions import require_permission
+        from app.services import vin_resolution
+        from app.services.unified_catalogue import CatalogueAdapter
+        if not values["vin"] or selection or oracle_selection or values.get("ktype"):
+            raise HTTPException(422, "Некоректна комбінація джерел VIN")
+        context = vin_resolution.trusted_context(resolution.context, who, values["vin"])
+        evidence = vin_resolution.effective_evidence(context, resolution.clarifications)
+        if (not resolution.clarifications.reviewed
+                and any(row["confidence"] == "conflict" for row in evidence.values())):
+            raise HTTPException(422, "Підтвердьте перевірку розбіжностей VIN")
+        vin_resolution.validate_vehicle_fields(values, evidence)
+        values["vin_details"] = vin_resolution.vehicle_details(context, evidence)
+        if resolution.choice:
+            require_permission(who, "vehicles.create", "catalog.view")
+            adapter = CatalogueAdapter()
+            candidate, _ = vin_resolution.selected_candidate(adapter, context, resolution.clarifications,
+                                                                resolution.choice, who)
+            vin_resolution.validate_vehicle_fields(values, evidence, candidate)
+            can_prepare = "dismantling.manage" in who.permissions
+            readiness, stage13_plan = vin_resolution.graph_preview(adapter, candidate) if can_prepare else ("identity_only", None)
+            if resolution.graph_sha and (not stage13_plan
+                    or stage13_plan["payload"]["source_snapshot_sha"] != resolution.graph_sha):
+                raise HTTPException(409, "Версія графа запчастин змінилася. Перевірте вибір ще раз")
+            oracle_identity = vin_resolution.source_identity(candidate, readiness,
+                allow_upgrade=can_prepare and candidate["attributes_complete"] and readiness != "unsupported")
+        elif resolution.graph_sha:
+            raise HTTPException(422, "Оберіть модифікацію перед перевіркою графа")
+    if values["vin"]:
+        intake_state = {"vin_intake": "reviewed" if resolution else "manual"}
     if oracle_selection is not None:
         from app.permissions import require_permission
         from app.services.vin_source_directory import confirm_identity
@@ -370,14 +411,13 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
     # Serialize allocation even when callers supply their own donor_id.
     db.scalar(select(Account).where(Account.id == who.workspace_account_id).with_for_update())
-    if values.get('vin'):
-        existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==values['vin']))
-        if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
-    if values.get('vin_details'):
+    if values.get('vin_details') and not resolution:
         values['vin_details']={**values['vin_details'],'trust':'user_confirmed_reported_not_factory_verified'}
     number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
     row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
     db.add(row)
+    if intake_state:
+        row.dismantling_v3 = intake_state
     if selection is not None:
         # One donor, one versioned source plan. Potential dismantling types are
         # NOT physical stock and require later explicit confirmation for receipt.
@@ -406,6 +446,10 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         row.dismantling_v3={**(row.dismantling_v3 or {}),
             "oracle_vehicle_identity":{**oracle_identity,
                 "identity_fingerprint":generator_basis(row)}}
+        if stage13_plan:
+            from app.services import source_first_pilot
+            if not source_first_pilot.enabled():
+                vin_resolution.persist_graph(db, row, stage13_plan, readiness=oracle_identity["catalogue_readiness"])
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
     db.commit()
     # Staging-only OEM enrichment starts immediately AFTER the vehicle is committed.
@@ -464,14 +508,67 @@ def vin_catalogue_candidates(
 
 
 @router.get("/vehicles/vin/decode", tags=["Vehicles"])
-def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)):
+def vehicle_vin_decode(who: Auth, response: Response, vin: str = Query(min_length=17, max_length=17)):
     """Authenticated, read-only VIN lookup. Uncertain fields require user confirmation."""
     import re
     value=vin.strip().upper()
     if not re.fullmatch('[A-HJ-NPR-Z0-9]{17}',value):
         raise HTTPException(422,'VIN має складатися з 17 символів без I, O, Q')
     from app.services.vin_lookup import lookup
-    return lookup(value)
+    from app.services.vin_resolution import issue_context
+    decoded = lookup(value, public_only=True)
+    response.headers["Cache-Control"] = "no-store"
+    return {**decoded, "resolution_context": issue_context(decoded, who)}
+
+
+def vin_clarifications(header):
+    from urllib.parse import unquote
+    from pydantic import ValidationError
+    try:
+        return VinClarifications.model_validate_json(unquote(header))
+    except ValidationError:
+        raise HTTPException(422, "Некоректні уточнення VIN") from None
+
+
+@router.get("/vehicles/vin/resolution", tags=["Vehicles"])
+def vehicle_vin_resolution(
+    who: Auth, response: Response,
+    context: Annotated[str, Header(alias="X-Vin-Context", max_length=12000)],
+    clarification: Annotated[str, Header(alias="X-Vin-Clarifications", max_length=9000)] = "{}",
+    maker: str | None = Query(None, pattern=r"^(passenger|commercial):[1-9][0-9]{0,10}$"),
+    model_id: int | None = Query(None, gt=0),
+    after: int = Query(0, ge=0),
+    model_after: int = Query(0, ge=0),
+):
+    from app.services import vin_resolution
+    from app.services.unified_catalogue import CatalogueAdapter
+
+    if ((model_id or model_after) and not maker) or (after and not model_id) or (model_after and model_id):
+        raise HTTPException(422, "Укажіть виробника й модель для продовження пошуку")
+    response.headers["Cache-Control"] = "no-store"
+    trusted = vin_resolution.trusted_context(context, who)
+    return vin_resolution.search(CatalogueAdapter(), trusted, vin_clarifications(clarification), who,
+                                 selected_maker=maker, selected_model=model_id, after=after, model_after=model_after)
+
+
+@router.get("/vehicles/vin/resolution-graph", tags=["Vehicles"])
+def vehicle_vin_resolution_graph(
+    who: Auth, response: Response,
+    context: Annotated[str, Header(alias="X-Vin-Context", max_length=12000)],
+    choice: Annotated[str, Header(alias="X-Vin-Choice", max_length=1800)],
+    clarification: Annotated[str, Header(alias="X-Vin-Clarifications", max_length=9000)] = "{}",
+):
+    from app.services import vin_resolution
+    from app.services.unified_catalogue import CatalogueAdapter
+
+    response.headers["Cache-Control"] = "no-store"
+    adapter = CatalogueAdapter()
+    trusted = vin_resolution.trusted_context(context, who)
+    if "dismantling.manage" not in who.permissions:
+        return {"status": "identity_only", "source_snapshot_sha": None}
+    candidate, _ = vin_resolution.selected_candidate(adapter, trusted, vin_clarifications(clarification), choice, who)
+    readiness, plan = vin_resolution.graph_preview(adapter, candidate)
+    return {"status": readiness, "source_snapshot_sha": plan["payload"]["source_snapshot_sha"] if plan else None}
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
@@ -495,8 +592,12 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
-    if changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
+    resolution = changes.pop("vin_resolution", None)
+    if resolution is not None or changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
         raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")
+    if ((row.dismantling_v3 or {}).get("vin_intake") == "reviewed"
+            and ("vin_details" in changes or "vin" in changes and changes["vin"] != row.vin)):
+        raise HTTPException(409, "VIN і звіт декодування збережено разом із підтвердженим контекстом")
     if changes.get('vin'):
         existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==changes['vin'],Vehicle.id!=id))
         if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
