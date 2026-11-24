@@ -293,6 +293,11 @@ def test_verified_later_graph_upgrade_uses_existing_writer_and_never_creates_sto
     search = logged.get("/api/v1/vehicles/vin/resolution", headers={"X-Vin-Context": token})
     choice = search.json()["automatic"]
     source.graph_status = "absent"
+    body = dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015)
+    assert logged.post("/api/v1/vehicles", json={**body,
+        "vin_resolution": {"context": token}}).status_code == 422
+    assert logged.post("/api/v1/vehicles", json={**body,
+        "vin_resolution": {"context": token, "choice": choice}}).status_code == 422
     response = logged.post("/api/v1/vehicles", json=dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015,
                            vin_resolution={"context": token, "choice": choice, "accept_base_catalogue": True}))
     assert response.status_code == 201, response.text
@@ -465,3 +470,15 @@ def test_incomplete_scoped_search_asks_only_supported_clarifications(source):
     clarified = resolution.search(source, ctx, VinClarifications(answers={"drive_type": "AWD"}), identity, **scope)
     assert [row["source_modification_id"] for row in clarified["items"]] == [901]
     assert clarified["questions"] == [] and clarified["automatic"] is None
+
+
+def test_explicit_base_without_selected_modification(logged, source, monkeypatch):
+    token, _ = lookup_context(logged, monkeypatch)
+    body = dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015,
+                vin_resolution={"context": token, "accept_base_catalogue": True})
+    response = logged.post("/api/v1/vehicles", json=body)
+    assert response.status_code == 201, response.text
+    with Session(engine()) as db:
+        donor = db.get(Vehicle, response.json()["id"])
+        assert donor.dismantling_v3["vin_intake"] == "reviewed"
+        assert not donor.dismantling_v3.get("global_selection")
