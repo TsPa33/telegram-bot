@@ -7,13 +7,14 @@ from sqlalchemy import select, func, or_, and_
 from app.models import Account, Category, DismantlingItem, Operation, Part, Vehicle, now
 from app.schemas import StockInput
 from app.services.inventory import owned, record, snapshot, stock
+from app.services.unified_catalogue import has_plan_state
 
 CATALOG = json.loads((Path(__file__).resolve().parents[1] / "data/dismantling_catalog.json").read_text())
 
 
 def start(db, vehicle_id, account_id):
     vehicle = owned(db, Vehicle, vehicle_id, account_id, lock=True, active=True)
-    if vehicle.dismantling_v3:
+    if has_plan_state(vehicle):
         return {'created':0,'existing':db.scalar(select(func.count()).select_from(DismantlingItem).where(DismantlingItem.vehicle_id==vehicle_id,DismantlingItem.account_id==account_id)),'status':vehicle.status}
     existing = set(db.execute(select(DismantlingItem.source,DismantlingItem.catalog_key).where(
         DismantlingItem.vehicle_id == vehicle_id,DismantlingItem.account_id == account_id)).all())

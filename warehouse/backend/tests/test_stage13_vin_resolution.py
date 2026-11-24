@@ -383,3 +383,11 @@ def test_stage13_manual_intake_does_not_trigger_legacy_automatic_plan(logged, so
         assert vehicle.dismantling_v3["vin_intake"] == "manual"
     assert auto_oem.enrich_vehicle(engine(), account, vid, auto_oem.SourceCache(source)) == 0
     assert source.calls == []
+    base_path = f"/api/v1/vehicles/{vid}/unified-catalogue/base"
+    assert logged.get(f"/api/v1/vehicles/{vid}/global-dismantling").json()["legacy"] is False
+    first = logged.post(base_path)
+    assert first.status_code == 200, first.text
+    assert logged.post(base_path).json() == {"saved": True, "source": "base"}
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(DismantlingItem)) > 0
+        assert db.scalar(select(func.count()).select_from(Part)) == 0

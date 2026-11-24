@@ -214,6 +214,10 @@ def saved_state(vehicle):
     return (vehicle.dismantling_v3 or {}).get('unified_catalogue')
 
 
+def has_plan_state(vehicle):
+    return bool(set(vehicle.dismantling_v3 or {}) - {"vin_intake", "oracle_vehicle_identity"})
+
+
 def has_plan_history(db, vehicle):
     from sqlalchemy import select
     from app.models import DismantlingItem, Part, VehicleChecklistItem

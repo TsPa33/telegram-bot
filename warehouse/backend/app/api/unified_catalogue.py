@@ -224,7 +224,7 @@ def create_base(id: str, db: DB, who: Auth):
     if (v.dismantling_v3 or {}).get('unified_base'):return dict(saved=True,source='base')
     from sqlalchemy import select
     from app.models import Part,DismantlingItem,VehicleChecklistItem
-    if v.dismantling_v3 or any(db.scalar(select(cls.id).where(cls.account_id==who.workspace_account_id,cls.vehicle_id==v.id).limit(1)) for cls in (Part,DismantlingItem,VehicleChecklistItem)):
+    if service.has_plan_state(v) or any(db.scalar(select(cls.id).where(cls.account_id==who.workspace_account_id,cls.vehicle_id==v.id).limit(1)) for cls in (Part,DismantlingItem,VehicleChecklistItem)):
         raise HTTPException(409,'Автомобіль вже має збережені дані. Наявний план не замінено.')
     from app.services import dismantling
     result=dismantling.start(db,v.id,who.workspace_account_id)
@@ -417,7 +417,7 @@ def global_saved(id: str, db: DB, who: Auth):
         keys=keys,oems=oems,catalogue_oems=catalogue_oems,
         selection_revision=(v.dismantling_v3 or {}).get('catalogue_selection_revision', 0),
         item_bindings=(v.dismantling_v3 or {}).get(KEY, {}) if 'inventory.view' in who.permissions else {},
-        unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
+        unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool(not state and (service.has_plan_state(v) or v.ktype)),
         legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
 
 

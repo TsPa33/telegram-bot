@@ -73,6 +73,11 @@
   z-index: 1;
 }
 .vin-intake .vin-footer .vin-actions { justify-content: flex-end; }
+.vin-intake .vin-footer .primary:disabled {
+  background: var(--color-control-surface);
+  border-color: var(--color-border);
+  color: var(--color-secondary);
+}
 .vin-intake .vinstate-test {
   margin-top: 10px;
   padding-top: 10px;
