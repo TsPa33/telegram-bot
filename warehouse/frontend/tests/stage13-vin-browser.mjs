@@ -71,6 +71,40 @@ try{
   await expect(dialog.getByRole('form',{name:'Автомобіль із каталогу'})).toBeVisible();
   await dialog.getByRole('button',{name:'За VIN',exact:true}).click();
 
+  // Exercise independent maker cursors and a clarification from a later variant page.
+  const resolutionPattern='**/api/v1/vehicles/vin/resolution?*';
+  const model={kind:'passenger',manufacturer_id:840,model_id:701,model:'3 Series'};
+  const modelCursors=[
+    {maker:'passenger:840',after:150,kind:'passenger'},
+    {maker:'commercial:841',after:250,kind:'commercial'},
+  ];
+  let clarifiedScope;
+  await page.route(resolutionPattern,async route=>{
+    const query=new URL(route.request().url()).searchParams;
+    const headers=route.request().headers();
+    const clarification=JSON.parse(decodeURIComponent(headers['x-vin-clarifications']));
+    const scoped=query.has('model_id');
+    const after=query.get('after');
+    if(clarification.answers.drive_type)clarifiedScope=[query.get('maker'),query.get('model_id'),after,clarification.answers.drive_type];
+    await route.fulfill({json:{
+      items:[], models:[model], review:[], search_complete:false, status:'incomplete', automatic:null,
+      model_cursors:query.has('maker')?[]:modelCursors,
+      next_after:scoped&&after==='0'&&!clarification.answers.drive_type?915:null,
+      questions:scoped&&after==='915'?[{field:'drive_type',options:['FWD','AWD']}]:[],
+    }});
+  });
+  await decode();
+  await dialog.getByRole('button',{name:'Наступні моделі · легкові',exact:true}).click();
+  await expect(dialog.getByRole('button',{name:'Наступні моделі · легкові',exact:true})).toHaveCount(0);
+  await dialog.getByRole('button',{name:'Наступні моделі · комерційні',exact:true}).click();
+  await dialog.getByRole('button',{name:'Переглянути всі модифікації моделі',exact:true}).click();
+  await dialog.getByRole('button',{name:'Наступні модифікації',exact:true}).click();
+  await dialog.getByRole('combobox',{name:/^Привід/}).selectOption('AWD');
+  await expect.poll(()=>clarifiedScope).toEqual(['passenger:840','701','0','AWD']);
+  await page.unroute(resolutionPattern);
+  await dialog.getByRole('button',{name:'Скасувати',exact:true}).click();
+  await open();
+
   // Hold the previous VIN's catalogue response while the active VIN is changed.
   let release;
   let started;

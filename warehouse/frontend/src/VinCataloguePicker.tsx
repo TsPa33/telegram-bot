@@ -8,9 +8,10 @@ type Candidate={
   construction_interval?:string; choice:string; matches:Record<string,string>;
 };
 type SourceModel=Pick<Candidate,'kind'|'manufacturer_id'|'model_id'|'model'|'construction_interval'>;
+type ModelCursor={maker:string;after:number;kind:string};
 type ResolutionPage={
   items:Candidate[]; models:SourceModel[]; next_after:number|null; search_complete:boolean;
-  model_cursors?:{maker:string;after:number;kind:string}[];
+  model_cursors?:ModelCursor[];
   questions:{field:string;options:string[]}[]; review:string[]; status:string; automatic:string|null;
 };
 type Readiness={status:string;source_snapshot_sha:string|null};
@@ -48,6 +49,7 @@ export default function VinCataloguePicker({
   const [models,setModels]=useState<SourceModel[]>([]);
   const [scope,setScope]=useState<SourceModel|null>(null);
   const [cursor,setCursor]=useState(0);
+  const [modelCursors,setModelCursors]=useState<ModelCursor[]>([]);
   const [modelPage,setModelPage]=useState<{maker:string;after:number}|null>(null);
   const [retry,setRetry]=useState(0);
   const [page,setPage]=useState<ResolutionPage|null>(null);
@@ -81,6 +83,9 @@ export default function VinCataloguePicker({
         if(!scope)setModels(previous=>modelPage
           ?[...new Map([...previous,...result.models].map(row=>[modelKey(row),row])).values()]
           :result.models);
+        if(!scope)setModelCursors(previous=>modelPage
+          ?[...previous.filter(cursor=>cursor.maker!==modelPage.maker),...(result.model_cursors||[])]
+          :result.model_cursors||[]);
         const automatic=result.items.find(item=>item.choice===result.automatic);
         if(automatic){onPending(true);setChoice(automatic)}
       })
@@ -112,6 +117,11 @@ export default function VinCataloguePicker({
     setGraphError('');
     onSelect(null);
   }
+  function answer(field:string,value:string|null){
+    resetChoice();
+    setCursor(0);
+    onAnswer(field,value);
+  }
   const items=page?.items||[];
   return <fieldset className="vin-catalogue-select" aria-label="Модифікація та план">
     <legend>Модифікація та план</legend>
@@ -135,7 +145,7 @@ export default function VinCataloguePicker({
         </option>)}
       </select>
     </label>}
-    {!scope&&page?.model_cursors?.map(cursor=><button type="button" key={cursor.maker}
+    {!scope&&modelCursors.map(cursor=><button type="button" key={cursor.maker}
       disabled={disabled||busy} onClick={()=>{resetChoice();setModelPage(cursor)}}>
       Наступні моделі · {cursor.kind==='passenger'?'легкові':'комерційні'}
     </button>)}
@@ -143,14 +153,14 @@ export default function VinCataloguePicker({
       onSubmit={e=>{
         e.preventDefault();
         const value=String(new FormData(e.currentTarget).get('answer')||'').trim();
-        if(value)onAnswer(question.field,value);
+        if(value)answer(question.field,value);
       }}>
       <label>{fieldLabels[question.field]}<input name="answer" inputMode="numeric"
         pattern="[0-9]{4}" maxLength={4} disabled={disabled} required/></label>
       <button type="submit" disabled={disabled}>Уточнити</button>
-      <button type="button" disabled={disabled} onClick={()=>onAnswer(question.field,null)}>Невідомо</button>
+      <button type="button" disabled={disabled} onClick={()=>answer(question.field,null)}>Невідомо</button>
     </form>:<label key={question.field}>{fieldLabels[question.field]||question.field}
-      <select disabled={disabled||busy} value="" onChange={e=>onAnswer(question.field,e.target.value||null)}>
+      <select disabled={disabled||busy} value="" onChange={e=>answer(question.field,e.target.value||null)}>
         <option value="" disabled>Уточніть характеристику</option>
         <option value="unknown">Невідомо</option>
         {question.options.map(value=><option key={value}>{value}</option>)}

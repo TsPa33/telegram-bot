@@ -203,7 +203,8 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
         <button type="submit" disabled={saving||needsReview}>Застосувати уточнення</button>
       </form>}
       {characteristics.manufacturer&&can('catalog.view')&&<VinCataloguePicker
-        key={result.resolution_context+'|'+JSON.stringify(clarifications)}
+        key={JSON.stringify([result.resolution_context,clarifications.reviewed,clarifications.model_correction,
+          clarifications.answers.manufacturer,clarifications.answers.model,clarifications.answers.vehicle_type])}
         context={result.resolution_context} clarifications={clarifications} disabled={saving||needsReview}
         onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onReview={review} onSelect={select} onPending={setCheckingChoice}/>}
       <details className="vin-details">

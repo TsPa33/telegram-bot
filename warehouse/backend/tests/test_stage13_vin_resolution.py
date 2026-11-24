@@ -391,3 +391,77 @@ def test_stage13_manual_intake_does_not_trigger_legacy_automatic_plan(logged, so
     with Session(engine()) as db:
         assert db.scalar(select(func.count()).select_from(DismantlingItem)) > 0
         assert db.scalar(select(func.count()).select_from(Part)) == 0
+
+
+def test_concurrent_create_serializes_vin_under_account_lock(logged, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from fastapi import BackgroundTasks
+
+    from app.api import routes
+    from app.models import Account, Operation
+    from app.schemas import VehicleInput
+
+    with Session(engine()) as db:
+        account_id = db.scalar(select(Account.id))
+    actor = SimpleNamespace(workspace_account_id=account_id, actor_id=account_id)
+    # HTTP authentication has its own workspace fence. Invoke the handler
+    # with independent sessions to exercise the creation fence itself.
+    ready = Barrier(2, timeout=10)
+    allocate = routes.automatic_donor_id
+
+    def concurrent_allocation(db, account_id):
+        value = allocate(db, account_id)
+        ready.wait()
+        return value
+
+    def create(vin):
+        data = VehicleInput(manufacturer=MAKE, model="3 Series", year=2015,
+                            vin=vin, vin_intake_mode="manual")
+        with Session(engine()) as db:
+            try:
+                result = routes.vehicle_create(data, db, actor, BackgroundTasks())
+            except HTTPException as error:
+                return error.status_code, error.detail["vehicle_id"]
+            return 201, result["id"]
+
+    monkeypatch.setattr(routes, "automatic_donor_id", concurrent_allocation)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = sorted(executor.map(create, (VIN, VIN.lower())))
+
+    assert [status for status, _ in results] == [201, 409], results
+    created = results[0][1]
+    assert results[1][1] == created
+    with Session(engine()) as db:
+        assert db.scalars(select(Vehicle.id).where(Vehicle.vin == VIN)).all() == [created]
+        assert db.scalar(select(func.count()).select_from(Operation).where(
+            Operation.type == "vehicle_create", Operation.vehicle_id == created)) == 1
+
+
+def test_model_pages_keep_late_models_reachable(source):
+    identity = who()
+    source.models = [{"id": index, "name": f"Line {index}"} for index in range(1, 158)]
+    ctx = context(identity, decoded(model=None))
+    initial = resolution.search(source, ctx, VinClarifications(), identity)
+    assert initial["model_cursors"] == [{"maker": "passenger:840", "after": 150, "kind": "passenger"}]
+    assert len(initial["models"]) == 150
+    assert not initial["search_complete"] and initial["automatic"] is None
+    tail = resolution.search(source, ctx, VinClarifications(), identity,
+                             selected_maker="passenger:840", model_after=150)
+    assert [row["model_id"] for row in tail["models"]] == list(range(151, 158))
+    assert not tail["model_cursors"] and tail["automatic"] is None
+
+
+def test_incomplete_scoped_search_asks_only_supported_clarifications(source):
+    identity = who()
+    source.attributes[901] = [("Body Type", "Sedan"), ("Fuel Type", "Diesel"), ("Drive Type", "AWD")]
+    source.truncated.add("attributes")
+    ctx = context(identity)
+    scope = dict(selected_maker="passenger:840", selected_model=701)
+    result = resolution.search(source, ctx, VinClarifications(), identity, **scope)
+    assert not result["search_complete"] and result["automatic"] is None
+    assert result["questions"] == [{"field": "drive_type", "options": ["FWD", "AWD"]}]
+    clarified = resolution.search(source, ctx, VinClarifications(answers={"drive_type": "AWD"}), identity, **scope)
+    assert [row["source_modification_id"] for row in clarified["items"]] == [901]
+    assert clarified["questions"] == [] and clarified["automatic"] is None

@@ -60,6 +60,7 @@ jobs:
             tests/test_issue502_checkout.py \
             tests/test_team.py \
             tests/test_vin_intake.py \
+            tests/test_stage13_vin_resolution.py \
             tests/test_vin_normalize.py \
             tests/test_vin_europe_pipeline.py \
             tests/test_vin_carapi_free.py \

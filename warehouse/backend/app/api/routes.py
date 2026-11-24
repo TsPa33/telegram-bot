@@ -339,15 +339,25 @@ def _new_vehicle_oem_enrichment(account_id: str, vehicle_id: str):
         )
 
 
+def _reject_duplicate_vin(db, account_id, vin):
+    if not vin:
+        return
+    existing_id = db.scalar(select(Vehicle.id).where(
+        Vehicle.account_id == account_id, func.upper(func.trim(Vehicle.vin)) == vin))
+    if existing_id:
+        raise HTTPException(409, detail={
+            "message": "Автомобіль із цим VIN уже існує",
+            "vehicle_id": existing_id,
+        })
+
+
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: BackgroundTasks):
     values = data.model_dump()
     resolution = data.vin_resolution
     values.pop("vin_resolution", None)
     manual_intake = values.pop("vin_intake_mode", None) == "manual"
-    if values.get('vin'):
-        existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==values['vin']))
-        if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
+    _reject_duplicate_vin(db, who.workspace_account_id, values.get('vin'))
     # Catalogue selections are not Vehicle columns. Revalidate by ID and
     # snapshot; never trust source names or attributes supplied by the browser.
     selection = data.catalogue_selection
@@ -414,6 +424,9 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
     # Serialize allocation even when callers supply their own donor_id.
     db.scalar(select(Account).where(Account.id == who.workspace_account_id).with_for_update())
+    # Catalogue reads run before the lock. Another request can commit this VIN
+    # in that interval, so the preflight check cannot authorize the insert.
+    _reject_duplicate_vin(db, who.workspace_account_id, values.get('vin'))
     if values.get('vin_details') and not resolution:
         values['vin_details']={**values['vin_details'],'trust':'user_confirmed_reported_not_factory_verified'}
     number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
