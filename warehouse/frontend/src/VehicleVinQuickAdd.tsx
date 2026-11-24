@@ -26,6 +26,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
   const [clarifications,setClarifications]=useState<Clarifications>(emptyClarifications);
   const [choice,setChoice]=useState<VinChoice|null>(null);
   const [checkingChoice,setCheckingChoice]=useState(false);
+  const [acceptBase,setAcceptBase]=useState(false);
   const [correction,setCorrection]=useState('');
   const [error,setError]=useState('');
   const [existing,setExisting]=useState<Row|null>(null);
@@ -43,6 +44,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
 
   const select=useCallback((value:VinChoice|null)=>{
     setChoice(value);
+    setAcceptBase(false);
     setCheckingChoice(false);
     setConfirmed(false);
   },[]);
@@ -89,8 +91,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
     ...clarifications.answers,
     ...(clarifications.model_correction?{model:clarifications.model_correction}:{}),
   };
+  const hasGraph=choice?.graph.status==='exact'||choice?.graph.status==='partial';
   const ready=(manual||result)&&(!vin||valid)&&!!String(characteristics.manufacturer||'').trim()
-    &&!!String(characteristics.model||'').trim()&&!needsReview&&!checkingChoice;
+    &&!!String(characteristics.model||'').trim()&&!needsReview&&!checkingChoice&&(manual||hasGraph||acceptBase);
 
   async function create(){
     if(!ready||writing.current||!confirmed)return;
@@ -115,7 +118,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
       if(Number.isFinite(liters)&&liters>=0.05&&liters<=99.9)values.engine_displacement_l=Math.round(liters*10)/10;
     }
     if(!manual&&result?.resolution_context){
-      values.vin_resolution={context:result.resolution_context,clarifications,
+      values.vin_resolution={context:result.resolution_context,clarifications,accept_base_catalogue:acceptBase,
         ...(choice?{choice:choice.candidate.choice,graph_sha:choice.graph.source_snapshot_sha}:{})};
     }
     writing.current=true;
@@ -207,6 +210,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
           clarifications.answers.manufacturer,clarifications.answers.model,clarifications.answers.vehicle_type])}
         context={result.resolution_context} clarifications={clarifications} disabled={saving||needsReview}
         onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onReview={review} onSelect={select} onPending={setCheckingChoice}/>}
+      {!hasGraph&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
+        disabled={saving||checkingChoice} onChange={e=>{setAcceptBase(e.target.checked);setConfirmed(false)}}/>
+        Додати з базовим каталогом без підтвердженого переліку запчастин</label>}
       <details className="vin-details">
         <summary>Усі характеристики</summary>
         <dl>{Object.entries(result.vehicle).filter(([,value])=>value!=null&&String(value).trim()).map(([key,value])=><div key={key}>

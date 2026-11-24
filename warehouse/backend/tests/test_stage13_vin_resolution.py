@@ -294,7 +294,7 @@ def test_verified_later_graph_upgrade_uses_existing_writer_and_never_creates_sto
     choice = search.json()["automatic"]
     source.graph_status = "absent"
     response = logged.post("/api/v1/vehicles", json=dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015,
-                           vin_resolution={"context": token, "choice": choice}))
+                           vin_resolution={"context": token, "choice": choice, "accept_base_catalogue": True}))
     assert response.status_code == 201, response.text
     vid = response.json()["id"]
     with Session(engine()) as db:

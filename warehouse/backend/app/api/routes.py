@@ -401,6 +401,8 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
                 allow_upgrade=can_prepare and candidate["attributes_complete"] and readiness != "unsupported")
         elif resolution.graph_sha:
             raise HTTPException(422, "Оберіть модифікацію перед перевіркою графа")
+        if not stage13_plan and not resolution.accept_base_catalogue:
+            raise HTTPException(422, "Підтвердьте модифікацію з каталогом запчастин або явно погодьте базовий каталог")
     if resolution:
         intake_state = {"vin_intake": "reviewed"}
     if oracle_selection is not None:

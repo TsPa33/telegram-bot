@@ -107,7 +107,7 @@ export default function VinCataloguePicker({
         setGraph(result);
         onSelect({candidate:choice,graph:result});
       })
-      .catch(e=>{if(!controller.signal.aborted)setGraphError((e as Error).message)});
+      .catch(e=>{if(!controller.signal.aborted){setGraphError((e as Error).message);onSelect(null)}});
     return ()=>controller.abort();
   },[context,clarificationHeader,clarifications.reviewed,choice,graphRetry,onSelect]);
 
@@ -173,7 +173,7 @@ export default function VinCataloguePicker({
         if(picked)onPending(true);
         setChoice(picked);
       }}>
-        <option value="">Базовий каталог CarPot</option>
+        <option value="">Оберіть модифікацію автомобіля</option>
         {items.map(item=><option key={item.choice} value={item.choice}>
           {item.model} · {item.modification} {item.construction_interval||''}
         </option>)}
@@ -195,6 +195,6 @@ export default function VinCataloguePicker({
     {graphError&&<><p role="alert">{graphError}</p><button type="button" disabled={disabled} onClick={()=>{
       onSelect(null);onPending(true);setGraphRetry(n=>n+1);
     }}>Повторити перевірку</button></>}
-    {!choice&&<p>План за базовим каталогом CarPot.</p>}
+    {!choice&&<p>Оберіть модифікацію для перевірки каталогу запчастин.</p>}
   </fieldset>;
 }

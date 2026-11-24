@@ -113,6 +113,7 @@ class VinClarifications(Input):
 
 
 class VinResolutionInput(Input):
+    accept_base_catalogue: bool = False
     context: Annotated[str, Field(min_length=1, max_length=12000)]
     clarifications: VinClarifications = Field(default_factory=VinClarifications)
     choice: Annotated[str, Field(min_length=1, max_length=1800)] | None = None
