@@ -396,3 +396,83 @@ def test_directory_model_query_strips_tecdoc_platform_code_before_exact_match(mo
                         headers={'X-Catalogue-Key':'fixture-only'})
     assert response.status_code==200,response.text
     assert response.json()['items'][0]['model']=='XC60 II (246)'
+
+
+@pytest.mark.parametrize("status", ["absent", "unsupported", "identity_mismatch", "unverified", "available"])
+def test_oracle_source_graph_requires_namespace_exact_ids_and_linked_provenance(monkeypatch, status):
+    from fastapi import HTTPException
+
+    key = "fixture-only"
+    monkeypatch.setenv("CATALOGUE_API_KEY", key)
+    data = payload()
+    data.update(schema="carpot.vehicle.v1", manufacturer_id=850, model_id=72, car_id=99)
+    data["source_scope"] = "passenger_prd_article_oem" if status != "unverified" else "ambiguous"
+    data["categories"] = [{"product_id": 5, "original": [{"id": 5, "description": "fixture"}],
+                           "articles": ["4:PART"]}]
+    data["articles"] = {"4:PART": {"supplier_id": 4, "article_number": "PART", "car_id": 99, "oem": []}}
+    calls = []
+
+    def snapshot(car_id):
+        calls.append(car_id)
+        if status == "absent":
+            raise HTTPException(404)
+        return data, digest(data)
+
+    monkeypatch.setattr(catalogue_app, "volvo_snapshot", snapshot)
+    identity = dict(kind="commercial" if status == "unsupported" else "passenger",
+                    manufacturer_id=851 if status == "identity_mismatch" else 850,
+                    model_id=72, car_id=99)
+    client = TestClient(catalogue_app.app)
+    assert client.get("/api/v1/vehicles/source-graph", params=identity).status_code == 401
+    response = client.get("/api/v1/vehicles/source-graph", params=identity, headers={"X-Catalogue-Key": key})
+    assert response.status_code == 200
+    assert response.json()["identity"] == identity and response.json()["status"] == status
+    if status == "available":
+        plan = response.json()["plan"]
+        assert plan["payload"]["categories"][0]["source_fitment_linked"] is True
+        assert plan["payload"]["source_snapshot_sha"] == digest(data)
+        assert plan["sha256"] == digest(plan["payload"])
+    else:
+        assert "plan" not in response.json()
+    assert calls == ([] if status == "unsupported" else [99])
+
+
+def test_oracle_source_graph_propagates_unavailable_snapshot(monkeypatch):
+    from fastapi import HTTPException
+
+    monkeypatch.setenv("CATALOGUE_API_KEY", "fixture-only")
+    def unavailable(car_id):
+        raise HTTPException(503, "fixture database unavailable")
+
+    monkeypatch.setattr(catalogue_app, "volvo_snapshot", unavailable)
+    response = TestClient(catalogue_app.app).get("/api/v1/vehicles/source-graph",
+        params=dict(kind="passenger", manufacturer_id=850, model_id=72, car_id=99),
+        headers={"X-Catalogue-Key": "fixture-only"})
+    assert response.status_code == 503
+
+
+def test_oracle_source_graph_does_not_report_missing_raw_version_as_absent(monkeypatch):
+    monkeypatch.setenv("CATALOGUE_API_KEY", "fixture-only")
+
+    class MissingVersion(Cursor):
+        def fetchone(self):
+            if len(self.sql) == 1:
+                return {"payload": json.dumps({"schema": "carpot.vehicle.plan.v1"}), "sha256": "a" * 64}
+            return None
+
+    cursor = MissingVersion(payload())
+
+    class Connection:
+        def cursor(self):
+            return cursor
+
+    @contextmanager
+    def database():
+        yield Connection()
+
+    monkeypatch.setattr(catalogue_app, "db", database)
+    response = TestClient(catalogue_app.app).get("/api/v1/vehicles/source-graph",
+        params=dict(kind="passenger", manufacturer_id=850, model_id=72, car_id=99),
+        headers={"X-Catalogue-Key": "fixture-only"})
+    assert response.status_code == 503
+    assert len(cursor.sql) == 2
