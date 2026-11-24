@@ -344,6 +344,7 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     values = data.model_dump()
     resolution = data.vin_resolution
     values.pop("vin_resolution", None)
+    manual_intake = values.pop("vin_intake_mode", None) == "manual"
     if values.get('vin'):
         existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==values['vin']))
         if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
@@ -357,7 +358,9 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     values.pop("source_identity", None)
     oracle_identity = None
     stage13_plan = None
-    intake_state = {}
+    if manual_intake and (resolution or selection or oracle_selection):
+        raise HTTPException(422, "Ручне додавання використовує базовий каталог")
+    intake_state = {"vin_intake": "manual"} if manual_intake else {}
     if values["vin"] and (selection or oracle_selection):
         raise HTTPException(422, "Для VIN виберіть модифікацію за перевіреним контекстом")
     if resolution:
@@ -388,8 +391,8 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
                 allow_upgrade=can_prepare and candidate["attributes_complete"] and readiness != "unsupported")
         elif resolution.graph_sha:
             raise HTTPException(422, "Оберіть модифікацію перед перевіркою графа")
-    if values["vin"]:
-        intake_state = {"vin_intake": "reviewed" if resolution else "manual"}
+    if resolution:
+        intake_state = {"vin_intake": "reviewed"}
     if oracle_selection is not None:
         from app.permissions import require_permission
         from app.services.vin_source_directory import confirm_identity
@@ -593,7 +596,8 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
     resolution = changes.pop("vin_resolution", None)
-    if resolution is not None or changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
+    intake_mode = changes.pop("vin_intake_mode", None)
+    if resolution is not None or intake_mode is not None or changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
         raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")
     if ((row.dismantling_v3 or {}).get("vin_intake") == "reviewed"
             and ("vin_details" in changes or "vin" in changes and changes["vin"] != row.vin)):

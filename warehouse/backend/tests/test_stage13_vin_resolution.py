@@ -367,3 +367,19 @@ def test_graph_exact_requires_reviewed_coverage_and_authoritative_identity(sourc
     assert plan["payload"]["source_snapshot_sha"] == SHA
     response["identity"]["kind"] = "commercial"
     assert resolution.graph_plan(adapter, ORACLE) == ("unavailable", None)
+
+
+
+def test_stage13_manual_intake_does_not_trigger_legacy_automatic_plan(logged, source):
+    response = logged.post("/api/v1/vehicles", json={
+        "manufacturer": "Volvo", "model": "XC90 II", "year": 2016, "vin": "YV4A22PK2G1092943",
+        "engine_code": "B4204T27", "fuel_type": "petrol", "drive_type": "AWD", "vin_intake_mode": "manual",
+    })
+    assert response.status_code == 201, response.text
+    vid = response.json()["id"]
+    with Session(engine()) as db:
+        vehicle = db.get(Vehicle, vid)
+        account = vehicle.account_id
+        assert vehicle.dismantling_v3["vin_intake"] == "manual"
+    assert auto_oem.enrich_vehicle(engine(), account, vid, auto_oem.SourceCache(source)) == 0
+    assert source.calls == []

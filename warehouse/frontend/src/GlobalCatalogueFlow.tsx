@@ -30,6 +30,8 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  const [legacy,setLegacy]=useState<Row[]|null>(null);
  const [state,setState]=useState<Row>({}),[revision,setRevision]=useState(0),[chooseModification,setChooseModification]=useState(false);
  const saved=state.saved;
+ const oracleIdentity=vehicle.dismantling_v3?.oracle_vehicle_identity;
+ const canChangeSource=!oracleIdentity?.directory_snapshot;
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[detail,setDetail]=useState<Row|null>(null),[q,setQ]=useState(''),[page,setPage]=useState(0);
  useEffect(()=>{
   let active=true,loading=false;
@@ -52,15 +54,15 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  return <section className="unified-flow" aria-label="Розбір автомобіля">
   <UniversalPlanGenerator vehicle={vehicle} revision={revision} onWorking={setWorking} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/>
   <details className="uf-catalogue-disclosure">
-   <summary><span><strong>Каталог і модифікація</strong><small>{state.selection?(state.selection.confirmation==='auto_assumed'?'Модифікацію вибрано автоматично':'Модифікацію вибрано'):'Точна модифікація не підтверджена · базовий каталог'}</small></span><span className="uf-catalogue-toggle">Налаштувати</span></summary>
+   <summary><span><strong>Каталог і модифікація</strong><small>{state.selection?(state.selection.confirmation==='auto_assumed'?'Модифікацію вибрано автоматично':'Модифікацію вибрано'):oracleIdentity?'Модифікацію вибрано в довіднику · базовий каталог':'Доступний базовий каталог'}</small></span><span className="uf-catalogue-toggle">Налаштувати</span></summary>
    <div className="uf-catalogue-details">
     <div className="uf-source-strip" aria-label="Модифікація каталогу">
    <span className={state.selection?'uf-source-confirmed':'uf-source-warning'}>
-    {state.selection?'Модифікація: '+(state.selection.modification_description||'вибрана'):'Точну каталожну модифікацію не вибрано — показано базовий каталог'}
+    {state.selection?'Модифікація: '+(state.selection.modification_description||'вибрана'):oracleIdentity?'Модифікація з довідника · '+oracleIdentity.modification:'Доступний базовий каталог'}
    </span>
-   <button className="secondary" disabled={vehicle.archived||!can('vehicles.edit')||!can('dismantling.manage')} onClick={()=>setChooseModification(v=>!v)}>{chooseModification?'Закрити вибір':'Вибрати модифікацію'}</button>
+   {canChangeSource&&<button className="secondary" disabled={vehicle.archived||!can('vehicles.edit')||!can('dismantling.manage')} onClick={()=>setChooseModification(v=>!v)}>{chooseModification?'Закрити вибір':'Вибрати модифікацію'}</button>}
   </div>
-  {chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis+':'+state.selection_revision} vehicle={vehicle} expectedBasis={state.selection_basis} expectedSelectionRevision={state.selection_revision} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
+  {canChangeSource&&chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis+':'+state.selection_revision} vehicle={vehicle} expectedBasis={state.selection_basis} expectedSelectionRevision={state.selection_revision} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
    </div>
   </details>
   {(working||!!saved)&&<>

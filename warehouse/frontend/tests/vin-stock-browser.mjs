@@ -20,19 +20,26 @@ try{
  const form=page.getByRole('form',{name:'Модифікація наявного автомобіля'});
  await form.getByLabel('Марка',{exact:true}).selectOption('Volvo');await form.getByLabel('Модель',{exact:true}).selectOption('13084');await form.getByLabel('Покоління',{exact:true}).selectOption('II (fixture)');await form.getByLabel('Модифікація',{exact:true}).selectOption('107555');
  await form.getByRole('button',{name:'Зберегти модифікацію'}).click();await expect(form).not.toBeVisible();
- const generator=page.getByRole('region',{name:'Універсальний каталог запчастин'});
- await generator.getByRole('button',{name:'Розібрати на запчастини',exact:true}).click();await expect(generator).toContainText('Джерела та обмеження · 2 типів');await generator.getByRole('button',{name:'Зберегти перелік',exact:true}).click();
+ const generator=page.getByRole('region',{name:'Формування каталогу'});
+ await generator.getByRole('button',{name:'Розібрати на запчастини',exact:true}).click();
+ const confirmation=generator.getByRole('button',{name:'Підтвердити оновлення',exact:true});
+ const generated=generator.getByRole('heading',{name:'Каталог автомобіля готовий',exact:true});
+ await expect(confirmation.or(generated)).toBeVisible();
+ if(await confirmation.isVisible())await confirmation.click();
+ await expect(generated).toBeVisible();
+ await expect(generator).toContainText('Потенційних позицій: 2');
+ await generator.getByRole('button',{name:'Переглянути результати',exact:true}).click();
  const tree=page.getByRole('region',{name:'Фізичний склад вузлів'});
  await expect(tree.getByLabel('Вибрати: Тестовий стартер',{exact:true})).toBeVisible();
  // Category selection must not receive the other category.
  await tree.getByRole('navigation',{name:'Категорії запчастин'}).getByRole('button',{name:/Електрика та електроніка/}).click();
  const all=tree.getByLabel('Вибрати всі за поточними фільтрами',{exact:true});await all.check();
  let bar=tree.getByRole('region',{name:'Масові дії'});if(await bar.count()===0)bar=tree.getByLabel('Масові дії',{exact:true});
- await bar.getByRole('button',{name:'Є в авто (1)',exact:true}).click();await expect(tree.getByRole('status').filter({hasText:'Оновлено: 1'}).first()).toBeVisible();
+ await bar.getByRole('button',{name:'Позначити наявними',exact:true}).click();await expect(tree.getByRole('status').filter({hasText:'Оновлено: 1'}).first()).toBeVisible();
  // The explicit receipt also confirms actual dismantling: no separate mass action.
  await all.check();await tree.getByRole('button',{name:'Додати вибрані на склад',exact:true}).click();
- const receipt=tree.getByRole('region',{name:'Підтвердження надходження'});await expect(receipt).toContainText('До надходження: 1');await expect(receipt).toContainText('Підтвердимо демонтаж: 1');
- await receipt.getByLabel(/Підтверджую фактичний демонтаж і надходження 1 деталей/).check();await receipt.getByRole('button',{name:'Оприбуткувати 1 деталей'}).click();await expect(receipt).not.toBeVisible();
+ const receipt=page.getByRole('dialog',{name:'Підтвердження надходження'});await expect(receipt).toContainText('Можна додати на склад: 1');
+ await receipt.getByLabel(/Підтверджую фактичну наявність і демонтаж 1/).check();await receipt.getByRole('button',{name:'Додати 1 деталей на склад'}).click();await expect(receipt).not.toBeVisible();
  const cookie=(await c.cookies()).find(r=>r.name==='warehouse_session').value;
  const vehicles=await (await c.request.get('/api/v1/vehicles')).json();assert.equal(vehicles.items.length,1);const v=vehicles.items[0];
  const parts=await (await c.request.get('/api/v1/parts?vehicle_id='+v.id)).json();assert.equal(parts.items.length,1);assert.equal(parts.items[0].quantity,1);assert.match(parts.items[0].name,/Тестовий стартер/);

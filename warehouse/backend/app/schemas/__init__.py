@@ -120,6 +120,7 @@ class VinResolutionInput(Input):
 
 
 class VehicleInput(Input):
+    vin_intake_mode: Literal["manual"] | None = None
     vin_resolution: VinResolutionInput | None = None
     source_identity: VinSourceIdentity | None = None
     catalogue_selection: VinCatalogueSelection | None = None

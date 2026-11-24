@@ -104,6 +104,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
       year:year?Number(year):null,status:'planned',
     };
     if(valid)values.vin=vin;
+    if(manual)values.vin_intake_mode='manual';
     for(const field of ['generation','engine','engine_code','fuel_type','transmission','drive_type']){
       if(characteristics[field])values[field]=characteristics[field];
     }
