@@ -1,12 +1,9 @@
 """Focused offline API contract tests; no Oracle connection or provider credits."""
-import sys
-from pathlib import Path
 from contextlib import contextmanager
 
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "oracle_adapter"))
-import app as oracle
+from oracle_adapter import app as oracle
 
 
 class FakeCursor:

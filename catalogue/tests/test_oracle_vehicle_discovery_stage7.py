@@ -5,8 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "oracle_adapter"))
-import app as oracle
+from oracle_adapter import app as oracle
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import oracle_gateway as gateway
 
