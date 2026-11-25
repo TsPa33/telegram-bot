@@ -1,19 +1,16 @@
-"""CarPot Oracle MySQL catalogue adapter, phase 2: confirmed-table reads only.
-
-This is a separate internal service, NOT a modification to the live Catalogue API.
-It cannot read article_links or article_li before the migration finishes.
-Every query is an exact indexed SELECT with a hard output cap. Neither OEM
-cross-references nor PRD rows establish exact VIN/vehicle part compatibility.
-"""
+"""Internal, read-only Oracle MySQL catalogue adapter."""
 from contextlib import contextmanager
 import os
 import secrets
+from typing import Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
 app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.2.0", docs_url=None, redoc_url=None)
 
 ROW_LIMIT = 50
+CATEGORY_LIMIT = 256
+CatalogueKind = Literal["passenger", "commercial"]
 
 
 def authorize(x_oracle_adapter_key: str | None = Header(default=None)) -> None:
@@ -234,3 +231,160 @@ def vehicle_attributes(
     return {"source": "oracle", "source_modification_id": car_id,
             "kind": kind, **result, "vehicle_identity_only": True,
             "fitment_verified": False}
+
+
+def audit_identity(conn, car_id, kind):
+    table, flag = (("passanger_cars", "ispassengercar") if kind == "passenger"
+                   else ("commercial_vehicles", "iscommercialvehicle"))
+    with conn.cursor() as cur:
+        cur.execute(f"""SELECT DISTINCT m.manufacturerid AS manufacturer_id
+                        FROM {table} AS c FORCE INDEX (PRIMARY)
+                        LEFT JOIN models AS m ON m.id=c.modelid AND m.{flag}='True'
+                        WHERE c.id=%s LIMIT 2""", (car_id,))
+        makers = cur.fetchall()
+    if not makers:
+        raise HTTPException(404, "Modification absent from requested catalogue")
+    if len(makers) != 1 or not makers[0]["manufacturer_id"]:
+        raise HTTPException(503, "Ambiguous catalogue manufacturer")
+    return makers[0]["manufacturer_id"]
+
+
+def audit_source(kind):
+    if kind == "passenger":
+        return "passanger_car_pds", "passangercarid", 2
+    # The Oracle schema's commercial linkage type must be confirmed on the
+    # source before it can be enabled. Passenger linkage type is reserved.
+    value = os.getenv("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
+    if not value.isascii() or not value.isdecimal() or len(value) > 5:
+        raise HTTPException(503, "Commercial linkage type not configured")
+    linkage_type = int(value)
+    if not 1 <= linkage_type <= 65535 or linkage_type == 2:
+        raise HTTPException(503, "Invalid commercial linkage type")
+    return "commercial_vehicle_pds", "commercialvehicleid", linkage_type
+
+
+AUDIT_CTES = """
+WITH links AS (
+    SELECT DISTINCT productid, supplierid,
+           CAST(datasupplierarticlenumber AS BINARY) AS article_key,
+           datasupplierarticlenumber AS article_number
+    FROM article_links FORCE INDEX (linkageid)
+    WHERE linkageid=%s AND linkagetypeid=%s AND supplierid > 0
+      AND datasupplierarticlenumber <> ''
+), articles AS (
+    SELECT DISTINCT supplierid, article_key, article_number FROM links
+), oems AS (
+    SELECT DISTINCT a.supplierid, a.article_key, CAST(o.OENbr AS BINARY) AS oem_key
+    FROM articles AS a
+    STRAIGHT_JOIN article_oe AS o FORCE INDEX (supplierid)
+       ON o.supplierid=a.supplierid
+      AND o.datasupplierarticlenumber=a.article_number
+      AND CAST(o.datasupplierarticlenumber AS BINARY)=a.article_key
+      AND o.manufacturerId=%s
+    WHERE o.OENbr <> ''
+)
+"""
+
+
+def audit_response(car_id, kind, manufacturer_id):
+    return dict(source="oracle", source_modification_id=car_id, kind=kind,
+                manufacturer_id=manufacturer_id, source_association_only=True,
+                fitment_verified=False)
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/audit", dependencies=[Depends(authorize)])
+def vehicle_audit(kind: CatalogueKind, car_id: int = Path(ge=1)):
+    table, column, linkage_type = audit_source(kind)
+    sql = AUDIT_CTES + f""", prd_links AS (
+        SELECT nodeid, productid, supplierid
+        FROM {table} FORCE INDEX (PRIMARY)
+        WHERE {column}=%s
+    ), scoped_prd AS (
+        SELECT 0 AS scope_id, NULL AS category_id, productid FROM prd_links
+        UNION ALL
+        SELECT 1, nodeid, productid FROM prd_links
+    ), prd_counts AS (
+        SELECT scope_id, category_id, COUNT(*) AS prd_links,
+               COUNT(DISTINCT productid) AS unique_part_types
+        FROM scoped_prd GROUP BY scope_id, category_id
+    ), category_articles AS (
+        SELECT DISTINCT p.nodeid AS category_id, l.supplierid, l.article_key
+        FROM links AS l LEFT JOIN prd_links AS p USING (productid, supplierid)
+    ), scoped_articles AS (
+        SELECT 0 AS scope_id, NULL AS category_id, supplierid, article_key FROM articles
+        UNION ALL
+        SELECT 1, category_id, supplierid, article_key FROM category_articles
+    ), article_counts AS (
+        SELECT a.scope_id, a.category_id,
+               COUNT(DISTINCT a.supplierid, a.article_key) AS unique_articles,
+               COUNT(DISTINCT o.supplierid, o.article_key) AS articles_with_oem,
+               COUNT(DISTINCT o.oem_key) AS unique_oem_codes
+        FROM scoped_articles AS a LEFT JOIN oems AS o USING (supplierid, article_key)
+        GROUP BY a.scope_id, a.category_id
+    ), scopes AS (
+        SELECT 0 AS scope_id, NULL AS category_id
+        UNION DISTINCT
+        SELECT scope_id, category_id FROM prd_counts
+        UNION DISTINCT
+        SELECT scope_id, category_id FROM article_counts
+    )
+    SELECT s.scope_id, s.category_id,
+           COALESCE(p.prd_links, 0) AS prd_links,
+           COALESCE(p.unique_part_types, 0) AS unique_part_types,
+           COALESCE(a.unique_articles, 0) AS unique_articles,
+           COALESCE(a.articles_with_oem, 0) AS articles_with_oem,
+           COALESCE(a.unique_oem_codes, 0) AS unique_oem_codes
+    FROM scopes AS s
+    LEFT JOIN prd_counts AS p ON s.scope_id=p.scope_id AND s.category_id <=> p.category_id
+    LEFT JOIN article_counts AS a ON s.scope_id=a.scope_id AND s.category_id <=> a.category_id
+    ORDER BY s.scope_id, s.category_id
+    LIMIT %s
+    """
+    with database() as conn:
+        manufacturer_id = audit_identity(conn, car_id, kind)
+        result = bounded_lookup(conn, sql, (car_id, linkage_type, manufacturer_id, car_id),
+                                CATEGORY_LIMIT + 1)
+    if result["truncated"]:
+        raise HTTPException(503, "Oracle audit category limit exceeded")
+    summary, *categories = result["items"]
+    summary.pop("category_id")
+    for row in (summary, *categories):
+        row.pop("scope_id")
+        total = row["unique_articles"]
+        covered = row["articles_with_oem"]
+        row["articles_without_oem"] = total - covered
+        row["oem_coverage_percent"] = round(100 * covered / total, 2) if total else None
+    return {**audit_response(car_id, kind, manufacturer_id), **summary, "categories": categories}
+
+
+def audit_page(car_id, kind, offset, limit, selection):
+    _, _, linkage_type = audit_source(kind)
+    with database() as conn:
+        manufacturer_id = audit_identity(conn, car_id, kind)
+        result = bounded_lookup(conn, AUDIT_CTES + selection,
+                                (car_id, linkage_type, manufacturer_id, offset), limit)
+    return {**audit_response(car_id, kind, manufacturer_id), **result,
+            "next_offset": offset + limit if result["truncated"] else None}
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/articles", dependencies=[Depends(authorize)])
+def audit_articles(kind: CatalogueKind, car_id: int = Path(ge=1),
+                   offset: int = Query(default=0, ge=0, le=2147483647),
+                   limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
+    return audit_page(car_id, kind, offset, limit, """
+        SELECT supplierid AS supplier_id, CONVERT(article_key USING utf8mb4) AS article_number,
+               COUNT(oem_key) AS oem_count
+        FROM articles LEFT JOIN oems USING (supplierid, article_key)
+        GROUP BY supplierid, article_key
+        ORDER BY supplierid, article_key LIMIT %s, %s
+    """)
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/oem", dependencies=[Depends(authorize)])
+def audit_oem(kind: CatalogueKind, car_id: int = Path(ge=1),
+              offset: int = Query(default=0, ge=0, le=2147483647),
+              limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
+    return audit_page(car_id, kind, offset, limit, """
+        SELECT CONVERT(oem_key USING utf8mb4) AS oem_number, COUNT(*) AS article_count
+        FROM oems GROUP BY oem_key ORDER BY oem_key LIMIT %s, %s
+    """)

@@ -97,3 +97,51 @@ def test_untrusted_proxy_is_rejected(monkeypatch):
         with pytest.raises(HTTPException) as error:
             gateway._settings()
         assert error.value.status_code == 503
+
+
+def test_audit_routes_require_kind_and_validate_upstream_namespace(monkeypatch):
+    calls = []
+
+    def request(path, params, **options):
+        calls.append((path, params, options))
+        return {
+            "source": "oracle", "source_modification_id": 9281, "kind": "passenger",
+            "manufacturer_id": 120, "source_association_only": True, "fitment_verified": False,
+            "categories": [], "items": [{"oem_number": "272440", "article_count": 1}],
+            "truncated": True, "next_offset": 2,
+        }
+
+    monkeypatch.setattr(gateway, "_request", request)
+    api = client(monkeypatch)
+    base = "/api/v1/oracle/vehicles/9281"
+    assert api.get(base + "/audit").status_code == 422
+    assert calls == []
+    assert api.get(base + "/audit", params={"kind": "passenger"}).status_code == 200
+    assert calls[-1] == (base + "/audit", {"kind": "passenger"},
+                         {"audit_summary": True, "modification_lookup": True})
+    assert api.get(base + "/audit", params={"kind": "commercial"}).status_code == 503
+    params = {"kind": "passenger", "offset": 1, "limit": 1}
+    assert api.get(base + "/oem", params=params).json()["next_offset"] == 2
+    assert calls[-1][1] == params
+    assert api.get(base + "/oem", params={**params, "offset": 2}).status_code == 503
+
+
+def test_audit_missing_upstream_route_is_an_outage(monkeypatch):
+    enabled(monkeypatch)
+    import httpx
+
+    class MockClient(httpx.Client):
+        def __init__(self, **kwargs):
+            super().__init__(transport=httpx.MockTransport(self.reply), **kwargs)
+
+        @staticmethod
+        def reply(request):
+            return httpx.Response(404, json={"detail": detail})
+
+    monkeypatch.setattr(gateway.httpx, "Client", MockClient)
+    api = client(monkeypatch)
+    path = "/api/v1/oracle/vehicles/9281/audit"
+    detail = "Not Found"
+    assert api.get(path, params={"kind": "commercial"}).status_code == 503
+    detail = "Modification absent from requested catalogue"
+    assert api.get(path, params={"kind": "commercial"}).status_code == 404
