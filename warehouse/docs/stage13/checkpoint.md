@@ -96,3 +96,40 @@ Draft PR готові до незалежного перегляду коду т
 - Моделі перевірено на межі трьох сторінок, а модифікації — на переході між обмеженою вибіркою та наступним джерельним курсором. Форма зберігає курсори інших виробників після продовження однієї гілки пошуку.
 - Технічне уточнення у вибраній моделі скидає курсор модифікацій і повторює пошук у тій самій моделі. Неповні відповіді залишаються неповними, без автоматичного вибору. Браузерний сценарій окремо перевіряє уточнення з наступної сторінки.
 - Результати фінального SHA публікуються в [PR #581](https://github.com/TsPa33/telegram-bot/pull/581). Catalogue PR #580 і середовища розгортання залишаються поза цим пакетом.
+
+## 25 листопада · практична перевірка 10 VIN
+
+На Warehouse SHA `4d4c2acdf85b154bd0d7b91923e3a6dc7d083627` виконано `lookup(vin, public_only=True)` для десяти VIN із публічних записів. Збережено повний перелік нормалізованих характеристик, додаткових полів і станів провайдерів у [JSON спостережень](public-vin-observations-2026-11-25.json). Дані оголошень використано для походження VIN та незалежної довідки про модель.
+
+| VIN | Публічне авто | Відповідь штатного декодера | Джерело VIN |
+| --- | --- | --- | --- |
+| `WBAWB73549P045741` | BMW 335i 2009 | Марка, модель, рік, купе, 3.0 л, бензин, 300 к.с. | [BaT](https://bringatrailer.com/listing/2009-bmw-335i-coupe-14/) |
+| `WAUUL78E78A124660` | Audi S4 Avant 2008 | Марка, модель, рік, універсал, 4.163 л, бензин, 344 к.с. | [BaT](https://bringatrailer.com/listing/2008-audi-s4-43/) |
+| `WVWDC21JX1W158839` | Volkswagen GTI 2001 | Марка, модель, рік, кузов, 1.781 л, бензин, GLS | [BaT](https://bringatrailer.com/listing/2001-volkswagen-gti-2/) |
+| `WDDHH8JB5EA971934` | Mercedes-Benz E350 4MATIC 2014 | E-Class, рік, універсал, 3.5 л, бензин, AWD | [BaT](https://bringatrailer.com/listing/2014-mercedes-benz-e350-wagon-42/) |
+| `YV4A22PK5G1081029` | Volvo XC90 T6 AWD 2016 | XC90, рік, B4204T27, 2 л, бензин, AWD, АКПП. Додаткова мітка `Hybrid` потребує звірки з заводським стікером. | [Заводський стікер](https://monroneylabels.com/cars/12416074-2016-volvo-xc90/window_sticker.pdf?cfl=5127750096) |
+| `JT3FJ62G9K1100779` | Toyota Land Cruiser 1989 | Марка, модель, рік, 3F-E, 3.955 л, бензин, 4WD | [BaT](https://bringatrailer.com/listing/1989-toyota-land-cruiser-fj62-325/) |
+| `VF1RJB00067926560` | Renault Captur, реєстрація 2021 | Лише тип транспорту. Марка, модель і рік відсутні. | [Copart](https://g-static.copart.com/v1/AUTH_svc_depdoc/ids-g-prod-lpp/1124/5de487c4ec0e497a87ba227be0ed19b9_O.pdf) |
+| `1FAFP42X3WF184546` | Ford Mustang GT 1998 | Марка, модель, рік, купе, 4.6 л, бензин, 225 к.с. Тип КПП відсутній. | [AutoToday](https://www.autostoday.com/cars-for-sale/used-cars/listing/1FAFP42X3WF184546/1998-ford-mustang-v8-gt-nazareth-pa) |
+| `XLRASH4300G220293` | DAF XF 530, реєстрація 2018 | Порожні характеристики | [Truck1](https://www.truck1.eu/trucks/box-trucks/daf-xf-530-6x2-manual-walking-floor-dutch-registration-a5912463.html) |
+| `WMAT72ZZZ1L027315` | MAN 33.604 DFA 2002 | Порожні характеристики | [Truck1](https://www.truck1.eu/tractor-units/d-2002-man-33-604-dfa-6-4-4-sws-szm-a7537137.html) |
+
+Марка й модель є у 7/10. FreeVINDecoder повернув дані для Volvo, статус `no_explicit_vehicle_data` для Mercedes-Benz та `rate_limited` для решти восьми. Результати описують цей запуск. Поля з оголошень не підміняли відповідь декодера.
+
+### Каталожна частина і запуск на Windows
+
+Каталожну частину не виміряно. У Codex не було авторизованої Warehouse-сесії, ключа Catalogue чи прямого доступу до локальної MySQL. Railway показав успішний Warehouse deployment з `a9b3f377…` і Catalogue з `8bd377d7…`. Метадані розгортань не підтверджують покриття VIN. Значення кількості моделей і PRD, вибір точного ID, OEM-покриття й каталог для кожного VIN залишаються невиміряними. Комерційний endpoint графа на SHA #580 повертає `unsupported` за контрактом. Це обмеження публікації, без висновку про фактичні зв’язки у MySQL.
+
+[Invoke-CarPotVinAudit.ps1](Invoke-CarPotVinAudit.ps1) використовує GET-маршрути Warehouse Stage 13 та Catalogue #580. Прямі SQL-запити відсутні. Для діагностики майбутньої прогалини в імпорті код експортера встановлює ланцюжок `article_links(linkageid, linkagetypeid, productid, supplierid, datasupplierarticlenumber) → prd(id) → article_oe(supplierId, DataSupplierArticleNumber, manufacturerId)`. Опубліковані OEM також можуть надходити з `catalogue_oem`. Перш ніж робити висновок про відсутнє ребро в конкретній БД, потрібно перевірити її схему й дані з дозволеного середовища.
+
+Виконати у Windows PowerShell 5.1, підставивши свої **дозволені staging origins**:
+
+```powershell
+.\Invoke-CarPotVinAudit.ps1 -WarehouseUrl 'https://<warehouse-staging>' -CatalogueUrl 'https://<catalogue-staging>'
+```
+
+Скрипт бере чинний ключ `WAREHOUSE_CATALOGUE_KEY` і значення cookie `WAREHOUSE_SESSION_COOKIE` з локального оточення або запитує їх прихованим введенням. Для Catalogue URL також підтримано `WAREHOUSE_CATALOGUE_URL`. Дозволяйте запитувати сесію і ключ лише на очікуваних origins. Секрети й підписані VIN-токени не входять у звіти. Точний ID вибирає оператор, якщо його незалежно встановлено. Порожній вибір лишає відповідні метрики невідомими.
+
+Звіти `JSON`, `CSV` і `TXT` зберігаються у `C:\Users\Admin\CarPot-Diagnostics`. Для післязмінного запуску додати `-Phase AFTER -BeforeReport <шлях-до-BEFORE.json>`. Збережений ID повторно перевіряється у своєму namespace. CSV/TXT тоді містять обидві фази. За неповного суворого пошуку число кандидатів є спостережуваною нижньою межею. Різниця з повною видачею моделі сама по собі не встановлює, яке саме поле відсіяло кандидатів. Покриття OEM — частка PRD проєкції плану з джерельним зв’язком до OEM марки в зафіксованому SHA. Воно не вимірює факт надходження або підтвердження номера фізичної деталі.
+
+Перевірено синтаксис на PowerShell 7.4 і прогін зі змодельованими HTTP-контрактами, двома namespaces, пагінацією та звітами всіх трьох форматів. Windows PowerShell 5.1 і живі авторизовані маршрути в цьому сеансі не запускалися. Алгоритм і UI відкладено до фактичних каталожних показників BEFORE. Наскрізне оприбуткування і AFTER належать до приймання майбутніх змін. Платні провайдери, склад і робочі БД не використовувалися.
