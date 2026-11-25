@@ -51,7 +51,7 @@ ATTRIBUTE_NAMES = {
     "engine_cylinders": ("cylinders", "number of cylinders", "кількість циліндрів"),
 }
 TECHNICAL = tuple(key for key in ATTRIBUTE_NAMES if key != "engine_power_hp")
-FIELDS = ("manufacturer", "model", "year", "vehicle_type", *TECHNICAL, "engine_power_hp")
+FIELDS = ("manufacturer", "model", "year", "vehicle_type", "engine", *TECHNICAL, "engine_power_hp")
 QUESTIONS = ("vehicle_type", "model", "generation", "year", "body_class", "fuel_type",
              "engine_code", "engine_displacement_l", "engine_power_kw", "transmission",
              "drive_type", "transmission_speeds", "doors", "engine_cylinders")
@@ -75,6 +75,9 @@ def normalized(field, value):
     name = key(value)
     if name in {"", "unknown", "none", "null", "na", "notapplicable", "невідомо", "неуточнено", "невизначено"}:
         return None
+    if field == "manufacturer":
+        from app.services.vin_source_directory import maker_key
+        return maker_key(str(value))
     if field in ALIASES:
         if field == "transmission":
             name = re.sub(r"^(?:\d+speed|\d+ступенева)", "", name)

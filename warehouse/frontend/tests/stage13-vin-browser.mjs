@@ -37,6 +37,7 @@ try{
   }
   async function ready(){
     await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('Aster Mobility · 3 Series · 2015');
+    await dialog.getByRole('combobox',{name:/^Доступні модифікації/}).selectOption({index:1});
     await expect(dialog.getByText(/Доступний частковий план/)).toBeVisible();
     await expect(dialog.getByText(/50 грн|Перевірка API-балансу|Тест VINState/)).toHaveCount(0);
   }
@@ -130,7 +131,7 @@ try{
   await page.unrouteAll({behavior:'wait'});
   await expect(dialog.getByText('STALE RESULT',{exact:false})).toHaveCount(0);
 
-  await dialog.getByLabel('Характеристики перевірено',{exact:true}).check();
+
   await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
   await expect(dialog).not.toBeVisible();
   const vehicles=await (await context.request.get('/api/v1/vehicles')).json();

@@ -99,24 +99,15 @@ def effective_evidence(context, clarifications):
         value = None if observation["confidence"] == "conflict" else _value(field, observation["reported"])
         evidence[field] = {**observation, "value": value}
     for field, answer in clarifications.answers.items():
-        if field not in policy.QUESTIONS and field != "manufacturer":
+        if field not in policy.FIELDS:
             raise HTTPException(422, "Непідтримуване уточнення VIN")
-        prior = evidence.get(field, {})
         value = _value(field, answer)
         if answer and value is None:
             raise HTTPException(422, "Не вдалося розпізнати значення уточнення")
-        if prior.get("value") is not None and prior["value"] != value:
-            raise HTTPException(409, "Уточнення суперечить збереженій характеристиці VIN")
-        if prior.get("confidence") == "conflict" and not clarifications.reviewed:
-            raise HTTPException(422, "Підтвердьте перевірку розбіжностей VIN")
-        if prior.get("value") is None:
-            evidence[field] = {"value": value, "reported": answer or "", "source": "operator",
-                               "confidence": "clarified" if value is not None else "unknown"}
+        evidence[field] = {"value": value, "reported": answer or "", "source": "operator",
+                           "confidence": "clarified" if value is not None else "unknown"}
     correction = clarifications.model_correction
     if correction:
-        prior = evidence.get("model", {})
-        if not clarifications.reviewed or policy.model_relation(prior.get("value"), correction) == "mismatch":
-            raise HTTPException(409, "Виправлення моделі потребує перевірки та має відповідати серії VIN")
         evidence["model"] = {"value": correction, "reported": correction,
                              "source": "operator", "confidence": "corrected"}
     hp = evidence.pop("engine_power_hp", None)
@@ -135,7 +126,7 @@ def _model_facts(maker, model):
     return {"manufacturer": maker["manufacturer"], "model": model["name"],
             "model_period": policy.interval(model.get("construction_interval")),
             "variant_period": (None, None), "specs": {
-                "manufacturer": {policy.key(maker["manufacturer"]): maker["manufacturer"]},
+                "manufacturer": {policy.normalized("manufacturer", maker["manufacturer"]): maker["manufacturer"]},
                 "vehicle_type": {maker["kind"]: maker["kind"]},
             }}
 
@@ -207,11 +198,8 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
     model_cursors = []
     unavailable = False
     with ThreadPoolExecutor(max_workers=8) as executor:
-        declared = evidence.get("vehicle_type", {}).get("value")
-        kinds = (declared,) if declared else ("passenger", "commercial")
-        all_makers = directory.manufacturer_choices(make, adapter, kinds=kinds)
-        makers = [maker for maker in all_makers["items"] if _eligible(evidence, _model_facts(maker, {"name": ""}))
-                  and (not selected_maker or f'{maker["kind"]}:{maker["manufacturer_id"]}' == selected_maker)]
+        all_makers = directory.manufacturer_choices(make, adapter)
+        makers = [maker for maker in all_makers["items"] if not selected_maker or f'{maker["kind"]}:{maker["manufacturer_id"]}' == selected_maker]
         complete = not all_makers["partial"] and not selected_maker and len(makers) <= _MAX_MAKERS
         for maker in makers[_MAX_MAKERS:]:
             model_cursors.append({"maker": f'{maker["kind"]}:{maker["manufacturer_id"]}',
@@ -229,10 +217,11 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
                 complete = False
                 model_cursors.append({"maker": f'{maker["kind"]}:{maker["manufacturer_id"]}',
                                       "after": model_cursor, "kind": maker["kind"]})
-            model_rows.extend((maker, model) for model in models if _eligible(evidence, _model_facts(maker, model)))
+            model_rows.extend((maker, model) for model in models)
         model_rows.sort(key=lambda pair: (
             policy.compare(evidence, _model_facts(*pair)).get("model") != "compatible",
             policy.compare(evidence, _model_facts(*pair)).get("year") != "compatible",
+            policy.compare(evidence, _model_facts(*pair)).get("vehicle_type") == "mismatch",
             pair[1]["id"],
         ))
         complete &= len(model_rows) <= _MAX_MODELS
@@ -252,19 +241,21 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
                 next_after = cursor
             complete &= cursor is None
             for variant in page["items"]:
-                facts = _model_facts(maker, model)
-                facts["variant_period"] = policy.interval(variant.get("construction_interval"))
-                if _eligible(evidence, facts):
-                    directory_rows.append((maker, model, variant))
+                directory_rows.append((maker, model, variant))
         complete &= len(directory_rows) <= _MAX_VARIANTS
         if selected_model and len(directory_rows) > _MAX_VARIANTS:
             next_after = directory_rows[_MAX_VARIANTS - 1][2]["id"]
         candidates = list(executor.map(lambda row: _candidate(adapter, *row), directory_rows[:_MAX_VARIANTS]))
     complete &= all(candidate["attributes_complete"] for candidate in candidates)
-    candidates = [candidate for candidate in candidates if _eligible(evidence, candidate)]
-    candidates.sort(key=lambda row: -list(policy.compare(evidence, row).values()).count("compatible"))
+    def rank(candidate):
+        matches = policy.compare(evidence, candidate)
+        values = list(matches.values())
+        return (matches.get("model") != "compatible", matches.get("model") == "mismatch",
+                matches.get("year") == "mismatch", values.count("mismatch"), -values.count("compatible"))
+
+    candidates.sort(key=rank)
     answers = clarifications.answers
-    status = ("review_required" if review and not clarifications.reviewed else "complete" if complete
+    status = ("complete" if complete
               else "unavailable" if unavailable and not candidates else "incomplete")
     revision = digest(evidence)
     items = []
@@ -276,12 +267,12 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
             "model", "manufacturer", "modification", "construction_interval", "attributes_complete")},
             "matches": policy.compare(evidence, candidate), "choice": token})
     auto = None
-    if complete and len(items) == 1 and not review and not clarifications.model_correction:
+    if complete and len(items) == 1 and not review and not clarifications.model_correction and not clarifications.answers:
         matches = items[0]["matches"]
         technical = set(policy.TECHNICAL) - {"generation", "doors", "transmission_speeds", "engine_cylinders"}
         supported = sum(matches.get(field) == "compatible" and evidence[field]["confidence"] == "reported"
                         for field in technical if field in evidence)
-        if matches.get("model") == "compatible" and matches.get("year") == "compatible" and supported >= 2:
+        if "mismatch" not in matches.values() and matches.get("model") == "compatible" and matches.get("year") == "compatible" and supported >= 2:
             auto = items[0]["choice"]
     return dict(items=items, models=[{**_locator(maker, model, {"id": 0}), "model": model["name"],
                                     "construction_interval": model.get("construction_interval")}
@@ -295,8 +286,6 @@ def selected_candidate(adapter, context, clarifications, token, who):
     evidence = effective_evidence(context, clarifications)
     if signed["vin"] != context["vin"] or signed["evidence"] != digest(evidence):
         raise HTTPException(409, "Характеристики змінилися. Повторіть вибір модифікації")
-    if any(row["confidence"] == "conflict" for row in evidence.values()) and not clarifications.reviewed:
-        raise HTTPException(422, "Підтвердьте перевірку розбіжностей VIN")
     locator = signed["locator"]
     make = evidence.get("manufacturer", {}).get("reported") or ""
     makers = directory.manufacturer_choices(make, adapter, kinds=(locator["kind"],))
@@ -314,10 +303,6 @@ def selected_candidate(adapter, context, clarifications, token, who):
     if not variant:
         raise HTTPException(409, "Обрану модифікацію більше не знайдено")
     candidate = _candidate(adapter, maker, model, variant)
-    if not _eligible(evidence, candidate):
-        raise HTTPException(409, "Модифікація суперечить перевіреним характеристикам VIN")
-    if policy.compare(evidence, candidate).get("model") == "unknown" and not clarifications.reviewed:
-        raise HTTPException(422, "Потрібна перевірка неоднозначної назви моделі")
     if signed["snapshot"] != _candidate_revision(candidate):
         if not candidate["attributes_complete"]:
             raise HTTPException(503, "Дані модифікації тимчасово недоступні")
@@ -340,14 +325,12 @@ def vehicle_details(context, evidence):
     )
 
 
-def validate_vehicle_fields(values, evidence, candidate=None):
+def validate_vehicle_fields(values, evidence):
     for field in ("manufacturer", "model", "generation", "year", "fuel_type", "engine_code",
                   "engine_displacement_l", "transmission", "drive_type"):
         supplied = values.get(field)
         observation = evidence.get(field)
         actual = _value(field, supplied)
-        if actual is not None and candidate and not _eligible({field: {"value": actual}}, candidate):
-            raise HTTPException(409, "Характеристики автомобіля суперечать вибраній модифікації")
         if not observation or observation["value"] is None:
             continue
         expected = observation["value"]
@@ -364,7 +347,7 @@ def validate_saved_evidence(vehicle, entry):
     if details.get("trust") != "server_vin_report_with_operator_review":
         return
     specs = policy.source_specs(entry.get("specifications") or [])
-    specs["manufacturer"] = {policy.key(entry["manufacturer"]): entry["manufacturer"]}
+    specs["manufacturer"] = {policy.normalized("manufacturer", entry["manufacturer"]): entry["manufacturer"]}
     if entry.get("generation"):
         specs["generation"] = {policy.normalized("generation", entry["generation"]): entry["generation"]}
     modification = entry["modification"]
@@ -417,8 +400,6 @@ def graph_plan(adapter, identity):
 
 
 def graph_preview(adapter, candidate):
-    if not candidate["attributes_complete"]:
-        return "attributes_pending", None
     return graph_plan(adapter, candidate)
 
 

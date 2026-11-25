@@ -12,7 +12,7 @@ export type VinDecode={
 };
 const emptyClarifications:Clarifications={answers:{},reviewed:false};
 const summaryFields=['body_class','engine','engine_code','engine_displacement_l','fuel_type','transmission','drive_type'];
-const reviewable=new Set(Object.keys(fieldLabels).filter(field=>!['engine','trim'].includes(field)));
+const reviewable=new Set(Object.keys(fieldLabels).filter(field=>field!=='trim'));
 const manualFields=['manufacturer','model','year','generation','engine','engine_code','engine_displacement_l','fuel_type','transmission','drive_type'];
 
 export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
@@ -27,18 +27,15 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
   const [choice,setChoice]=useState<VinChoice|null>(null);
   const [checkingChoice,setCheckingChoice]=useState(false);
   const [acceptBase,setAcceptBase]=useState(false);
-  const [correction,setCorrection]=useState('');
   const [error,setError]=useState('');
   const [existing,setExisting]=useState<Row|null>(null);
   const [loading,setLoading]=useState(false);
   const [saving,setSaving]=useState(false);
-  const [confirmed,setConfirmed]=useState(false);
   const decodeRequest=useRef<AbortController|null>(null);
   const writing=useRef(false);
   const valid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
   const manual=mode==='manual';
   const reviewFields=[...new Set([...Object.keys(result?.conflicts||{}),...Object.keys(result?.consistency_issues||{})])].filter(field=>reviewable.has(field));
-  const needsReview=reviewFields.length>0&&!clarifications.reviewed;
 
   useEffect(()=>()=>decodeRequest.current?.abort(),[]);
 
@@ -46,16 +43,11 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
     setChoice(value);
     setAcceptBase(false);
     setCheckingChoice(false);
-    setConfirmed(false);
   },[]);
 
   function setAnswer(field:string,value:string|null){
     select(null);
     setClarifications(before=>({...before,answers:{...before.answers,[field]:value}}));
-  }
-  function review(){
-    select(null);
-    setClarifications(before=>({...before,reviewed:true}));
   }
   function clearResult(){
     decodeRequest.current?.abort();
@@ -63,7 +55,6 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
     setResult(null);
     setDraft({});
     setClarifications(emptyClarifications);
-    setCorrection('');
     setError('');
     setExisting(null);
     select(null);
@@ -93,17 +84,17 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
   };
   const hasGraph=choice?.graph.status==='exact'||choice?.graph.status==='partial';
   const ready=(manual||result)&&(!vin||valid)&&!!String(characteristics.manufacturer||'').trim()
-    &&!!String(characteristics.model||'').trim()&&!needsReview&&!checkingChoice&&(manual||hasGraph||acceptBase);
+    &&!!String(characteristics.model||choice?.candidate.model||'').trim()&&!checkingChoice&&(manual||hasGraph||acceptBase);
 
   async function create(){
-    if(!ready||writing.current||!confirmed)return;
+    if(!ready||writing.current)return;
     const year=String(characteristics.year||'').trim();
     if(year&&!/^\d{4}$/.test(year)){
       setError('Вкажіть модельний рік чотирма цифрами.');
       return;
     }
     const values:Row={
-      manufacturer:characteristics.manufacturer,model:characteristics.model,
+      manufacturer:characteristics.manufacturer,model:characteristics.model||choice?.candidate.model,
       year:year?Number(year):null,status:'planned',
     };
     if(valid)values.vin=vin;
@@ -147,7 +138,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
         value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{
           setVin(e.target.value.trim().toUpperCase());
           if(!manual)clearResult();
-          else {setConfirmed(false);setError('');setExisting(null)}
+          else {setError('');setExisting(null)}
         }}/></label>
       {!manual&&<button type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>
         {loading?'Визначаємо…':'Визначити автомобіль'}
@@ -157,10 +148,10 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
     {manual&&<div className="vin-fields vin-manual-fields">
       {manualFields.map(field=><label key={field}>{fieldLabels[field]}
         {field==='drive_type'?<select disabled={saving} value={draft[field]||''} onChange={e=>{
-          setDraft(before=>({...before,[field]:e.target.value}));setConfirmed(false);
+          setDraft(before=>({...before,[field]:e.target.value}));
         }}><option value="">Невідомо</option><option>FWD</option><option>RWD</option><option>AWD</option><option>4WD</option></select>:
         <input disabled={saving} value={draft[field]||''} maxLength={field==='year'?4:100}
-          onChange={e=>{setDraft(before=>({...before,[field]:e.target.value}));setConfirmed(false)}}/>}
+          onChange={e=>{setDraft(before=>({...before,[field]:e.target.value}))}}/>}
       </label>)}
       <p>План за базовим каталогом CarPot.</p>
     </div>}
@@ -173,73 +164,50 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
           <dt>{fieldLabels[key]}</dt><dd>{String(characteristics[key])}</dd>
         </div>)}</dl>
       </div>
-      {reviewFields.length>0&&<fieldset>
-        <legend>Перевірка розбіжностей</legend>
-        {reviewFields.map(field=><p key={field}>
-          {fieldLabels[field]||field} · {result.conflicts?.[field]
-            ?[result.conflicts[field].primary,result.conflicts[field].secondary].join(' / ')
-            :result.consistency_issues?.[field]}
-        </p>)}
-        {!clarifications.reviewed&&<button type="button" disabled={saving} onClick={review}>Розбіжності перевірено</button>}
-        {clarifications.reviewed&&reviewFields.filter(field=>fieldLabels[field]&&
-          !['manufacturer','model','engine','engine_power_hp'].includes(field)).map(field=><label key={field}>
-          {fieldLabels[field]}
-          <select value={clarifications.answers[field]||''} disabled={saving}
-            onChange={e=>setAnswer(field,e.target.value||null)}>
-            <option value="">Невідомо</option>
-            {[...new Set([result.conflicts?.[field]?.primary||result.vehicle[field],
-              result.conflicts?.[field]?.secondary].filter(Boolean).map(String))].map(value=><option key={value}>{value}</option>)}
-          </select>
-        </label>)}
-      </fieldset>}
-      {['manufacturer','model'].some(field=>!characteristics[field])&&<form className="vin-fields" onSubmit={e=>{
-        e.preventDefault();
-        const form=new FormData(e.currentTarget);
-        for(const field of ['manufacturer','model']){
-          const value=String(form.get(field)||'').trim();
-          if(value)setAnswer(field,value);
-        }
-      }}>
-        {['manufacturer','model'].filter(field=>!characteristics[field]).map(field=><label key={field}>
-          {fieldLabels[field]}<input name={field} maxLength={100} disabled={saving||needsReview}/>
-        </label>)}
-        <button type="submit" disabled={saving||needsReview}>Застосувати уточнення</button>
-      </form>}
+      <details>
+        <summary>Виправити характеристики</summary>
+        <form className="vin-fields" onSubmit={e=>{
+          e.preventDefault();
+          const form=new FormData(e.currentTarget);
+          const answers={...clarifications.answers};
+          for(const field of manualFields){
+            const value=String(form.get(field)||'').trim()||null;
+            if((value||'')!==String(characteristics[field]||'').trim()){
+              answers[field]=value;
+            }
+          }
+          select(null);
+          setClarifications(before=>({...before,answers}));
+        }}>
+          {manualFields.map(field=><label key={field}>{fieldLabels[field]}
+            <input name={field} maxLength={100} defaultValue={characteristics[field]||''} disabled={saving}/>
+          </label>)}
+          <button type="submit" disabled={saving}>Застосувати зміни</button>
+        </form>
+      </details>
+      {(!characteristics.manufacturer||!characteristics.model)&&<p role="status">Укажіть марку й модель у розділі «Виправити характеристики».</p>}
       {characteristics.manufacturer&&can('catalog.view')&&<VinCataloguePicker
         key={JSON.stringify([result.resolution_context,clarifications.reviewed,clarifications.model_correction,
           clarifications.answers.manufacturer,clarifications.answers.model,clarifications.answers.vehicle_type])}
-        context={result.resolution_context} clarifications={clarifications} disabled={saving||needsReview}
-        onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onReview={review} onSelect={select} onPending={setCheckingChoice}/>}
+        context={result.resolution_context} clarifications={clarifications} disabled={saving}
+        onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onSelect={select} onPending={setCheckingChoice}/>}
       {!hasGraph&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
-        disabled={saving||checkingChoice} onChange={e=>{setAcceptBase(e.target.checked);setConfirmed(false)}}/>
+        disabled={saving||checkingChoice} onChange={e=>{setAcceptBase(e.target.checked)}}/>
         Додати з базовим каталогом без підтвердженого переліку запчастин</label>}
       <details className="vin-details">
         <summary>Усі характеристики</summary>
         <dl>{Object.entries(result.vehicle).filter(([,value])=>value!=null&&String(value).trim()).map(([key,value])=><div key={key}>
-          <dt>{fieldLabels[key]||key}</dt><dd>{String(value)}{result.field_sources?.[key]&&<small>{result.field_sources[key]}</small>}</dd>
+          <dt>{fieldLabels[key]||key}</dt><dd>{String(value)}</dd>
         </div>)}
         {Object.entries(result.additional||{}).map(([key,item])=><div key={key}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
-        {result.vehicle.model&&<form className="vin-actions" onSubmit={e=>{
-          e.preventDefault();
-          if(correction.trim()){
-            select(null);
-            setClarifications(before=>({...before,reviewed:true,model_correction:correction.trim()}));
-          }
-        }}>
-          <label>Уточнена назва моделі<input value={correction} maxLength={100} disabled={saving}
-            onChange={e=>setCorrection(e.target.value)}/></label>
-          <button type="submit" disabled={saving||!correction.trim()}>Підтвердити виправлення</button>
-        </form>}
       </details>
       {identity?.catalogue_platform_admin===true&&result.provider_status&&<VinDiagnostics key={vin} vin={vin} result={result}/>}
     </>}
     {error&&<p role="alert">{error}</p>}
     {existing&&<button type="button" className="primary" onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
     <div className="vin-footer">
-      {(manual||result)&&<label className="vin-confirm"><input type="checkbox" checked={confirmed}
-        disabled={saving||!ready} onChange={e=>setConfirmed(e.target.checked)}/>Характеристики перевірено</label>}
       <div className="vin-actions">
-        <Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!ready||!confirmed}
+        <Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!ready}
           onClick={()=>void create()}>{saving?'Зберігаємо…':'Додати автомобіль'}</button></Permit>
         <button type="button" disabled={saving} onClick={onBack}>Скасувати</button>
       </div>

@@ -124,14 +124,14 @@ def lookup_context(logged, monkeypatch, result=None):
     return response.json()["resolution_context"], calls
 
 
-def test_filters_unknowns_detects_numeric_series_and_uses_no_graph_during_search(source):
+def test_ranks_numeric_series_without_hiding_models_or_requesting_graph(source):
     identity = who()
     page = resolution.search(source, context(identity), VinClarifications(), identity)
     assert page["search_complete"] is True
-    assert [row["source_modification_id"] for row in page["items"]] == [900]
-    assert [row["model_id"] for row in page["models"]] == [701]
-    assert page["items"][0]["choice"] == page["automatic"]
-    assert page["questions"] == []
+    assert [row["source_modification_id"] for row in page["items"]] == [900, 901]
+    assert {row["model_id"] for row in page["models"]} == {700, 701, 702}
+    assert page["models"][0]["model_id"] == 701
+    assert page["automatic"] is None
     assert {endpoint for endpoint, _ in source.calls} == {"manufacturers", "models", "modifications", "attributes"}
 
 
@@ -140,7 +140,7 @@ def test_filters_unknowns_detects_numeric_series_and_uses_no_graph_during_search
     ("transmission", "automatic"), ("drive_type", "RWD"), ("year", 2025), ("generation", "F20"),
     ("engine_power_kw", "290"), ("engine_power_hp", "400"), ("engine_code", "ZY99"),
 ])
-def test_confirmed_conflicts_are_filtered_and_rejected_when_live_source_changes(source, field, conflicting):
+def test_conflicting_facts_are_ranked_and_old_tokens_are_rejected(source, field, conflicting):
     source.attributes[900].extend([("Engine Code", "AX42"), ("Power (kW)", "135"), ("Generation", "F30")])
     identity = who()
     ctx = context(identity)
@@ -148,7 +148,10 @@ def test_confirmed_conflicts_are_filtered_and_rejected_when_live_source_changes(
     ticket = page["items"][0]["choice"]
     changed = context(identity, decoded(**{field: conflicting}))
     result = resolution.search(source, changed, VinClarifications(), identity)
-    assert all(row["source_modification_id"] != 900 for row in result["items"])
+    alternative = next(row for row in result["items"] if row["source_modification_id"] == 900)
+    assert alternative["matches"].get(field.replace("engine_power_hp", "engine_power_kw")) == "mismatch"
+    chosen, _ = resolution.selected_candidate(source, changed, VinClarifications(), alternative["choice"], identity)
+    assert chosen["source_modification_id"] == 900
     with pytest.raises(HTTPException, match="Характеристики змінилися") as error:
         resolution.selected_candidate(source, changed, VinClarifications(), ticket, identity)
     assert error.value.status_code == 409
@@ -164,7 +167,7 @@ def test_variant_questions_only_for_relevant_unknowns_and_missing_facts_stay_unk
     assert page["items"][1]["matches"]["engine_displacement_l"] == "unknown"
     clarifications = VinClarifications(answers={"drive_type": "FWD"})
     result = resolution.search(source, ctx, clarifications, identity)
-    assert [row["source_modification_id"] for row in result["items"]] == [900]
+    assert [row["source_modification_id"] for row in result["items"]] == [900, 901]
     assert result["questions"] == []
     result = resolution.search(source, ctx, VinClarifications(answers={"drive_type": None}), identity)
     assert len(result["items"]) == 2 and result["automatic"] is None and not result["questions"]
@@ -176,7 +179,7 @@ def test_truncated_attributes_and_outage_are_not_an_empty_directory(source):
     source.truncated.add("attributes")
     result = resolution.search(source, ctx, VinClarifications(), identity)
     assert result["status"] == "incomplete" and result["automatic"] is None
-    assert resolution.graph_preview(source, {"attributes_complete": False}) == ("attributes_pending", None)
+    assert resolution.graph_preview(source, {**ORACLE, "attributes_complete": False})[0] == "partial"
     source.outage.add("modifications")
     assert resolution.search(source, ctx, VinClarifications(), identity)["status"] == "unavailable"
     source.outage.add("manufacturers")
@@ -197,7 +200,7 @@ def test_scoped_variant_paging_resumes_at_last_consumed_id(source):
         assert not page["search_complete"] and page["automatic"] is None
         seen.extend(row["source_modification_id"] for row in page["items"])
         after = page["next_after"]
-    assert sorted(seen) == [index for index in range(900, 951) if index != 901]
+    assert sorted(seen) == list(range(900, 951))
 
 
 def test_context_rejects_expiry_tampering_tenant_and_vin(source, monkeypatch):
@@ -222,16 +225,15 @@ def test_review_can_correct_generic_model_without_replacing_original_evidence(so
     report["conflicts"] = {"fuel_type": {"primary": "Diesel", "secondary": "Petrol"}}
     ctx = context(identity, report)
     initial = resolution.search(source, ctx, VinClarifications(), identity)
-    assert initial["status"] == "review_required" and initial["automatic"] is None
-    with pytest.raises(HTTPException):
-        resolution.effective_evidence(ctx, VinClarifications(answers={"fuel_type": "Diesel"}))
-    reviewed = VinClarifications(answers={"fuel_type": "Diesel"}, reviewed=True, model_correction="3 Series")
+    assert initial["review"] == ["fuel_type"] and initial["automatic"] is None
+    resolution.selected_candidate(source, ctx, VinClarifications(), initial["items"][0]["choice"], identity)
+    reviewed = VinClarifications(answers={"fuel_type": "Diesel"}, model_correction="3 Series")
     page = resolution.search(source, ctx, reviewed, identity)
     candidate, evidence = resolution.selected_candidate(source, ctx, reviewed, page["items"][0]["choice"], identity)
     assert candidate["source_modification_id"] == 900 and page["automatic"] is None
     assert resolution.vehicle_details(ctx, evidence)["decoded"]["model"] == "Generic chassis"
-    with pytest.raises(HTTPException):
-        resolution.effective_evidence(context(identity), VinClarifications(reviewed=True, model_correction="30 Series"))
+    corrected = resolution.effective_evidence(context(identity), VinClarifications(model_correction="30 Series"))
+    assert corrected["model"]["value"] == "30 Series"
 
 
 @pytest.mark.parametrize("status", ["absent", "unavailable", "unverified", "identity_mismatch", "unsupported"])
@@ -258,7 +260,7 @@ def test_post_rechecks_trust_snapshot_and_conflicting_client_values(logged, sour
     headers = {"X-Vin-Context": token}
     search = logged.get("/api/v1/vehicles/vin/resolution", headers=headers)
     assert search.status_code == 200, search.text
-    choice = search.json()["automatic"]
+    choice = search.json()["items"][0]["choice"]
     graph = logged.get("/api/v1/vehicles/vin/resolution-graph",
                        headers={**headers, "X-Vin-Choice": choice})
     assert graph.json() == {"status": "partial", "source_snapshot_sha": SHA}
@@ -291,7 +293,7 @@ def test_post_rechecks_trust_snapshot_and_conflicting_client_values(logged, sour
 def test_verified_later_graph_upgrade_uses_existing_writer_and_never_creates_stock(logged, source, monkeypatch):
     token, _ = lookup_context(logged, monkeypatch)
     search = logged.get("/api/v1/vehicles/vin/resolution", headers={"X-Vin-Context": token})
-    choice = search.json()["automatic"]
+    choice = search.json()["items"][0]["choice"]
     source.graph_status = "absent"
     body = dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015)
     assert logged.post("/api/v1/vehicles", json={**body,
@@ -468,7 +470,7 @@ def test_incomplete_scoped_search_asks_only_supported_clarifications(source):
     assert not result["search_complete"] and result["automatic"] is None
     assert result["questions"] == [{"field": "drive_type", "options": ["FWD", "AWD"]}]
     clarified = resolution.search(source, ctx, VinClarifications(answers={"drive_type": "AWD"}), identity, **scope)
-    assert [row["source_modification_id"] for row in clarified["items"]] == [901]
+    assert [row["source_modification_id"] for row in clarified["items"]] == [901, 900]
     assert clarified["questions"] == [] and clarified["automatic"] is None
 
 
@@ -482,3 +484,54 @@ def test_explicit_base_without_selected_modification(logged, source, monkeypatch
         donor = db.get(Vehicle, response.json()["id"])
         assert donor.dismantling_v3["vin_intake"] == "reviewed"
         assert not donor.dismantling_v3.get("global_selection")
+
+
+def test_vw_alias_keeps_regional_and_commercial_identities():
+    from app.services.vin_source_directory import manufacturer_choices
+
+    class RegionalDirectory:
+        def get(self, path, query):
+            rows = {
+                ("passenger", "VW"): [{"id": 1, "name": "VW"}, {"id": 2, "name": "VW (USA)"},
+                                       {"id": 3, "name": "VW Industrial"}],
+                ("commercial", "Volkswagen"): [{"id": 1, "name": "Volkswagen"}],
+            }
+            return {"source": "oracle", "kind": query["kind"],
+                    "vehicle_identity_only": True, "fitment_verified": False,
+                    "items": rows.get((query["kind"], query["name"]), [])}
+
+    matches = manufacturer_choices("Volkswagen", RegionalDirectory())
+    assert {(r["kind"], r["manufacturer_id"]) for r in matches["items"]} == {
+        ("passenger", 1), ("passenger", 2), ("commercial", 1),
+    }
+
+
+def test_selected_graph_adds_oem_before_explicit_receipt(logged, source, monkeypatch):
+    token, _ = lookup_context(logged, monkeypatch)
+    page = logged.get("/api/v1/vehicles/vin/resolution", headers={"X-Vin-Context": token}).json()
+    result = logged.post("/api/v1/vehicles", json=dict(
+        manufacturer=MAKE, model="3 Series", year=2015, vin=VIN,
+        vin_resolution={"context": token, "choice": page["items"][0]["choice"]}))
+    assert result.status_code == 201, result.text
+    donor = result.json()["id"]
+    with Session(engine()) as db:
+        account = db.get(Vehicle, donor).account_id
+        assert db.scalar(select(func.count()).select_from(Part)) == 0
+
+    cache = auto_oem.SourceCache(source)
+    offers = [dict(supplier_id=7, article_nr="A-41", brand="Fixture", oem_numbers=["OEM-41"])]
+    monkeypatch.setattr(cache, "plan", lambda *args: resolution.graph_plan(source, ORACLE)[1]["payload"])
+    monkeypatch.setattr(cache, "get_offer_batch", lambda *args: {41: offers})
+    monkeypatch.setattr(cache, "sibling_candidates", lambda *args: {})
+    auto_oem.enrich_vehicle(engine(), account, donor, cache)
+    base = f"/api/v1/vehicles/{donor}"
+    plan = logged.get(base + "/global-dismantling").json()
+    assert plan["catalogue_oems"]["41"]["oem_number"] == "OEM-41"
+    receipt = {"keys": [plan["keys"]["41"]], "confirm_physical_receipt": True}
+    assert logged.post(base + "/unified-catalogue/stock", json=receipt).json() == {"added": 1, "skipped": 0}
+    assert logged.post(base + "/unified-catalogue/stock", json=receipt).json() == {"added": 0, "skipped": 1}
+    with Session(engine()) as db:
+        part = db.scalar(select(Part))
+        assert part.quantity == 1
+        assert part.oem_number == "OEM-41"
+        assert part.oem_provenance["physical_number_confirmed_by_user"] is False

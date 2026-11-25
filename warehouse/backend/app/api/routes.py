@@ -381,9 +381,6 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
             raise HTTPException(422, "Некоректна комбінація джерел VIN")
         context = vin_resolution.trusted_context(resolution.context, who, values["vin"])
         evidence = vin_resolution.effective_evidence(context, resolution.clarifications)
-        if (not resolution.clarifications.reviewed
-                and any(row["confidence"] == "conflict" for row in evidence.values())):
-            raise HTTPException(422, "Підтвердьте перевірку розбіжностей VIN")
         vin_resolution.validate_vehicle_fields(values, evidence)
         values["vin_details"] = vin_resolution.vehicle_details(context, evidence)
         if resolution.choice:
@@ -391,14 +388,17 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
             adapter = CatalogueAdapter()
             candidate, _ = vin_resolution.selected_candidate(adapter, context, resolution.clarifications,
                                                                 resolution.choice, who)
-            vin_resolution.validate_vehicle_fields(values, evidence, candidate)
+            # Keep the decoded observation in vin_details. The explicit
+            # source selection resolves contradictory model names.
+            if vin_resolution.policy.model_relation(values["model"], candidate["model"]) != "compatible":
+                values["model"] = candidate["model"]
             can_prepare = "dismantling.manage" in who.permissions
             readiness, stage13_plan = vin_resolution.graph_preview(adapter, candidate) if can_prepare else ("identity_only", None)
             if resolution.graph_sha and (not stage13_plan
                     or stage13_plan["payload"]["source_snapshot_sha"] != resolution.graph_sha):
                 raise HTTPException(409, "Версія графа запчастин змінилася. Перевірте вибір ще раз")
             oracle_identity = vin_resolution.source_identity(candidate, readiness,
-                allow_upgrade=can_prepare and candidate["attributes_complete"] and readiness != "unsupported")
+                allow_upgrade=can_prepare and readiness != "unsupported")
         elif resolution.graph_sha:
             raise HTTPException(422, "Оберіть модифікацію перед перевіркою графа")
         if not stage13_plan and not resolution.accept_base_catalogue:
@@ -465,9 +465,7 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
             "oracle_vehicle_identity":{**oracle_identity,
                 "identity_fingerprint":generator_basis(row)}}
         if stage13_plan:
-            from app.services import source_first_pilot
-            if not source_first_pilot.enabled():
-                vin_resolution.persist_graph(db, row, stage13_plan, readiness=oracle_identity["catalogue_readiness"])
+            vin_resolution.persist_graph(db, row, stage13_plan, readiness=oracle_identity["catalogue_readiness"])
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
     db.commit()
     # Staging-only OEM enrichment starts immediately AFTER the vehicle is committed.

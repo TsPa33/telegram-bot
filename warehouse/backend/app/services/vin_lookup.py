@@ -137,6 +137,12 @@ def _lookup(vin, *, public_only=False):
         vehicle['year']=int(merged_year)
     missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
     issues=validate_consistency(vehicle)
+    # VF1 is a Renault WMI. A contradictory decoder result is retained
+    # as provenance, but cannot supply the make/model/year used by intake.
+    if vin.startswith("VF1") and vehicle.get("manufacturer") and "renault" not in vehicle["manufacturer"].casefold():
+        for field in ("manufacturer", "model", "year"):
+            if field in vehicle:
+                issues[field] = "Дані декодера суперечать виробнику, визначеному за WMI. Уточніть значення."
     if year_uncertain:issues['year']='Джерело не визначило рік однозначно. Перевірте рік автомобіля перед збереженням.'
     return dict(diagnostics=diagnostics,vin=vin,source=' + '.join(sources) or 'unavailable',vehicle=vehicle,additional=additional,
         available_fields=[k for k,v in vehicle.items() if present(v)],field_sources=provenance,

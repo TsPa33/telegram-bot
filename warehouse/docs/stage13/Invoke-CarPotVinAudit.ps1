@@ -1,10 +1,11 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][uri]$WarehouseUrl,
     [uri]$CatalogueUrl = $env:WAREHOUSE_CATALOGUE_URL,
     [ValidateSet('BEFORE','AFTER')][string]$Phase = 'BEFORE',
     [string]$BeforeReport,
+    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$MySqlLoginPath,
     [string]$OutputDirectory = 'C:\Users\Admin\CarPot-Diagnostics',
     [switch]$NoPrompt
 )
@@ -53,10 +54,27 @@ function Get-CarPot([uri]$Origin, [string]$Path, [hashtable]$Headers, [hashtable
     try {
         $options = @{ Method='Get'; Uri=$url; Headers=$Headers; TimeoutSec=45; MaximumRedirection=0 }
         if ($Path.StartsWith('vehicles/vin/')) { $options['WebSession'] = $warehouseSession }
-        Invoke-RestMethod @options
+        $options['UseBasicParsing'] = $true
+        $response = Invoke-WebRequest @options
+        $stream = $response.RawContentStream
+        $stream.Position = 0
+        $reader = New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8, $true)
+        try { $reader.ReadToEnd() | ConvertFrom-Json }
+        finally { $reader.Dispose() }
     } catch {
         $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'transport_error' }
-        throw "$Path ($status)"
+        $detail = ''
+        try {
+            $raw = $_.ErrorDetails.Message
+            if ($raw) {
+                $value = ($raw | ConvertFrom-Json).detail
+                if ($value -is [string]) { $detail = $value.Substring(0,[Math]::Min(240,$value.Length)) }
+                elseif ($value) {
+                    $detail = @($value | ForEach-Object { ($_.loc -join '.') + ' ' + $_.type }) -join ', '
+                }
+            }
+        } catch { }
+        throw "$Path ($status) $detail"
     }
 }
 
@@ -101,6 +119,7 @@ function Measure-Graph($Result) {
         if ([string]$graph.identity.$field -ne [string]$identity[$field]) { throw 'source-graph (identity mismatch)' }
     }
     $Result.graph_status = $graph.status
+    $Result.graph_reason = $graph.reason
     if ($graph.status -ne 'available') {
         if ($graph.status -in @('absent','unsupported','unverified')) { $Result.catalogue_mode = 'base_only' }
         return
@@ -168,6 +187,60 @@ function Measure-Graph($Result) {
     if ($planned.Count) { $Result.oem_coverage_pct = [math]::Round(100.0 * $withOem / $planned.Count,2) }
 }
 
+# Optional source investigation uses an existing read-only MySQL login path.
+# The published graph remains the only source for plan/OEM coverage metrics.
+function Read-SourceSql([string]$Sql) {
+    $lines = @(& mysql.exe "--login-path=$MySqlLoginPath" --database=td1q2018 --batch --skip-column-names "--execute=$Sql" 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw 'local MySQL SELECT failed' }
+    return $lines
+}
+
+function Measure-LocalSource($Result) {
+    if (!$MySqlLoginPath) { return }
+    if ($Result.namespace -ne 'passenger') { $Result.local_source_status='commercial_link_type_unverified'; return }
+    $metadata = @(Read-SourceSql "SELECT LOWER(CONCAT(TABLE_NAME,'.',COLUMN_NAME)) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('passanger_cars','passenger_cars','article_links','article_oe','prd')")
+    $carTable = @('passanger_cars','passenger_cars') | Where-Object {
+        "$_.id" -in $metadata -and "$_.modelid" -in $metadata
+    } | Select-Object -First 1
+    $required = @('article_links.linkageid','article_links.linkagetypeid','article_links.productid',
+        'article_links.supplierid','article_links.datasupplierarticlenumber','prd.id',
+        'article_oe.supplierid','article_oe.datasupplierarticlenumber','article_oe.manufacturerid','article_oe.oenbr')
+    if (!$carTable -or @($required | Where-Object { $_ -notin $metadata }).Count) {
+        $Result.local_source_status='schema_mismatch'; return
+    }
+    $indexes = @(Read-SourceSql "SELECT LOWER(CONCAT(TABLE_NAME,'.',COLUMN_NAME)) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND SEQ_IN_INDEX=1 AND TABLE_NAME IN ('article_links','article_oe')")
+    if ('article_links.linkageid' -notin $indexes -or
+        !@($indexes | Where-Object { $_ -in @('article_oe.supplierid','article_oe.manufacturerid','article_oe.datasupplierarticlenumber') }).Count) {
+        $Result.local_source_status='index_preflight_failed'; return
+    }
+    $id = [long]$Result.modification_id
+    $model = [long]$Result.model_id
+    $maker = [long]$Result.manufacturer_id
+    $car = @(Read-SourceSql "SELECT id FROM $carTable WHERE id=$id AND modelid=$model LIMIT 2")
+    if ($car.Count -ne 1) { $Result.local_source_status='passenger_model_edge_missing'; return }
+
+    $metrics = @(Read-SourceSql @"
+SELECT /*+ MAX_EXECUTION_TIME(8000) */ COUNT(DISTINCT p.id),
+       COUNT(DISTINCT l.supplierid, l.datasupplierarticlenumber),
+       COUNT(DISTINCT CASE WHEN o.OENbr <> '' THEN o.OENbr END),
+       COUNT(DISTINCT CASE WHEN o.OENbr <> '' THEN p.id END)
+FROM article_links AS l JOIN prd AS p ON p.id=l.productid
+LEFT JOIN article_oe AS o
+ ON o.supplierId=l.supplierid AND o.DataSupplierArticleNumber=l.datasupplierarticlenumber
+ AND o.manufacturerId=$maker
+WHERE l.linkageid=$id AND l.linkagetypeid=2
+"@)
+    $values = ([string]$metrics[0]).Split("`t")
+    if ($values.Count -ne 4 -or @($values | Where-Object { $_ -notmatch '^\d+$' }).Count) {
+        throw 'local MySQL metrics response incomplete'
+    }
+    $Result.local_prd_count=[long]$values[0]
+    $Result.local_article_count=[long]$values[1]
+    $Result.local_oem_count=[long]$values[2]
+    $Result.local_prd_with_oem_reference=[long]$values[3]
+    $Result.local_source_status=if ($Result.local_prd_count) { 'linked_prd_present' } else { 'no_joined_prd' }
+}
+
 # Repository checkpoint records the public provenance for each VIN.
 $sample = @(
     'WBAWB73549P045741|BMW|335i|passenger',
@@ -196,14 +269,15 @@ $results = @(for ($i=0; $i -lt $sample.Count; $i++) {
     $row = [ordered]@{
         phase=$Phase; vin=$vin; public_vehicle="$expectedMake $label"; namespace=$kind
         decoder_make=$null; decoder_model=$null; decoder_year=$null; characteristics=$null; provider_status=$null
-        manufacturer_id=$null; model_id=$null; chosen_model=$null; modification_id=$null; chosen_modification=$null
+        manufacturer_id=$null; model_id=$null; chosen_model=$null; modification_id=$null; chosen_modification=$null; chosen_identity_basis=$null
         maker_complete=$null; model_count=$null; strict_initial_model_count=$null
         strict_status=$null; strict_initial_count=$null; strict_initial_complete=$null
         strict_scoped_status=$null; strict_scoped_count=$null; catalogue_only_count=$null
         prd_count=$null; article_count=$null; oem_count=$null; plan_positions=$null
         plan_positions_with_oem=$null; oem_coverage_pct=$null; graph_status=$null
-        warehouse_graph_status=$null; catalogue_mode=$null; snapshot_sha=$null
+        warehouse_graph_status=$null; graph_reason=$null; catalogue_mode=$null; snapshot_sha=$null
         missing_fields=$null; decoder_conflicts=$null; observed_filter_gap=$null
+        local_source_status=$null; local_prd_count=$null; local_article_count=$null; local_oem_count=$null; local_prd_with_oem_reference=$null
         add_and_dismantle='not_executed_read_only'; errors=@()
     }
     $decode = $null
@@ -242,7 +316,7 @@ $results = @(for ($i=0; $i -lt $sample.Count; $i++) {
             $row.manufacturer_id = $maker.id
             $models = @(Read-Pages 'vehicles/vin/source-models' $warehouseHeaders @{manufacturer_id=$maker.id; kind=$kind})
             $row.model_count = $models.Count
-            $model = if ($old.model_id) { $models | Where-Object { $_.id -eq $old.model_id } | Select-Object -First 1 }
+            $model = if ($NoPrompt -and $old.model_id) { $models | Where-Object { $_.id -eq $old.model_id } | Select-Object -First 1 }
             if (!$model) {
                 $matches = @($models | Where-Object { $_.name -eq $label -or $_.name -eq $row.decoder_model })
                 $model = if ($matches.Count -eq 1) { $matches[0] } else { Pick-Row "Choose the source model for $label" $models 'name' }
@@ -265,10 +339,11 @@ $results = @(for ($i=0; $i -lt $sample.Count; $i++) {
                         $row.observed_filter_gap = $variants.Count - $strict.Count
                     } catch { $row.errors += $_.Exception.Message }
                 }
-                $variant = if ($old.modification_id) { $variants | Where-Object { $_.id -eq $old.modification_id } | Select-Object -First 1 }
+                $variant = if ($NoPrompt -and $old.modification_id) { $variants | Where-Object { $_.id -eq $old.modification_id } | Select-Object -First 1 }
                 if (!$variant) { $variant = Pick-Row 'Choose the modification only if independently identified' $variants 'name' }
                 if ($variant) {
                     $row.modification_id = $variant.id
+                    $row.chosen_identity_basis = if ($NoPrompt) { 'reused_before_diagnostic_candidate' } else { 'operator_diagnostic_candidate' }
                     $row.chosen_modification = $variant.name
                     $signed = $strict | Where-Object { $_.source_modification_id -eq $variant.id } | Select-Object -First 1
                     if ($signed.choice) {
@@ -279,7 +354,8 @@ $results = @(for ($i=0; $i -lt $sample.Count; $i++) {
                             $row.warehouse_graph_status = $ready.status
                         } catch { $row.errors += $_.Exception.Message }
                     }
-                    Measure-Graph $row
+                    try { Measure-Graph $row } catch { $row.errors += $_.Exception.Message }
+                    Measure-LocalSource $row
                 }
             }
         }
@@ -294,9 +370,10 @@ $prefix = Join-Path $OutputDirectory ("stage13-{0}-{1}" -f $Phase,(Get-Date -For
 $columns = @('phase','vin','public_vehicle','namespace','decoder_make','decoder_model','decoder_year',
     'manufacturer_id','model_count','strict_initial_model_count','strict_initial_count','strict_initial_complete',
     'strict_status','strict_scoped_count','strict_scoped_status','catalogue_only_count','observed_filter_gap',
-    'model_id','chosen_model','modification_id','chosen_modification','prd_count','article_count',
+    'model_id','chosen_model','modification_id','chosen_modification','chosen_identity_basis','prd_count','article_count',
     'oem_count','plan_positions','plan_positions_with_oem','oem_coverage_pct','graph_status',
-    'warehouse_graph_status','catalogue_mode','snapshot_sha','add_and_dismantle',
+    'warehouse_graph_status','graph_reason','catalogue_mode','snapshot_sha','add_and_dismantle',
+    'local_source_status','local_prd_count','local_article_count','local_oem_count','local_prd_with_oem_reference',
     @{Name='errors';Expression={$_.errors -join '; '}})
 $combined = @(foreach ($item in $results) {
     if ($prior.ContainsKey($item.vin)) { $prior[$item.vin] }

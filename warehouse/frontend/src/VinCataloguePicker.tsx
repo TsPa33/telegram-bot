@@ -25,9 +25,9 @@ export const fieldLabels:Record<string,string>={
   doors:'Кількість дверей',engine_cylinders:'Кількість циліндрів',trim:'Комплектація',
 };
 const readinessLabels:Record<string,string>={
-  exact:'Підтверджено граф запчастин. OEM підбирається автоматично з цього джерела.',
+  exact:'Доступні запчастини для цієї модифікації.',
   partial:'Доступний частковий план. OEM підбирається для позицій із підтвердженими зв’язками.',
-  absent:'Граф запчастин для цієї модифікації ще відсутній. Доступний базовий каталог CarPot.',
+  absent:'Запчастини для цієї модифікації ще недоступні. Можна вибрати базовий каталог CarPot.',
   unavailable:'Каталог запчастин тимчасово недоступний. Повторіть перевірку або додайте авто з базовим каталогом.',
   unsupported:'Для цього типу транспорту доступний довідник модифікацій і базовий каталог CarPot.',
   unverified:'Підтверджених зв’язків із запчастинами поки немає. Доступний базовий каталог CarPot.',
@@ -38,11 +38,10 @@ const readinessLabels:Record<string,string>={
 const modelKey=(row:SourceModel)=>[row.kind,row.manufacturer_id,row.model_id].join(':');
 
 export default function VinCataloguePicker({
-  context,clarifications,disabled,onAnswer,onReview,onSelect,onPending,
+  context,clarifications,disabled,onAnswer,onSelect,onPending,
 }:{
   context:string;clarifications:Clarifications;disabled:boolean;
   onAnswer:(field:string,value:string|null)=>void;
-  onReview:()=>void;
   onSelect:(value:VinChoice|null)=>void;
   onPending:(value:boolean)=>void;
 }){
@@ -95,7 +94,7 @@ export default function VinCataloguePicker({
   },[context,clarificationHeader,scope,cursor,modelPage,retry,onPending]);
 
   useEffect(()=>{
-    if(!choice||choice.matches.model==='unknown'&&!clarifications.reviewed)return;
+    if(!choice)return;
     const controller=new AbortController();
     setGraph(null);
     setGraphError('');
@@ -184,11 +183,7 @@ export default function VinCataloguePicker({
     }}>Наступні модифікації</button>}
     {!scope&&models.length===1&&page&&!page.search_complete&&<button type="button" disabled={disabled||busy}
       onClick={()=>{resetChoice();setScope(models[0]);setCursor(0)}}>Переглянути всі модифікації моделі</button>}
-    {choice&&choice.matches.model==='unknown'&&!clarifications.reviewed&&<div>
-      <p>Назва моделі в джерелі VIN неоднозначна. Перевірте вибір або уточніть назву моделі.</p>
-      <button type="button" disabled={disabled} onClick={onReview}>Назву моделі перевірено</button>
-    </div>}
-    {choice&&(choice.matches.model!=='unknown'||clarifications.reviewed)&&!graph&&!graphError&&<p role="status">Перевіряємо граф запчастин…</p>}
+    {choice&&!graph&&!graphError&&<p role="status">Перевіряємо доступність запчастин…</p>}
     {graph&&<p role="status">{readinessLabels[graph.status]||readinessLabels.unavailable}</p>}
     {graph?.status==='unavailable'&&<button type="button" disabled={disabled}
       onClick={()=>{onSelect(null);onPending(true);setGraphRetry(n=>n+1)}}>Перевірити каталог ще раз</button>}

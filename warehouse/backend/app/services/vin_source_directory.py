@@ -13,6 +13,20 @@ def norm(value):
     return "".join(c for c in unicodedata.normalize("NFKD",str(value or "")).casefold() if c.isalnum())
 
 
+# Regional rows are alternate identities. Their IDs and namespaces remain separate.
+_MAKE_ALIASES = {
+    "volkswagen": ("Volkswagen", "VW"),
+    "mercedesbenz": ("Mercedes-Benz", "Mercedes Benz"),
+}
+_REGION = re.compile(r"\s*\((?:usa|us|nordamerika|north america|europa|europe|japan|china|south africa|brazil|brasil|faw|svw|shanghai)\)$", re.I)
+
+
+def maker_key(name):
+    normalized = norm(_REGION.sub("", name).strip())
+    return next((key for key, aliases in _MAKE_ALIASES.items()
+                 if normalized in {norm(alias) for alias in aliases}), normalized)
+
+
 def fetch(adapter, endpoint, args, expected_kind=None):
     try:
         result=adapter.get("global:oracle/vehicles/"+endpoint,args)
@@ -36,26 +50,29 @@ def manufacturer_choices(name, adapter=None, *, kinds=("passenger", "commercial"
     if len(name) > 100 or not 2 <= len(prefix) <= 40:
         raise HTTPException(422, "Уточніть назву виробника з довідника")
     adapter=adapter or CatalogueAdapter()
-    values=[]
-    unavailable=[]
+    values = {}
+    unavailable = []
+    identity = maker_key(name)
+    prefixes = tuple(dict.fromkeys((prefix, *_MAKE_ALIASES.get(identity, ()))))
     for kind in kinds:
-        try:
-            response=fetch(adapter,"manufacturers",{"name":prefix,"kind":kind,"limit":50},kind)
-        except HTTPException as e:
-            if e.status_code==503:
+        for term in prefixes:
+            try:
+                response = fetch(adapter, "manufacturers", {"name": term, "kind": kind, "limit": 50}, kind)
+            except HTTPException as error:
+                if error.status_code != 503:
+                    raise
                 unavailable.append(kind)
                 continue
-            raise
-        if response.get("truncated") is True:
-            unavailable.append(kind)
-        for item in response["items"]:
-            if (isinstance(item, dict) and type(item.get("id")) is int and item["id"]>0
-                    and isinstance(item.get("name"),str)
-                    and norm(item["name"])==norm(name)):
-                values.append(dict(manufacturer_id=item["id"],manufacturer=item["name"],kind=kind))
+            if response.get("truncated") is True:
+                unavailable.append(kind)
+            for item in response["items"]:
+                if (isinstance(item, dict) and type(item.get("id")) is int and item["id"] > 0
+                        and isinstance(item.get("name"), str) and maker_key(item["name"]) == identity):
+                    values[(kind, item["id"])] = dict(
+                        manufacturer_id=item["id"], manufacturer=item["name"], kind=kind)
     if not values and unavailable:
         raise HTTPException(503,"Не вдалося завантажити виробника з каталогу")
-    return dict(items=values, partial=bool(unavailable), source="oracle",
+    return dict(items=list(values.values()), partial=bool(unavailable), source="oracle",
                 identity_only=True, vin_fitment_verified=False)
 
 
