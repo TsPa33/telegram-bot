@@ -5,10 +5,11 @@ No direct MySQL connection and no automatic Warehouse OEM mutations.
 import json
 import logging
 import os
+from typing import Literal
 from urllib.parse import urlsplit
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 MAX_BODY = 96 * 1024
 logger = logging.getLogger("carpot.oracle_gateway")
@@ -33,7 +34,7 @@ def _settings():
     return raw.rstrip("/"), secret, (proxy or None)
 
 
-def _request(path, params):
+def _request(path, params, *, audit_summary=False, modification_lookup=False):
     base, secret, proxy = _settings()
     try:
         with httpx.Client(follow_redirects=False, trust_env=False, proxy=proxy,
@@ -41,7 +42,8 @@ def _request(path, params):
             with client.stream("GET", base + path, params=params,
                                headers={"X-Oracle-Adapter-Key": secret,
                                         "Accept": "application/json"}) as response:
-                if response.status_code != 200:
+                missing = modification_lookup and response.status_code == 404
+                if response.status_code != 200 and not missing:
                     logger.warning("oracle_gateway_upstream_status status=%d", response.status_code)
                     raise ValueError("Remote adapter is unavailable")
                 if "application/json" not in response.headers.get("content-type", ""):
@@ -54,6 +56,14 @@ def _request(path, params):
                         raise ValueError("Adapter response too large")
                     chunks.append(chunk)
         value = json.loads(b"".join(chunks))
+        if missing:
+            if value == {"detail": "Modification absent from requested catalogue"}:
+                raise HTTPException(404, value["detail"])
+            raise ValueError("Audit endpoint unavailable")
+        if audit_summary:
+            if not isinstance(value, dict) or not isinstance(value.get("categories"), list):
+                raise ValueError("Unexpected audit summary")
+            return value
         if not isinstance(value, dict) or type(value.get("truncated")) is not bool:
             raise ValueError("Unexpected adapter response")
         items = value.get("items")
@@ -218,5 +228,38 @@ def build_router(catalogue_auth):
         return dict(source="oracle", source_modification_id=car_id, kind=kind,
                     items=items, truncated=data["truncated"],
                     vehicle_identity_only=True, fitment_verified=False)
+
+    def vehicle_audit_request(car_id, kind, endpoint, **pagination):
+        data = _request(f"/api/v1/oracle/vehicles/{car_id}/{endpoint}",
+                        {"kind": kind, **pagination}, audit_summary=endpoint == "audit",
+                        modification_lookup=True)
+        if (data.get("source") != "oracle" or data.get("source_modification_id") != car_id
+                or data.get("kind") != kind or data.get("fitment_verified") is not False
+                or data.get("source_association_only") is not True
+                or type(data.get("manufacturer_id")) is not int or data["manufacturer_id"] < 1):
+            raise HTTPException(503, "Invalid Oracle audit identity")
+        if pagination:
+            limit = pagination["limit"]
+            expected = pagination["offset"] + limit if data["truncated"] else None
+            if (len(data["items"]) > limit or (data["truncated"] and len(data["items"]) != limit)
+                    or data.get("next_offset") != expected):
+                raise HTTPException(503, "Invalid Oracle audit page")
+        return data
+
+    @router.get("/vehicles/{car_id}/audit")
+    def vehicle_audit(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1)):
+        return vehicle_audit_request(car_id, kind, "audit")
+
+    @router.get("/vehicles/{car_id}/articles")
+    def vehicle_articles(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                         offset: int = Query(default=0, ge=0, le=2147483647),
+                         limit: int = Query(default=20, ge=1, le=50)):
+        return vehicle_audit_request(car_id, kind, "articles", offset=offset, limit=limit)
+
+    @router.get("/vehicles/{car_id}/oem")
+    def vehicle_oem(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                    offset: int = Query(default=0, ge=0, le=2147483647),
+                    limit: int = Query(default=20, ge=1, le=50)):
+        return vehicle_audit_request(car_id, kind, "oem", offset=offset, limit=limit)
 
     return router

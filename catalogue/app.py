@@ -2,6 +2,7 @@
 import os
 import secrets
 from contextlib import contextmanager
+from typing import Literal
 
 import pymysql
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
@@ -144,6 +145,8 @@ def volvo_snapshot(car_id, snapshot_sha=None):
                     # The latest directory is compact; raw data is stored once per version.
                     cur.execute('SELECT payload,sha256 FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',(car_id,row['sha256']))
                     row=cur.fetchone()
+                    if row is None:
+                        raise HTTPException(503, 'Catalogue snapshot version is unavailable')
     except (pymysql.MySQLError,ValueError,TypeError):
         raise HTTPException(503, 'Volvo catalogue is not ready') from None
     if row is None:
@@ -352,6 +355,35 @@ def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1,
             oem_links=sum(len(data['articles'][key].get('oem',[])) for key in linked),snapshot_sha=sha,
             specifications=data.get('details',{}).get('passanger_car_attributes',[])))
     return dict(items=items,next_after=rows[limit-1]['car_id'] if len(rows)>limit else None)
+
+
+@app.get('/api/v1/vehicles/source-graph', dependencies=[Depends(authorize)])
+def vehicle_source_graph(
+    kind: Literal["passenger", "commercial"],
+    manufacturer_id: int = Query(gt=0),
+    model_id: int = Query(gt=0),
+    car_id: int = Query(gt=0),
+):
+    """One exact Oracle identity, with explicit availability and provenance."""
+    identity = dict(kind=kind, manufacturer_id=manufacturer_id, model_id=model_id, car_id=car_id)
+    # The current graph store is populated from the passenger PRD pipeline.
+    if kind != "passenger":
+        return dict(identity=identity, status="unsupported", reason="namespace_not_published")
+    try:
+        data, snapshot_sha = volvo_snapshot(car_id)
+    except HTTPException as error:
+        if error.status_code == 404:
+            return dict(identity=identity, status="absent", reason="snapshot_not_published")
+        raise
+    if (data["manufacturer_id"], data["model_id"], data["car_id"]) != (manufacturer_id, model_id, car_id):
+        return dict(identity=identity, status="identity_mismatch", reason="snapshot_identity_mismatch")
+    if data.get("source_scope") != "passenger_prd_article_oem":
+        return dict(identity=identity, status="unverified", reason="source_scope_unverified")
+    plan = compact_plan(data, snapshot_sha)
+    if not any(row.get("source_fitment_linked") and row["article_count"] > 0 for row in plan["categories"]):
+        return dict(identity=identity, status="unverified", reason="no_linked_prd_articles")
+    return dict(identity=identity, status="available", source_scope=data["source_scope"],
+                plan=dict(payload=plan, sha256=volvo_digest(plan)))
 
 
 @app.get('/api/v1/vehicles/{car_id}/plan', dependencies=[Depends(authorize)])

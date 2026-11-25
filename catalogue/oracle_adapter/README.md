@@ -51,3 +51,33 @@ Author's local verification: 5 passed, with fake database responses. This is not
 7. Preserve seller-set OEM values, stock quantities, source provenance and production.
 
 Do not deploy this branch or connect it to existing Railway services before steps 1–3 are complete.
+
+## Modification audit
+
+The adapter and the staging-only Catalogue gateway use the same GET paths:
+
+- `/api/v1/oracle/vehicles/{car_id}/audit?kind=passenger`
+- `/api/v1/oracle/vehicles/{car_id}/articles?kind=passenger&offset=0&limit=20`
+- `/api/v1/oracle/vehicles/{car_id}/oem?kind=passenger&offset=0&limit=20`
+
+`kind` is required and accepts `passenger` or `commercial`. Each page uses
+`next_offset` for continuation and accepts limits from 1 to 50. Manufacturer ID
+is resolved from the modification and model in the requested catalogue.
+
+PRD link and part-type counts come from the catalogue's PDS table. A unique
+article is the supplier ID and exact article number. OEM coverage uses exact
+article matches for the resolved manufacturer. Category IDs are source PDS
+node IDs matched by supplier and product. A null category groups articles
+without a matching node, and an article can appear in multiple nodes.
+Coverage is null when there are zero articles.
+
+The audit reads `article_links` using the `linkageid` index and inherits the
+existing read-only session and 3-second statement limit. Before installing the
+adapter update on Oracle, verify that the link import is complete, SELECT
+access is present, and the live query plans use the expected indexes. The
+commercial audit requires confirming the source table
+`commercial_vehicle_pds(commercialvehicleid, nodeid, productid, supplierid)`,
+its leading primary key, and the commercial link discriminator. Set
+`ORACLE_COMMERCIAL_LINKAGE_TYPE` on the adapter to the verified value.
+The gateway can be deployed separately and returns 503 while the upstream
+audit routes are unavailable.

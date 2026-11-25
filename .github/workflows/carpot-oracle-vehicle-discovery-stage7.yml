@@ -6,6 +6,12 @@ on:
     paths:
       - catalogue/**
       - .github/workflows/carpot-oracle-vehicle-discovery-stage7.yml
+  pull_request:
+    branches:
+      - feature/carpot-oracle-vehicle-discovery-20261122
+    paths:
+      - catalogue/**
+      - .github/workflows/carpot-oracle-vehicle-discovery-stage7.yml
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,3 +31,7 @@ jobs:
         run: python -m pip install -r requirements.txt pytest
       - name: Focused offline source and gateway regressions
         run: python -m pytest -q tests/test_oracle_vehicle_discovery_stage7.py tests/test_oracle_adapter_stage2.py tests/test_oracle_gateway_stage3.py tests/test_oracle_proxy_timeout_stage5.py --maxfail=1
+      - name: Pinned source graph and Catalogue contract
+        run: python -m pytest -q tests/test_volvo.py tests/test_vehicle_source_batch.py tests/test_source_coverage_audit.py --maxfail=1
+      - name: Bounded Oracle read-only probe
+        run: python -m pytest -q tests/test_oracle_oem_readonly_probe.py --maxfail=1
