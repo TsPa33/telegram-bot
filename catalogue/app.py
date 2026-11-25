@@ -368,20 +368,20 @@ def vehicle_source_graph(
     identity = dict(kind=kind, manufacturer_id=manufacturer_id, model_id=model_id, car_id=car_id)
     # The current graph store is populated from the passenger PRD pipeline.
     if kind != "passenger":
-        return dict(identity=identity, status="unsupported")
+        return dict(identity=identity, status="unsupported", reason="namespace_not_published")
     try:
         data, snapshot_sha = volvo_snapshot(car_id)
     except HTTPException as error:
         if error.status_code == 404:
-            return dict(identity=identity, status="absent")
+            return dict(identity=identity, status="absent", reason="snapshot_not_published")
         raise
     if (data["manufacturer_id"], data["model_id"], data["car_id"]) != (manufacturer_id, model_id, car_id):
-        return dict(identity=identity, status="identity_mismatch")
+        return dict(identity=identity, status="identity_mismatch", reason="snapshot_identity_mismatch")
     if data.get("source_scope") != "passenger_prd_article_oem":
-        return dict(identity=identity, status="unverified")
+        return dict(identity=identity, status="unverified", reason="source_scope_unverified")
     plan = compact_plan(data, snapshot_sha)
     if not any(row.get("source_fitment_linked") and row["article_count"] > 0 for row in plan["categories"]):
-        return dict(identity=identity, status="unverified")
+        return dict(identity=identity, status="unverified", reason="no_linked_prd_articles")
     return dict(identity=identity, status="available", source_scope=data["source_scope"],
                 plan=dict(payload=plan, sha256=volvo_digest(plan)))
 

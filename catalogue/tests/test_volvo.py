@@ -434,6 +434,10 @@ def test_oracle_source_graph_requires_namespace_exact_ids_and_linked_provenance(
         assert plan["sha256"] == digest(plan["payload"])
     else:
         assert "plan" not in response.json()
+        assert response.json()["reason"] == {
+            "absent": "snapshot_not_published", "unsupported": "namespace_not_published",
+            "identity_mismatch": "snapshot_identity_mismatch", "unverified": "source_scope_unverified",
+        }[status]
     assert calls == ([] if status == "unsupported" else [99])
 
 
