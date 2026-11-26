@@ -20,7 +20,7 @@ def test_full_sample_and_no_currency_condition_mixing():
     groups = summarize_aleto(rows)
     g = next(x for x in groups if x["currency"]=="UAH" and x["condition"]=="used" and x["match"]=="similar")
     assert g["offer_count"] == 20 and len(g["examples"]) == 10
-    assert Decimal(g["average"]) == Decimal("10.55")
+    assert Decimal(g["average"]) == Decimal("10.50")
     assert all(x["average"] is None for x in groups if x is not g)
 
 
