@@ -1,10 +1,11 @@
 import {useContext,useEffect,useRef,useState} from 'react';
 import {api,money,labels,type Row} from './api';
+import {ReferenceQuickApply} from './ReferenceQuickApply';
 import {TeamIdentity,useCan} from './permissions';
 import {Modal} from './components';
 import './aleto-price-reference.css';
 
-export default function AletoPriceButton({part,vehicle}:{part:Row;vehicle?:Row|null}){
+export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicle?:Row|null;onSaved?:(row:Row)=>void}){
  const can=useCan(),identity=useContext(TeamIdentity);
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[data,setData]=useState<Row|null>(null);
  const sequence=useRef(0),guard=useRef(false);
@@ -41,6 +42,7 @@ export default function AletoPriceButton({part,vehicle}:{part:Row;vehicle?:Row|n
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
       <small>Останнє спостереження: {date(r.observed_at)}. Показано {r.examples.length} із {r.offer_count}.</small>
       {r.examples.map((e:Row,index:number)=><div className="aleto-reference-offer" key={index}><span>Ціна №{index+1}</span><strong>{money(e.amount,r.currency)}</strong><small>{date(e.observed_at)}</small></div>)}
+       {can('parts.change_price')&&!part.archived&&data.price_token&&r.average!=null&&r.offer_count>=3&&<ReferenceQuickApply part={part} group={r} token={data.price_token} onSaved={onSaved}/>}
      </section>)}
      {historical.length>0&&<details><summary>Історичні пропозиції ({historical.length})</summary><p>Старі спостереження не враховано в середній ціні.</p>{historical.map((e,index)=><p key={index}>{money(e.amount,e.currency)} · {date(e.observed_at)}</p>)}</details>}
     </div>}
