@@ -117,3 +117,25 @@ def test_public_market_reference_has_no_provider_identifiers(platform,vehicle):
     with TestClient(app) as other:
         signup(other,'r5-public-other@example.test')
         assert other.post('/api/v1/parts/'+p+'/market-reference',json={}).status_code==404
+
+
+def test_live_candidate_public_route_preserves_stock(platform,vehicle,monkeypatch):
+    from app.services import live_market_reference as live
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    stamp=utcnow().isoformat()
+    monkeypatch.setattr(live,'enabled',lambda:True)
+    monkeypatch.setattr(live,'lookup',lambda ctx:('live',[dict(currency='UAH',condition='used',
+        availability='available',assembly='complete',match='similar',offer_count=3,
+        minimum='1000',maximum='2000',average='1500.00',observed_at=stamp,examples=[])],stamp))
+    with Session(engine()) as db:before=all_tables(db)
+    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    assert r.status_code==200,r.text
+    data=r.json()
+    assert data['price_mode']=='live' and data['fresh_data_fetched']
+    assert data['references'][0]['average']=='1500.00'
+    assert 'aleto' not in r.text.lower() and 'https://' not in r.text
+    with Session(engine()) as db:assert all_tables(db)==before
+    monkeypatch.setattr(live,'lookup',lambda ctx:None)
+    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    assert r.status_code==200 and r.json()['price_mode']=='stored'
+    assert r.json()['fresh_data_fetched'] is False

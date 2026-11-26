@@ -197,8 +197,16 @@ def parse_cards(html, path, observed_at):
         try:
             url = source_url(link.attrs["href"], "https://" + HOST + path)
             uah, usd = card.find(cls="detail-item-uprice"), card.find(cls="detail-item-price")
-            amounts = {c: price(node.text(), c.lower()) for c, node in (("UAH", uah), ("USD", usd)) if node}
         except (ValueError, TypeError):
+            continue
+        amounts = {}
+        for c, node in (("UAH", uah), ("USD", usd)):
+            if node:
+                try:
+                    amounts[c] = price(node.text(), c.lower())
+                except (ValueError, TypeError):
+                    continue
+        if not any(amounts.values()):
             continue
         row = dict(article=article, oem=oem, title=title.text(), condition=condition_for(labels.text()),
                    availability=status_for(card.text()), amounts=amounts, url=url, observed_at=observed_at)
@@ -225,7 +233,7 @@ def references(ctx, rows):
             continue
         other = surface(dict(title=row["title"], manufacturer=ctx["manufacturer"], model=ctx["model"]))
         tokens = other["phrase"].split()
-        if not tokens or tokens[0] != own_tokens[0] or other["conflicts"]:
+        if not tokens or tokens[:len(own_tokens[:2])] != own_tokens[:2] or other["conflicts"]:
             continue
         if any(own[k] != "unknown" and own[k] != other[k] for k in ("side", "position")):
             continue
@@ -286,6 +294,7 @@ def lookup(ctx):
     path = lookup_path(ctx)
     if not path or not _LOCK.acquire(blocking=False):
         return None
+    attempted = False
     try:
         now = monotonic()
         cached = _CACHE.get(path)
@@ -295,6 +304,7 @@ def lookup(ctx):
             return "cached", references(ctx, rows), stamp
         if now - _LAST < MIN_INTERVAL:
             return None
+        attempted = True
         _LAST = now
         if not _ROBOTS or now - _ROBOTS[0] > 3600:
             _ROBOTS = (now, fetch_text("/robots.txt", 65536))
@@ -310,5 +320,6 @@ def lookup(ctx):
     except (OSError, ValueError, TypeError, http.client.HTTPException):
         return None
     finally:
-        _LAST = monotonic()
+        if attempted:
+            _LAST = monotonic()
         _LOCK.release()
