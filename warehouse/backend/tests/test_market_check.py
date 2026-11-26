@@ -124,19 +124,26 @@ def test_live_candidate_public_route_preserves_stock(platform,vehicle,monkeypatc
     p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
     stamp=utcnow().isoformat()
     monkeypatch.setattr(live,'enabled',lambda:True)
-    monkeypatch.setattr(live,'lookup',lambda ctx:('live',[dict(currency='UAH',condition='used',
+    calls=[]
+    def lookup(ctx):
+        calls.append(ctx)
+        return ('live',[dict(currency='UAH',condition='used',
         availability='available',assembly='complete',match='similar',offer_count=3,
-        minimum='1000',maximum='2000',average='1500.00',observed_at=stamp,source='aleto',url='https://aleto.ua/',examples=[dict(amount='1000',currency='UAH',observed_at=stamp,article='hidden',url='https://aleto.ua/')])],stamp))
+        minimum='1000',maximum='2000',average='1500.00',observed_at=stamp,source='aleto',url='https://aleto.ua/',examples=[dict(amount='1000',currency='UAH',observed_at=stamp,article='hidden',url='https://aleto.ua/ua/detail/test-offer/')])],stamp)
+    monkeypatch.setattr(live,'lookup',lookup)
     with Session(engine()) as db:before=all_tables(db)
-    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    stored=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    assert stored.status_code==200 and stored.json()['price_mode']=='stored' and not calls
+    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
     assert r.status_code==200,r.text
     data=r.json()
     assert data['price_mode']=='live' and data['fresh_data_fetched']
     assert data['references'][0]['average']=='1500.00'
-    assert 'aleto' not in r.text.lower() and 'https://' not in r.text
+    assert data['references'][0]['examples'][0]['reference_url']=='https://aleto.ua/ua/detail/test-offer/'
+    assert 'hidden' not in r.text and len(calls)==1
     with Session(engine()) as db:assert all_tables(db)==before
     monkeypatch.setattr(live,'lookup',lambda ctx:None)
-    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
     assert r.status_code==200 and r.json()['price_mode']=='stored'
     assert r.json()['fresh_data_fetched'] is False
 

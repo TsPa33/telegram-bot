@@ -27,7 +27,7 @@ export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{pa
   if(guard.current||!allowed||!part.id)return;
   guard.current=true;const n=++sequence.current;
   visible.current=true;setOpen(true);setBusy(true);setError('');setData(null);
-  try{const r=await api('/parts/'+encodeURIComponent(String(part.id))+'/market-reference','POST',{});if(sequence.current===n)setData(r);}
+  try{const r=await api('/parts/'+encodeURIComponent(String(part.id))+'/market-reference','POST',{individual:true});if(sequence.current===n)setData(r);}
   catch(e){if(sequence.current===n)setError(e instanceof Error?e.message:'Не вдалося перевірити ціни');}
   finally{if(sequence.current===n){guard.current=false;setBusy(false);}}
  }
@@ -42,14 +42,18 @@ export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{pa
     {error&&<p role="alert">{error} <button type="button" onClick={lookup}>Повторити</button></p>}
     {data&&<div aria-live="polite">
      {data.truncated&&<p>Вибірку обмежено. Середня ціна не обчислюється.</p>}
-     {!references.length&&!data.truncated&&<p>Немає достатніх актуальних імпортованих даних для орієнтира.</p>}
+     {data.lookup_status==='missing_oem'&&<p>Для зовнішнього пошуку потрібен коректний OEM та модель автомобіля.</p>}
+     {data.lookup_status==='unavailable_or_limited'&&<p>Зовнішня перевірка тимчасово недоступна або досягнуто ліміту. Показано лише збережені дані, якщо вони є.</p>}
+     {data.lookup_status==='no_comparable'&&<p>У доступному джерелі не знайдено порівнюваних пропозицій для цього OEM.</p>}
+     {data.lookup_status==='disabled'&&<p>Зовнішній пошук не активовано.</p>}
+     {!references.length&&!data.truncated&&<p>Немає доступних цінових орієнтирів для цієї деталі.</p>}
      {references.map((r,index)=><section className="aleto-reference-group" key={index}>
       <strong>Група {index+1} · {labels[r.condition]||'Стан невідомий'}</strong>
       <small>{r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
       {r.average!=null?<><small>Середня ціна</small><strong className="aleto-reference-average">{money(r.average,r.currency)}</strong></>:<strong>Мало пропозицій для середньої ціни</strong>}
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
       <small>Останнє спостереження: {date(r.observed_at)}. Показано {r.examples.length} із {r.offer_count}.</small>
-      {r.examples.map((e:Row,index:number)=><div className="aleto-reference-offer" key={index}><span>Ціна №{index+1}</span><strong>{money(e.amount,r.currency)}</strong><small>{date(e.observed_at)}</small></div>)}
+      {r.examples.map((e:Row,index:number)=><div className="aleto-reference-offer" key={index}><span>Ціна №{index+1}</span><strong>{money(e.amount,r.currency)}</strong><small>{date(e.observed_at)} {typeof e.reference_url==='string'&&/^https:\/\/(www\.)?aleto\.ua\//.test(e.reference_url)&&<a href={e.reference_url} target="_blank" rel="noopener noreferrer">Переглянути першоджерело</a>}</small></div>)}
       </section>)}
      {historical.length>0&&<details><summary>Історичні пропозиції ({historical.length})</summary><p>Старі спостереження не враховано в середній ціні.</p>{historical.map((e,index)=><p key={index}>{money(e.amount,e.currency)} · {date(e.observed_at)}</p>)}</details>}
     </div>}
