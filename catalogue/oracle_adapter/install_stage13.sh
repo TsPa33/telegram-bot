@@ -1,22 +1,17 @@
 #!/usr/bin/env bash
-# Run on the existing Oracle host after the SELECT-only probe confirms the
-# commercial discriminator and the indexes required by the adapter.
+# Run on the existing Oracle host after prerequisites were verified.
+# Optional --witness-id values are passed to the live read-only linkage probe.
 set -euo pipefail
 umask 077
 
-release=429133a32bbd9ff27f198b9e9c332eae07cefd18
+release=27df8ef526f2e728f04eb61f947dee846cc76977
 service=carpot-oracle-adapter.service
 directory=/opt/carpot/oracle-adapter
 backup_root=/var/backups/carpot-oracle-adapter
 dropin=/etc/systemd/system/carpot-oracle-adapter.service.d
-commercial_type=${1:-}
 
 if (( EUID != 0 )); then
     printf 'Run this installer with sudo on the Oracle Adapter host.\n' >&2
-    exit 2
-fi
-if ! [[ $commercial_type =~ ^[1-9][0-9]{0,4}$ ]] || (( commercial_type == 2 || commercial_type > 65535 )); then
-    printf 'Pass verified_commercial_linkage_type from the diagnostic result.\n' >&2
     exit 2
 fi
 if ! systemctl is-active --quiet "$service" || [[ ! -f $directory/app.py ]] ||
@@ -45,11 +40,26 @@ curl -fLsS --connect-timeout 10 --max-time 30 "$base/check_source_graph.py" -o "
 (
     cd "$temporary"
     sha256sum --check --strict <<'HASHES'
-c7c864032cd702ba373422d5c1d4af0f08834e775666542f7fd5682d0958041b  app.py
-fdffeacf215b951cfef4329389983c8f838c7ef86772669e011690c001828724  check_source_graph.py
+c4d53bd5cd11ba6347b0e63f9036e4e2172b91910bcfde19f8fe8b564bf0b7a2  app.py
+1a686c1069623a3f82d391061fa8f5b6c28745401e6341823fd47109e0d04d61  check_source_graph.py
 HASHES
 )
-"$directory/.venv/bin/python" -c 'import ast,pathlib,sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$temporary/app.py"
+python="$directory/.venv/bin/python"
+"$python" -c 'import ast,pathlib,sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$temporary/app.py"
+pid=$(systemctl show "$service" -p MainPID --value)
+"$python" "$temporary/check_source_graph.py" linkage "$pid" "$@" | tee "$temporary/diagnosis.jsonl"
+commercial_type=$("$python" - "$temporary/diagnosis.jsonl" <<'PYTHON'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as report:
+    result = next((row for row in map(json.loads, report)
+                   if row.get("check") == "diagnostic_result"), {})
+if result.get("ready_to_install") is not True or result.get("verified_commercial_linkage_type") != 16:
+    raise SystemExit("Direct commercial linkage type 16 was not confirmed")
+print(16)
+PYTHON
+)
 
 install -d -m 0700 "$backup_root"
 exec 9>"$backup_root/install.lock"
