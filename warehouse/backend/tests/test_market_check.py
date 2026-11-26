@@ -146,6 +146,11 @@ def test_live_candidate_public_route_preserves_stock(platform,vehicle,monkeypatc
     r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
     assert r.status_code==200 and r.json()['price_mode']=='stored'
     assert r.json()['fresh_data_fetched'] is False
+    for reason in ('source_not_found','cooldown','daily_limit','robots_unavailable','source_parse_error'):
+        monkeypatch.setattr(live,'lookup',lambda ctx:(reason,[],None))
+        r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
+        assert r.status_code==200 and r.json()['lookup_status']==reason
+        assert r.json()['price_mode']=='stored' and not r.json()['fresh_data_fetched']
 
 
 def test_reference_revision_and_price_context_no_stock_mutation(platform,vehicle):

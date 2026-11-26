@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import http.client
 import ipaddress
+import logging
 import os
 import re
 import socket
@@ -30,6 +31,19 @@ _LOCK = Lock()
 _CACHE = OrderedDict()
 _ROBOTS = None
 _LAST = float("-inf")
+_LOG = logging.getLogger("warehouse.market_reference")
+
+
+class LookupFailure(Exception):
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+def failed(code, phase):
+    # No OEM, user ID, URL, raw HTML, exception text or credentials in logs.
+    _LOG.warning("market_reference outcome=%s phase=%s", code, phase)
+    return code, [], None
 
 
 def enabled():
@@ -83,14 +97,22 @@ def fetch_text(path, limit=MAX_BYTES):
         conn.request("GET", path, headers={"User-Agent": AGENT, "Accept-Encoding": "identity",
                                            "Accept": "text/plain" if path == "/robots.txt" else "text/html"})
         response = conn.getresponse()
-        if response.status != 200 or response.getheader("Content-Encoding", "identity").lower() != "identity":
-            raise OSError("source response unavailable")
+        if response.status == 404:
+            raise LookupFailure("source_not_found")
+        if response.status in (401, 403, 429, 451):
+            raise LookupFailure("source_access_denied")
+        if 300 <= response.status < 400:
+            raise LookupFailure("source_redirect")
+        if response.status != 200:
+            raise LookupFailure("source_http_error")
+        if response.getheader("Content-Encoding", "identity").lower() != "identity":
+            raise LookupFailure("source_content_error")
         expected = "text/plain" if path == "/robots.txt" else "text/html"
         if expected not in response.getheader("Content-Type", "").lower():
-            raise OSError("unexpected content")
+            raise LookupFailure("source_content_error")
         length = response.getheader("Content-Length")
         if length and (not length.isdigit() or int(length) > limit):
-            raise ValueError("response limit")
+            raise LookupFailure("source_response_limit")
         chunks = bytearray()
         while True:
             remaining = 7 - (monotonic() - start)
@@ -139,12 +161,12 @@ def condition_for(labels):
     s = norm(labels)
     if "дефект" in s or "пошкодж" in s:
         return "damaged"
+    if "відновлен" in s or "восстановлен" in s:
+        return "refurbished"
     if "нов" in s:
         return "new"
     if s in ("б в", "б у", "used"):
         return "used"
-    if "відновлен" in s:
-        return "refurbished"
     return "unknown"
 
 
@@ -166,8 +188,10 @@ def parse_cards(html, path, observed_at):
     tree.feed(html)
     tree.close()
     cards = [n for n in tree.root.all() if n.has("detail-item")]
-    if not cards or len(cards) > 100:
-        raise ValueError("unrecognized or excessive listing")
+    if len(cards) > 100:
+        raise LookupFailure("source_response_limit")
+    if not cards:
+        raise LookupFailure("source_no_cards")
     rows = {}
     conflicts = set()
     for card in cards:
@@ -211,13 +235,13 @@ def parse_cards(html, path, observed_at):
                     continue
         if not any(amounts.values()):
             continue
-        row = dict(article=article, oem=oem, title=title.text(), condition=condition_for(labels.text()),
+        row = dict(article=article, oem=oem, title=link.text(), condition=condition_for(labels.text()),
                    availability=status_for(card.text()), amounts=amounts, url=url, observed_at=observed_at)
         if article in rows and rows[article] != row:
             conflicts.add(article)
         rows[article] = row
     if not rows:
-        raise ValueError("no parseable evidence")
+        raise LookupFailure("source_parse_error")
     return [r for a, r in rows.items() if a not in conflicts]
 
 
@@ -290,14 +314,17 @@ def references(ctx, rows):
 
 
 def lookup(ctx):
-    """Return bounded individual lookup or None. No enumeration or background crawl."""
+    """Return (mode/status, groups, observation). No automatic retries."""
     global _ROBOTS, _LAST
     if not enabled():
-        return None
+        return failed("disabled", "policy")
     path = lookup_path(ctx)
-    if not path or not _LOCK.acquire(blocking=False):
-        return None
+    if not path:
+        return failed("missing_oem", "input")
+    if not _LOCK.acquire(blocking=False):
+        return failed("busy", "quota")
     attempted = False
+    phase = "cache"
     try:
         now = monotonic()
         cached = _CACHE.get(path)
@@ -306,24 +333,41 @@ def lookup(ctx):
             rows, stamp = cached[1:]
             return "cached", references(ctx, rows), stamp
         _ATTEMPTS[:] = [t for t in _ATTEMPTS if now-t < 86400]
-        if now - _LAST < MIN_INTERVAL or len(_ATTEMPTS) >= DAILY_LIMIT:
-            return None
+        if len(_ATTEMPTS) >= DAILY_LIMIT:
+            return failed("daily_limit", "quota")
+        if now - _LAST < MIN_INTERVAL:
+            return failed("cooldown", "quota")
         attempted = True
         _ATTEMPTS.append(now)
         _LAST = now
+        phase = "robots"
         if not _ROBOTS or now - _ROBOTS[0] > 3600:
             _ROBOTS = (now, fetch_text("/robots.txt", 65536))
         if not robots_allows(_ROBOTS[1], path):
-            return None
+            return failed("robots_denied", phase)
+        phase = "product"
         stamp = datetime.now(timezone.utc).isoformat()
-        rows = parse_cards(fetch_text(path), path, stamp)
+        html = fetch_text(path)
+        phase = "parse"
+        rows = parse_cards(html, path, stamp)
         _CACHE[path] = (monotonic(), rows, stamp)
         _CACHE.move_to_end(path)
         while len(_CACHE) > MAX_CACHE:
             _CACHE.popitem(last=False)
-        return "live", references(ctx, rows), stamp
-    except (OSError, ValueError, TypeError, http.client.HTTPException):
-        return None
+        phase = "matching"
+        groups = references(ctx, rows)
+        _LOG.warning("market_reference outcome=%s phase=%s cards=%d groups=%d",
+                     "matched" if groups else "no_comparable", phase, len(rows), len(groups))
+        return "live", groups, stamp
+    except LookupFailure as exc:
+        # A robots failure cannot prove an OEM page is absent.
+        return failed("robots_unavailable" if phase == "robots" else exc.code, phase)
+    except (TimeoutError, socket.timeout):
+        return failed("source_timeout", phase)
+    except (OSError, http.client.HTTPException):
+        return failed("source_network_error", phase)
+    except (ValueError, TypeError):
+        return failed("source_parse_error" if phase in ("parse", "matching") else "source_content_error", phase)
     finally:
         if attempted:
             _LAST = monotonic()
