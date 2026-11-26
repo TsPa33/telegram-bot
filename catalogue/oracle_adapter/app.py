@@ -1,4 +1,5 @@
 """Internal, read-only Oracle MySQL catalogue adapter."""
+from collections import Counter, defaultdict
 from contextlib import contextmanager
 import logging
 from time import monotonic
@@ -8,7 +9,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
-app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.2", docs_url=None, redoc_url=None)
+app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.3", docs_url=None, redoc_url=None)
 
 logger = logging.getLogger("carpot.oracle_adapter")
 ROW_LIMIT = 50
@@ -308,102 +309,110 @@ def audit_response(car_id, kind, manufacturer_id):
                 fitment_verified=False)
 
 
+def audit_counts(prd_links, part_types, article_keys, oem_codes):
+    total = len(article_keys)
+    covered = 0
+    unique_oem = set()
+    for key in article_keys:
+        codes = oem_codes.get(key)
+        if codes:
+            covered += 1
+            unique_oem.update(codes)
+    return dict(prd_links=prd_links, unique_part_types=part_types, unique_articles=total,
+                articles_with_oem=covered, unique_oem_codes=len(unique_oem),
+                articles_without_oem=total - covered,
+                oem_coverage_percent=round(100 * covered / total, 2) if total else None)
+
+
 @app.get("/api/v1/oracle/vehicles/{car_id}/audit", dependencies=[Depends(authorize)])
 def vehicle_audit(kind: CatalogueKind, car_id: int = Path(ge=1)):
     table, column, linkage_type = audit_source(kind)
-    sql = AUDIT_CTES + f""", prd_links AS (
-        SELECT nodeid, productid, supplierid
-        FROM {table} FORCE INDEX (PRIMARY)
-        WHERE {column}=%s
-    ), scoped_prd AS (
-        SELECT 0 AS scope_id, NULL AS category_id, productid FROM prd_links
-        UNION ALL
-        SELECT 1, nodeid, productid FROM prd_links
-    ), prd_counts AS (
-        SELECT scope_id, category_id, COUNT(*) AS prd_links,
-               COUNT(DISTINCT productid) AS unique_part_types
-        FROM scoped_prd GROUP BY scope_id, category_id
-    ), category_articles AS (
-        SELECT DISTINCT p.nodeid AS category_id, l.supplierid, l.article_key
-        FROM links AS l LEFT JOIN prd_links AS p USING (productid, supplierid)
-    ), scoped_articles AS (
-        SELECT 0 AS scope_id, NULL AS category_id, supplierid, article_key FROM articles
-        UNION ALL
-        SELECT 1, category_id, supplierid, article_key FROM category_articles
-    ), article_counts AS (
-        SELECT a.scope_id, a.category_id,
-               COUNT(DISTINCT a.supplierid, a.article_key) AS unique_articles,
-               COUNT(DISTINCT o.supplierid, o.article_key) AS articles_with_oem,
-               COUNT(DISTINCT o.oem_key) AS unique_oem_codes
-        FROM scoped_articles AS a LEFT JOIN oems AS o USING (supplierid, article_key)
-        GROUP BY a.scope_id, a.category_id
-    ), scopes AS (
-        SELECT 0 AS scope_id, NULL AS category_id
-        UNION DISTINCT
-        SELECT scope_id, category_id FROM prd_counts
-        UNION DISTINCT
-        SELECT scope_id, category_id FROM article_counts
-    )
-    SELECT s.scope_id, s.category_id,
-           COALESCE(p.prd_links, 0) AS prd_links,
-           COALESCE(p.unique_part_types, 0) AS unique_part_types,
-           COALESCE(a.unique_articles, 0) AS unique_articles,
-           COALESCE(a.articles_with_oem, 0) AS articles_with_oem,
-           COALESCE(a.unique_oem_codes, 0) AS unique_oem_codes
-    FROM scopes AS s
-    LEFT JOIN prd_counts AS p ON s.scope_id=p.scope_id AND s.category_id <=> p.category_id
-    LEFT JOIN article_counts AS a ON s.scope_id=a.scope_id AND s.category_id <=> a.category_id
-    ORDER BY s.scope_id, s.category_id
-    LIMIT %s
-    """
-    with database() as conn:
+    started = monotonic()
+    prd_counts = Counter()
+    product_ids = defaultdict(set)
+    categories_by_pair = defaultdict(set)
+    articles_by_category = defaultdict(set)
+    article_keys = set()
+    with database("audit_" + kind) as conn:
         manufacturer_id = audit_identity(conn, car_id, kind)
-        result = bounded_lookup(conn, sql, (car_id, linkage_type, manufacturer_id, car_id),
-                                CATEGORY_LIMIT + 1)
-    if result["truncated"]:
-        raise HTTPException(503, "Oracle audit category limit exceeded")
-    summary, *categories = result["items"]
-    summary.pop("category_id")
-    for row in (summary, *categories):
-        row.pop("scope_id")
-        total = row["unique_articles"]
-        covered = row["articles_with_oem"]
-        row["articles_without_oem"] = total - covered
-        row["oem_coverage_percent"] = round(100 * covered / total, 2) if total else None
-    return {**audit_response(car_id, kind, manufacturer_id), **summary, "categories": categories}
+        pds = graph_rows(conn, f"""
+            SELECT nodeid AS category_id, productid AS product_id, supplierid AS supplier_id
+            FROM {table} FORCE INDEX (PRIMARY) WHERE {column}=%s
+            ORDER BY nodeid, productid, supplierid LIMIT %s, %s
+        """, (car_id,), stage="audit_pds", started=started)
+        for row in pds:
+            node, product, supplier = row["category_id"], row["product_id"], row["supplier_id"]
+            prd_counts[node] += 1
+            if product is not None:
+                product_ids[node].add(product)
+                if supplier is not None:
+                    categories_by_pair[(product, supplier)].add(node)
 
+        for row in graph_links(conn, car_id, linkage_type, started, include_unclassified=True):
+            supplier = row["supplier_id"]
+            key = (supplier, row["article_key"].decode("utf-8"))
+            article_keys.add(key)
+            # Keep the legacy uncategorized bucket from the PDS LEFT JOIN.
+            for node in categories_by_pair.get((row["product_id"], supplier), (None,)):
+                articles_by_category[node].add(key)
 
-def audit_page(car_id, kind, offset, limit, selection):
-    _, _, linkage_type = audit_source(kind)
-    with database() as conn:
-        manufacturer_id = audit_identity(conn, car_id, kind)
-        result = bounded_lookup(conn, AUDIT_CTES + selection,
-                                (car_id, linkage_type, manufacturer_id, offset), limit)
-    return {**audit_response(car_id, kind, manufacturer_id), **result,
-            "next_offset": offset + limit if result["truncated"] else None}
+        categories = set(prd_counts) | set(articles_by_category)
+        if len(categories) > CATEGORY_LIMIT:
+            raise HTTPException(503, "Oracle audit category limit exceeded")
+        oem_codes = {}
+        for _, batch_codes in graph_oem_batches(conn, sorted(article_keys), manufacturer_id, started):
+            oem_codes.update(batch_codes)
+
+    all_products = set().union(*product_ids.values())
+    summary = audit_counts(sum(prd_counts.values()), len(all_products), article_keys, oem_codes)
+    counts = [
+        dict(category_id=node, **audit_counts(prd_counts[node], len(product_ids[node]),
+                                             articles_by_category[node], oem_codes))
+        for node in sorted(categories, key=lambda node: (node is not None, node))
+    ]
+    return {**audit_response(car_id, kind, manufacturer_id), **summary, "categories": counts}
 
 
 @app.get("/api/v1/oracle/vehicles/{car_id}/articles", dependencies=[Depends(authorize)])
 def audit_articles(kind: CatalogueKind, car_id: int = Path(ge=1),
                    offset: int = Query(default=0, ge=0, le=2147483647),
                    limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
-    return audit_page(car_id, kind, offset, limit, """
-        SELECT supplierid AS supplier_id, CONVERT(article_key USING utf8mb4) AS article_number,
-               COUNT(oem_key) AS oem_count
-        FROM articles LEFT JOIN oems USING (supplierid, article_key)
-        GROUP BY supplierid, article_key
-        ORDER BY supplierid, article_key LIMIT %s, %s
-    """)
+    _, _, linkage_type = audit_source(kind)
+    started = monotonic()
+    with database("articles_" + kind) as conn:
+        manufacturer_id = audit_identity(conn, car_id, kind)
+        page = bounded_lookup(conn, """
+            SELECT DISTINCT supplierid AS supplier_id,
+                   CAST(datasupplierarticlenumber AS BINARY) AS article_key
+            FROM article_links FORCE INDEX (linkageid)
+            WHERE linkageid=%s AND linkagetypeid=%s AND supplierid>0
+              AND datasupplierarticlenumber<>''
+            ORDER BY supplier_id, article_key LIMIT %s, %s
+        """, (car_id, linkage_type, offset), limit)
+        keys = [(row["supplier_id"], row["article_key"].decode("utf-8")) for row in page["items"]]
+        articles = [
+            dict(supplier_id=supplier, article_number=article, oem_count=len(codes.get((supplier, article), ())))
+            for batch, codes in graph_oem_batches(conn, keys, manufacturer_id, started)
+            for supplier, article in batch
+        ]
+
+    return {**audit_response(car_id, kind, manufacturer_id), "items": articles, "truncated": page["truncated"],
+            "next_offset": offset + limit if page["truncated"] else None}
 
 
 @app.get("/api/v1/oracle/vehicles/{car_id}/oem", dependencies=[Depends(authorize)])
 def audit_oem(kind: CatalogueKind, car_id: int = Path(ge=1),
               offset: int = Query(default=0, ge=0, le=2147483647),
               limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
-    return audit_page(car_id, kind, offset, limit, """
-        SELECT CONVERT(oem_key USING utf8mb4) AS oem_number, COUNT(*) AS article_count
-        FROM oems GROUP BY oem_key ORDER BY oem_key LIMIT %s, %s
-    """)
+    _, _, linkage_type = audit_source(kind)
+    with database() as conn:
+        manufacturer_id = audit_identity(conn, car_id, kind)
+        result = bounded_lookup(conn, AUDIT_CTES + """
+            SELECT CONVERT(oem_key USING utf8mb4) AS oem_number, COUNT(*) AS article_count
+            FROM oems GROUP BY oem_key ORDER BY oem_key LIMIT %s, %s
+        """, (car_id, linkage_type, manufacturer_id, offset), limit)
+    return {**audit_response(car_id, kind, manufacturer_id), **result,
+            "next_offset": offset + limit if result["truncated"] else None}
 
 
 # Full-read-only catalogue inspection. Source names are preserved, not translated
@@ -560,36 +569,29 @@ def graph_rows(conn, sql, args, *, stage, started, size=500):
         offset += size
 
 
-def graph_links(conn, car_id, linkage_type, started):
-    sql = """
+def graph_links(conn, car_id, linkage_type, started, *, include_unclassified=False):
+    product_scope = "" if include_unclassified else "AND productid>0"
+    sql = f"""
         SELECT DISTINCT productid AS product_id, supplierid AS supplier_id,
                CAST(datasupplierarticlenumber AS BINARY) AS article_key
         FROM article_links FORCE INDEX (linkageid)
-        WHERE linkageid=%s AND linkagetypeid=%s AND productid>0 AND supplierid>0
+        WHERE linkageid=%s AND linkagetypeid=%s AND supplierid>0 {product_scope}
           AND datasupplierarticlenumber<>''
         ORDER BY product_id, supplier_id, article_key LIMIT %s, %s
     """
     return graph_rows(conn, sql, (car_id, linkage_type), stage="article_links", started=started)
 
 
-def graph_enrichment(conn, article_keys, manufacturer_id, started):
+def graph_oem_batches(conn, article_keys, manufacturer_id, started):
     for offset in range(0, len(article_keys), 100):
         if monotonic() - started > 18:
             logger.warning("oracle_graph_deadline stage=article_oe")
             raise HTTPException(503, "Catalogue deadline exceeded")
         batch = article_keys[offset:offset + 100]
+        requested = set(batch)
         pairs = ",".join(["(%s,%s)"] * len(batch))
-        supplier_ids = sorted({key[0] for key in batch})
-        suppliers = ",".join(["%s"] * len(supplier_ids))
+        refs = defaultdict(set)
         with conn.cursor() as cur:
-            cur.execute(f"SELECT DISTINCT id, description FROM suppliers WHERE id IN ({suppliers})", supplier_ids)
-            names = {}
-            ambiguous = set()
-            for row in cur.fetchall():
-                sid = row["id"]
-                if sid in names:
-                    ambiguous.add(sid)
-                names[sid] = row["description"]
             cur.execute(f"""
                 SELECT DISTINCT supplierid AS supplier_id,
                        CAST(datasupplierarticlenumber AS BINARY) AS article_key,
@@ -598,10 +600,27 @@ def graph_enrichment(conn, article_keys, manufacturer_id, started):
                 WHERE (supplierid,datasupplierarticlenumber) IN ({pairs})
                   AND manufacturerId=%s AND OENbr<>''
             """, (*(value for key in batch for value in key), manufacturer_id))
-            refs = {}
             for row in cur.fetchall():
                 key = (row["supplier_id"], row["article_key"].decode("utf-8"))
-                refs.setdefault(key, set()).add(row["oem_key"].decode("utf-8"))
+                # Reject collation-equivalent rows with a different binary ID.
+                if key in requested:
+                    refs[key].add(row["oem_key"].decode("utf-8"))
+        yield batch, refs
+
+
+def graph_enrichment(conn, article_keys, manufacturer_id, started):
+    for batch, refs in graph_oem_batches(conn, article_keys, manufacturer_id, started):
+        supplier_ids = sorted({key[0] for key in batch})
+        suppliers = ",".join(["%s"] * len(supplier_ids))
+        names = {}
+        ambiguous = set()
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT DISTINCT id, description FROM suppliers WHERE id IN ({suppliers})", supplier_ids)
+            for row in cur.fetchall():
+                sid = row["id"]
+                if sid in names:
+                    ambiguous.add(sid)
+                names[sid] = row["description"]
         for sid, number in batch:
             yield [sid, number, names.get(sid) if sid not in ambiguous else None,
                    sorted(refs.get((sid, number), ()))]

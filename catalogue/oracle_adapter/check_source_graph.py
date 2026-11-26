@@ -277,7 +277,7 @@ def http(env, route, **params):
 
 def verify(env):
     status, health, elapsed = http(env, "/health")
-    ready = status == 200 and health.get("version") == "0.4.2"
+    ready = status == 200 and health.get("version") == "0.4.3"
     report("health", status=status, version=health.get("version"), elapsed_ms=elapsed)
     status, result, elapsed = http(env, "/api/v1/oracle/oem/by-article",
                                    supplier_id=1, article_number=20064, manufacturer_id=120, limit=20)

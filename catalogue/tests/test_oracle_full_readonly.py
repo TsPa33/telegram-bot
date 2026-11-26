@@ -135,3 +135,91 @@ def test_commercial_linkage_requires_two_models_and_fails_on_real_query_errors(m
 
     monkeypatch.setattr(probe, "query", one_model)
     assert probe.report_commercial_linkage(None, {}, [10, 11]) is None
+
+
+def test_vehicle_audit_preserves_distinct_oems_and_uncategorized_counts(monkeypatch):
+    @contextmanager
+    def db(operation):
+        assert operation == "audit_commercial"
+        yield None
+
+    def graph_rows(_conn, sql, args, *, stage, started):
+        assert "FROM commercial_vehicle_pds FORCE INDEX (PRIMARY)" in sql
+        assert "WHERE commertialvehicleid=%s" in sql
+        assert args == (8387,) and stage == "audit_pds"
+        for node, product, supplier in [(10, 1, 7), (10, 2, 7), (11, 1, 7), (12, 3, 8)]:
+            yield dict(category_id=node, product_id=product, supplier_id=supplier)
+
+    def graph_links(_conn, car, linkage, started, *, include_unclassified):
+        assert (car, linkage, include_unclassified) == (8387, 16, True)
+        for product, supplier, article in [(1, 7, b"A"), (2, 7, b"A"), (2, 7, b"B"),
+                                          (4, 8, b"C"), (None, 8, b"D")]:
+            yield dict(product_id=product, supplier_id=supplier, article_key=article)
+
+    def oem_batches(_conn, keys, manufacturer, started):
+        assert keys == [(7, "A"), (7, "B"), (8, "C"), (8, "D")]
+        assert manufacturer == 24
+        yield keys, {(7, "A"): {"OE1", "OE2"}, (7, "B"): {"OE2"}, (8, "D"): {"OE3"}}
+
+    monkeypatch.setenv("ORACLE_COMMERCIAL_LINKAGE_TYPE", "16")
+    monkeypatch.setattr(oracle, "database", db)
+    monkeypatch.setattr(oracle, "audit_identity", lambda *args: 24)
+    monkeypatch.setattr(oracle, "graph_rows", graph_rows)
+    monkeypatch.setattr(oracle, "graph_links", graph_links)
+    monkeypatch.setattr(oracle, "graph_oem_batches", oem_batches)
+    result = oracle.vehicle_audit("commercial", 8387)
+    assert result["prd_links"] == 4
+    assert result["unique_part_types"] == 3
+    assert result["unique_articles"] == 4
+    assert result["articles_with_oem"] == 3
+    assert result["articles_without_oem"] == 1
+    assert result["unique_oem_codes"] == 3
+    assert result["oem_coverage_percent"] == 75.0
+    assert [(item["category_id"], item["prd_links"], item["unique_part_types"],
+             item["unique_articles"], item["articles_with_oem"], item["unique_oem_codes"],
+             item["oem_coverage_percent"]) for item in result["categories"]] == [
+        (None, 0, 0, 2, 1, 1, 50.0), (10, 2, 2, 2, 2, 2, 100.0),
+        (11, 1, 1, 1, 1, 2, 100.0), (12, 1, 1, 0, 0, 0, None),
+    ]
+
+
+def test_vehicle_articles_limits_oem_reads_to_the_page_and_matches_binary_ids(monkeypatch):
+    calls = []
+
+    class Cursor:
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+
+        def execute(self, sql, args):
+            calls.append((sql, args))
+            if "FROM article_links" in sql:
+                assert "ORDER BY supplier_id, article_key LIMIT %s, %s" in sql
+                assert "JOIN" not in sql
+                self.rows = [dict(supplier_id=7, article_key=key) for key in (b"A", b"a", b"next")]
+            else:
+                assert "FROM article_oe FORCE INDEX (supplierid)" in sql
+                self.rows = [
+                    dict(supplier_id=7, article_key=b"A", oem_key=b"OEM1"),
+                    dict(supplier_id=7, article_key=b"A", oem_key=b"OEM1"),
+                    dict(supplier_id=7, article_key=b"next", oem_key=b"OEM2"),
+                ]
+
+        def fetchall(self): return self.rows
+
+    class DB:
+        def cursor(self): return Cursor()
+
+    @contextmanager
+    def db(operation):
+        assert operation == "articles_passenger"
+        yield DB()
+
+    monkeypatch.setattr(oracle, "database", db)
+    monkeypatch.setattr(oracle, "audit_identity", lambda *args: 16)
+    result = oracle.audit_articles("passenger", 21, 11, 2)
+    assert [args for _, args in calls] == [(21, 2, 11, 3), (7, "A", 7, "a", 16)]
+    assert result["truncated"] is True and result["next_offset"] == 13
+    assert result["items"] == [
+        {"supplier_id": 7, "article_number": "A", "oem_count": 1},
+        {"supplier_id": 7, "article_number": "a", "oem_count": 0},
+    ]
