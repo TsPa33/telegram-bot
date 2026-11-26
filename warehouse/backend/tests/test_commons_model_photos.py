@@ -46,3 +46,24 @@ def test_mask_confident_foreground_and_background():
     assert mask[0,0]==mask[0,1]==0
     assert 0<mask[0,2]<255
     assert mask[0,3]==mask[0,4]==255
+
+def test_large_jpeg_decoder_is_bounded():
+    import io
+    from PIL import Image
+    # 25 MP input, above old cap, must be downsampled before segmentation.
+    buf=io.BytesIO()
+    Image.new("RGB",(5000,5000),"gray").save(buf,"JPEG")
+    image=c.decode_source(buf.getvalue())
+    assert image.mode=="RGB" and image.size==(1200,1200)
+
+def test_non_jpeg_pixel_limit_and_animation():
+    import io
+    from PIL import Image
+    buf=io.BytesIO()
+    Image.new("1",(5000,5000)).save(buf,"PNG")
+    with pytest.raises(ValueError,match="pixel limit"):c.decode_source(buf.getvalue())
+    buf=io.BytesIO()
+    a=Image.new("RGB",(20,20),"red")
+    b=Image.new("RGB",(20,20),"blue")
+    a.save(buf,"WEBP",save_all=True,append_images=[b],duration=100)
+    with pytest.raises(ValueError,match="animated"):c.decode_source(buf.getvalue())

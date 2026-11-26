@@ -150,13 +150,27 @@ def refine_mask(pred):
     norm=(pred-pred.min())/(pred.max()-pred.min())
     return (np.clip((norm-.15)/(.68-.15),0,1)*255).astype("uint8")
 
-def segment(config,raw):
-    import numpy as np
+def decode_source(raw):
     from PIL import Image,ImageOps
+    if not raw or len(raw)>MAX_DOWNLOAD:raise ValueError("source byte limit")
     with Image.open(io.BytesIO(raw)) as im:
-        if im.width*im.height>24_000_000 or getattr(im,"n_frames",1)!=1:raise ValueError("oversized or animated source")
+        if im.format not in ("JPEG","PNG","WEBP") or getattr(im,"n_frames",1)!=1:
+            raise ValueError("unsupported or animated source")
+        pixels=im.width*im.height
+        if pixels>60_000_000 or (im.format!="JPEG" and pixels>24_000_000):
+            raise ValueError("source pixel limit")
+        if im.format=="JPEG":
+            # Reduce JPEG at decode time, before EXIF or RGB allocation.
+            im.draft("RGB",(1200,1200))
+        if im.width*im.height>24_000_000:raise ValueError("decoded pixel limit")
         image=ImageOps.exif_transpose(im).convert("RGB")
         image.thumbnail((1200,1200))
+        return image
+
+def segment(config,raw):
+    import numpy as np
+    from PIL import Image
+    image=decode_source(raw)
     inp=np.asarray(image.resize((320,320),Image.Resampling.LANCZOS),dtype=np.float32)/255.0
     inp=(inp-np.array([.485,.456,.406],dtype=np.float32))/np.array([.229,.224,.225],dtype=np.float32)
     sess=session(config["weight"],config["digest"])
