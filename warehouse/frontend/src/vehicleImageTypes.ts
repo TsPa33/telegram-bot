@@ -1,4 +1,4 @@
-export const BODY_TYPES=['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','unknown'] as const;
+export const BODY_TYPES=['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','tractor','truck','bus','unknown'] as const;
 export type BodyType=typeof BODY_TYPES[number];
 export type VehicleImageIdentity={manufacturer?:string;model?:string;generation?:string;year?:number;bodyType?:BodyType};
 export type ImageAsset={
