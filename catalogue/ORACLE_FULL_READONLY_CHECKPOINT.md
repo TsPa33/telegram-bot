@@ -26,3 +26,11 @@ Do not present source assembly group as verified node name; no fake counts or gr
 ### Відновлення роботи
 
 Під’єднайте сесію Codex до приватного staging Oracle Adapter на `carpot-oracle` через затверджений канал. Перша перевірка на вузлі використовує чинного SELECT-only користувача. Перевірити версію приватного процесу, `information_schema.COLUMNS` і `STATISTICS` для таблиць адаптера, доступ SELECT, плани `EXPLAIN` для точних ідентичностей і комерційний дискримінатор. Зафіксувати доведене значення у чинній конфігурації адаптера. Після приймання оновлення зберегти попередній файл адаптера та використовувати Railway deployment `ceb3fea8-6005-4455-bb34-04f678ff8f67` як точку відкату Catalogue. Спочатку перевірити приватний адаптер, потім Catalogue staging і тільки після цього Warehouse staging на окремій тестовій компанії.
+
+### Підтвердження з Oracle VM
+
+Власник перевірив чинний процес через SSH. Файл адаптера датований 22.11.2026 16:45. Журнал процесу зафіксував 404 для відсутніх audit/articles/oem. Gateway повертав 503. Окремий OEM-пошук за артикулом повертає 200.
+
+MySQL 8.4.13 і `@@transaction_read_only=1` підтверджені. Ідентичності трьох контрольних модифікацій підтверджені. Для чинного користувача адаптера чотири SELECT-проби повернули MySQL 1142. Після надання табличного SELECT на `commercial_vehicle_pds`, `prd`, `suppliers` і `article_links` повторно перевірити видимість `commercial_vehicle_pds.PRIMARY`, `article_links.linkageid` і комерційний дискримінатор. Результат попередньої проби: `ready_to_install=false`, значення linkage type ще не підтверджене.
+
+Діагностичний скрипт і версія адаптера зафіксовані в `a55d6d8a081d0d7e4163ea456c8e161d45dc1aa8`. Інсталятор у `b8cf418eb5f58bc3688f6c1a5efd7291a09bf2ef` перевіряє SHA-256, зберігає попередній файл і drop-in, використовує підтверджений linkage type, перезапускає лише `carpot-oracle-adapter.service` і перевіряє локальні маршрути. Ручний відкат: `sudo /var/backups/carpot-oracle-adapter/latest-stage13/rollback.sh`. [Draft PR №584](https://github.com/TsPa33/telegram-bot/pull/584)
