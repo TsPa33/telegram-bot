@@ -26,7 +26,7 @@ export const fieldLabels:Record<string,string>={
 };
 const readinessLabels:Record<string,string>={
   exact:'Доступні запчастини для цієї модифікації.',
-  partial:'Доступний частковий план. OEM підбирається для позицій із підтвердженими зв’язками.',
+  partial:'Доступний частковий план.',
   absent:'Запчастини для цієї модифікації ще недоступні. Можна вибрати базовий каталог CarPot.',
   unavailable:'Каталог запчастин тимчасово недоступний. Повторіть перевірку або додайте авто з базовим каталогом.',
   unsupported:'Для цього типу транспорту доступний довідник модифікацій і базовий каталог CarPot.',
@@ -130,7 +130,7 @@ export default function VinCataloguePicker({
       onClick={()=>{resetChoice();setRetry(n=>n+1)}}>Повторити пошук</button>}
     {page?.status==='manufacturer_required'&&<p role="status">Вкажіть марку для пошуку модифікацій.</p>}
     {page?.status==='unavailable'&&<p role="alert">Довідник модифікацій тимчасово недоступний.</p>}
-    {page?.status==='incomplete'&&<p role="status">Пошук неповний. Виберіть модель, щоб перевірити її окремо.</p>}
+    {page?.status==='incomplete'&&!scope&&!choice&&<p role="status">Пошук неповний. Виберіть модель, щоб перевірити її окремо.</p>}
     {page?.search_complete&&!items.length&&<p role="status">Сумісних модифікацій не знайдено.</p>}
     {models.length>1&&<label>Модель із довідника
       <select value={scope?modelKey(scope):''} disabled={disabled||busy} onChange={e=>{
@@ -167,8 +167,9 @@ export default function VinCataloguePicker({
     </label>)}
     {!!items.length&&<label>Доступні модифікації
       <select value={choice?.choice||''} disabled={disabled||busy} onChange={e=>{
-        resetChoice();
         const picked=items.find(item=>item.choice===e.target.value)||null;
+        if(picked?.choice===choice?.choice)return;
+        resetChoice();
         if(picked)onPending(true);
         setChoice(picked);
       }}>
