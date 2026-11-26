@@ -23,16 +23,19 @@ def card(i, amount, *, oem="8115006C41", title="Фара передня ліва
 
 @pytest.fixture(autouse=True)
 def isolate(monkeypatch):
+    monkeypatch.setattr(live, "_ATTEMPTS", [])
     monkeypatch.setattr(live, "_CACHE", live.OrderedDict())
     monkeypatch.setattr(live, "_ROBOTS", None)
     monkeypatch.setattr(live, "_LAST", float("-inf"))
     monkeypatch.delenv("WAREHOUSE_MARKET_LIVE_ENABLED", raising=False)
-    monkeypatch.delenv("WAREHOUSE_MARKET_ACCESS_APPROVAL", raising=False)
+    monkeypatch.delenv("WAREHOUSE_MARKET_ACCESS_MODE", raising=False)
+    monkeypatch.delenv("WAREHOUSE_ENV", raising=False)
 
 
 def authorize(monkeypatch):
     monkeypatch.setenv("WAREHOUSE_MARKET_LIVE_ENABLED", "true")
-    monkeypatch.setenv("WAREHOUSE_MARKET_ACCESS_APPROVAL", "synthetic-unit-test-only")
+    monkeypatch.setenv("WAREHOUSE_MARKET_ACCESS_MODE", "limited_individual")
+    monkeypatch.setenv("WAREHOUSE_ENV", "staging")
 
 
 def test_routes_and_fail_closed(monkeypatch):
@@ -66,7 +69,7 @@ def test_parser_average_and_conflicts():
     assert result["offer_count"]==3
     assert Decimal(result["average"])==1500 and Decimal(result["minimum"])==1000
     assert Decimal(result["maximum"])==2000
-    assert all(set(e)=={"amount","currency","observed_at"} for e in result["examples"])
+    assert all(set(e)=={"amount","currency","observed_at","url"} for e in result["examples"])
     assert all(r["average"] is None for r in groups if r is not result)
     assert not any(r["availability"] in ("expected","unavailable") for r in groups)
 
@@ -112,3 +115,14 @@ def test_empty_and_oversized_markup():
         live.parse_cards("<html>access denied</html>",PATH,STAMP)
     with pytest.raises(ValueError):
         live.parse_cards("x"*(live.MAX_BYTES+1),PATH,STAMP)
+
+def test_limited_pilot_daily_cap_and_production_off(monkeypatch):
+    authorize(monkeypatch)
+    assert live.enabled()
+    monkeypatch.setenv("WAREHOUSE_ENV","production")
+    assert not live.enabled()
+    monkeypatch.setenv("WAREHOUSE_ENV","staging")
+    monkeypatch.setattr(live,"_ATTEMPTS",[live.monotonic()]*live.DAILY_LIMIT)
+    monkeypatch.setattr(live,"fetch_text",lambda *a:pytest.fail("quota must prevent network"))
+    assert live.lookup(CTX) is None
+    assert live.lookup_path(dict(CTX,oem="81150 06C41"))==PATH
