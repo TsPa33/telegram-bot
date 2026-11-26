@@ -48,9 +48,9 @@ def test_routes_and_fail_closed(monkeypatch):
     assert not live.robots_allows("User-Agent: *\nDisallow: /ua/n/", PATH)
     assert not live.robots_allows("User-Agent: Bot\nDisallow: /", PATH)
     monkeypatch.setattr(live, "fetch_text", lambda *a: pytest.fail("unexpected network"))
-    assert live.lookup(CTX) is None
+    assert live.lookup(CTX)[0]=="disabled"
     monkeypatch.setenv("WAREHOUSE_MARKET_LIVE_ENABLED", "true")
-    assert live.lookup(CTX) is None
+    assert live.lookup(CTX)[0]=="disabled"
 
 
 def test_parser_average_and_conflicts():
@@ -88,7 +88,7 @@ def test_cache_no_tenant_data_and_no_retry(monkeypatch):
     assert calls==["/robots.txt",PATH]
     assert live.lookup(dict(CTX,model="Other"))[1]==[]
     assert calls==["/robots.txt",PATH]
-    assert live.lookup(dict(CTX,oem="OTHER123")) is None
+    assert live.lookup(dict(CTX,oem="OTHER123"))[0]=="cooldown"
 
 
 def test_blocked_robots_and_failed_source(monkeypatch):
@@ -98,7 +98,7 @@ def test_blocked_robots_and_failed_source(monkeypatch):
         calls.append(path)
         return "User-Agent: *\nDisallow: /ua/n/"
     monkeypatch.setattr(live,"fetch_text",blocked)
-    assert live.lookup(CTX) is None
+    assert live.lookup(CTX)[0]=="robots_denied"
     assert calls==["/robots.txt"]
     monkeypatch.setattr(live,"_LAST",float("-inf"))
     monkeypatch.setattr(live,"_ROBOTS",None)
@@ -107,11 +107,11 @@ def test_blocked_robots_and_failed_source(monkeypatch):
             return ROBOTS
         raise OSError("test timeout")
     monkeypatch.setattr(live,"fetch_text",unavailable)
-    assert live.lookup(CTX) is None and not live._CACHE
+    assert live.lookup(CTX)[0]=="source_network_error" and not live._CACHE
 
 
 def test_empty_and_oversized_markup():
-    with pytest.raises(ValueError):
+    with pytest.raises(live.LookupFailure):
         live.parse_cards("<html>access denied</html>",PATH,STAMP)
     with pytest.raises(ValueError):
         live.parse_cards("x"*(live.MAX_BYTES+1),PATH,STAMP)
@@ -124,5 +124,30 @@ def test_limited_pilot_daily_cap_and_production_off(monkeypatch):
     monkeypatch.setenv("WAREHOUSE_ENV","staging")
     monkeypatch.setattr(live,"_ATTEMPTS",[live.monotonic()]*live.DAILY_LIMIT)
     monkeypatch.setattr(live,"fetch_text",lambda *a:pytest.fail("quota must prevent network"))
-    assert live.lookup(CTX) is None
+    assert live.lookup(CTX)[0]=="daily_limit"
     assert live.lookup_path(dict(CTX,oem="81150 06C41"))==PATH
+
+def test_source_not_found_vs_robots_failure(monkeypatch):
+    authorize(monkeypatch)
+    def fetch(path,limit=live.MAX_BYTES):
+        if path=="/robots.txt":return ROBOTS
+        raise live.LookupFailure("source_not_found")
+    monkeypatch.setattr(live,"fetch_text",fetch)
+    assert live.lookup(CTX)[0]=="source_not_found"
+    monkeypatch.setattr(live,"_LAST",float("-inf"))
+    monkeypatch.setattr(live,"_ROBOTS",None)
+    def unavailable(*args):
+        raise live.LookupFailure("source_not_found")
+    monkeypatch.setattr(live,"fetch_text",unavailable)
+    assert live.lookup(CTX)[0]=="robots_unavailable"
+
+
+def test_control_markup_with_labels_and_generation():
+    # Reconstructed from the real 2026-11-26 Toyota OEM observation, not a
+    # live request or claim of current availability.
+    rows=live.parse_cards("".join(card(i,p,title="Фара передня ліва у зборі Toyota Camry v70 19-20 галоген + LED",labels="Новий аналог",availability="") for i,p in enumerate([24769,10328,24038],1)),PATH,STAMP)
+    groups=live.references(CTX,rows)
+    assert len(groups)==1 and groups[0]["condition"]=="new"
+    assert groups[0]["availability"]=="unknown" and groups[0]["offer_count"]==3
+    assert groups[0]["average"]=="19711.67"
+    assert live.condition_for("Відновлений")=="refurbished"

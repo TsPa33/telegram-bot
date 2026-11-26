@@ -43,7 +43,15 @@ export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{pa
     {data&&<div aria-live="polite">
      {data.truncated&&<p>Вибірку обмежено. Середня ціна не обчислюється.</p>}
      {data.lookup_status==='missing_oem'&&<p>Для зовнішнього пошуку потрібен коректний OEM та модель автомобіля.</p>}
-     {data.lookup_status==='unavailable_or_limited'&&<p>Зовнішня перевірка тимчасово недоступна або досягнуто ліміту. Показано лише збережені дані, якщо вони є.</p>}
+     {data.lookup_status==='unavailable_or_limited'&&<p>Зовнішня перевірка тимчасово недоступна. Показано збережені дані, якщо вони є.</p>}
+     {data.lookup_status==='cooldown'&&<p>Зачекайте 30 секунд між зовнішніми перевірками.</p>}
+     {data.lookup_status==='daily_limit'&&<p>Вичерпано добовий ліміт зовнішніх перевірок.</p>}
+     {data.lookup_status==='busy'&&<p>Виконується інший зовнішній пошук. Повторіть пізніше.</p>}
+     {data.lookup_status==='source_not_found'&&<p>У доступному джерелі немає сторінки для цього OEM.</p>}
+     {data.lookup_status==='source_no_cards'&&<p>На сторінці цього OEM не виявлено товарних карток.</p>}
+     {['robots_denied','robots_unavailable','source_access_denied','source_redirect'].includes(data.lookup_status)&&<p>Правила або відповідь джерела не дозволили виконати автоматичну перевірку.</p>}
+     {['source_timeout','source_network_error','source_http_error'].includes(data.lookup_status)&&<p>Не вдалося отримати відповідь джерела. Повторіть пізніше.</p>}
+     {['source_content_error','source_response_limit','source_parse_error'].includes(data.lookup_status)&&<p>Відповідь джерела не вдалося безпечно обробити. Ціну не вигадуємо.</p>}
      {data.lookup_status==='no_comparable'&&<p>У доступному джерелі не знайдено порівнюваних пропозицій для цього OEM.</p>}
      {data.lookup_status==='disabled'&&<p>Зовнішній пошук не активовано.</p>}
      {!references.length&&!data.truncated&&<p>Немає доступних цінових орієнтирів для цієї деталі.</p>}
