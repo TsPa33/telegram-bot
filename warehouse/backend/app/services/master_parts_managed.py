@@ -77,11 +77,15 @@ def candidate_rows(report, *, basis):
 
 
 def managed_rows(db, vehicle, config):
-    if not enabled() or config.get("conflicts") or not (vehicle.dismantling_v3 or {}).get("unified_catalogue"):
+    if not enabled() or not (vehicle.dismantling_v3 or {}).get("unified_catalogue"):
         return None
     from app.services.master_parts_reconciliation import preview_for_vehicle
     from app.services.dismantling_plan_v3 import generator_basis
     from fastapi import HTTPException
+    if config.get("conflicts"):
+        raise HTTPException(409, "Характеристики суперечливі; наявний план збережено")
+    if (vehicle.dismantling_v3 or {}).get("inventory_mode") == "virtual_v1":
+        raise HTTPException(409, "Доповнення Master для віртуального обліку ще не підтримується")
     try:
         report = preview_for_vehicle(db, vehicle)
         if report.get("status") != "preview":
