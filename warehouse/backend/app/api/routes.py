@@ -173,7 +173,9 @@ def vehicle_stock_counts(db,account_id,ids):return {k:v[0] for k,v in vehicle_pa
 def vehicle_registered_part_counts(db,account_id,ids):return {k:v[1] for k,v in vehicle_part_counts(db,account_id,ids).items()}
 def vehicle_view(db,row,account_id):
     physical,registered=vehicle_part_counts(db,account_id,[row.id]).get(row.id,(0,0))
-    return {**snapshot(row),'stock_positions':physical,'registered_parts':registered}
+    from app.services.model_reference_photos import read_metadata
+    photo=read_metadata([row]).get(row.id)
+    return {**snapshot(row),'stock_positions':physical,'registered_parts':registered,**({'reference_image':photo} if photo else {})}
 
 
 def listing(
@@ -224,12 +226,15 @@ def listing(
     combined_counts=vehicle_part_counts(db,account_id,[r.id for r in rows]) if model is Vehicle else {}
     vehicle_counts={k:v[0] for k,v in combined_counts.items()}
     registered_counts={k:v[1] for k,v in combined_counts.items()}
+    from app.services.model_reference_photos import read_metadata
+    reference_images=read_metadata(rows) if model is Vehicle else {}
     items = []
     for row in rows:
         item = snapshot(row)
         if model is Vehicle:
             item["stock_positions"] = vehicle_counts.get(row.id, 0)
             item["registered_parts"] = registered_counts.get(row.id, 0)
+            if row.id in reference_images: item['reference_image']=reference_images[row.id]
         if isinstance(row, Part):
             item["available_quantity"] = row.available_quantity
             if row.currency != "UAH" and not currency_aware:
@@ -1245,6 +1250,14 @@ async def vehicle_photo_upload(id: str, db: DB, who: Auth, file: UploadFile = Fi
         path.unlink(missing_ok=True)
         raise
     return {"id": photo.id, "url": f"/api/v1/vehicle-photos/{photo.id}"}
+
+
+@router.get("/vehicle-photos/reference/{key}", tags=["Vehicle photos"])
+def model_reference_photo(key: str, who: Auth):
+    from app.services.model_reference_photos import read_image
+    data=read_image(key)
+    if data is None: raise HTTPException(404,'Фото моделі недоступне')
+    return Response(content=data,media_type='image/webp')
 
 
 @router.get("/vehicle-photos/{photo_id}", tags=["Vehicle photos"])

@@ -5,7 +5,7 @@ export type ImageAsset={
  id:string;kind:'generation'|'model'|'body'|'unknown';file:string;width:number;height:number;
  manufacturer?:string;model?:string;generation?:string;yearFrom?:number;yearTo?:number;
  // Explicitly reviewed model reference photo; unknown year is not a generation match.
- referencePhoto?:boolean;allowUnknownYear?:boolean;
+ referencePhoto?:boolean;allowUnknownYear?:boolean;transparentCutout?:boolean;
  bodyType:BodyType;verified:boolean;priority?:number;
  variants?:{file:string;width:number}[];
  source:{type:'generated'|'owned'|'licensed';description:string;reference:string};

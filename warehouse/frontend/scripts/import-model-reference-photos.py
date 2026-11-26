@@ -73,7 +73,12 @@ def main():
         with Image.open(io.BytesIO(raw)) as im:
             if im.format != "JPEG":
                 raise ValueError("Expected original JPEG")
-            photo = ImageOps.exif_transpose(im).convert("RGB")
+            # Original JPEG is retained for provenance. Require separately reviewed alpha cutout.
+            cutout_path=args.review_dir/(c['id']+'-cutout.png')
+            if not cutout_path.is_file(): raise ValueError('Reviewed transparent cutout required: '+str(cutout_path))
+            with Image.open(cutout_path) as cutout:
+                if cutout.mode!='RGBA' or cutout.getchannel('A').histogram()[0] < cutout.width*cutout.height*0.08: raise ValueError('Real alpha transparency required')
+                photo=cutout.copy()
             photo.thumbnail((640, 480))
             buf = io.BytesIO()
             photo.save(buf, "WEBP", quality=78, method=6)
@@ -87,14 +92,14 @@ def main():
         for i, model in enumerate(c["models"]):
             assets.append(dict(id=c["id"]+"-"+str(i),kind="model",manufacturer=c["manufacturer"],
               model=model,yearFrom=c["years"][0],yearTo=c["years"][1],bodyType=c["body"],
-              file=filename,width=width,height=height,verified=True,referencePhoto=True,allowUnknownYear=True,
-              source=dict(type="licensed",description="Reviewed real model photograph; resized, WebP conversion; not donor or trim verification.",reference=page),
+              file=filename,width=width,height=height,verified=True,referencePhoto=True,allowUnknownYear=True,transparentCutout=True,
+              source=dict(type="licensed",description="Reviewed real model photograph; background removed, resized, WebP conversion; not donor or trim verification.",reference=page),
               usage=dict(status="approved",license=c["license"],licenseUrl=c["license_url"],commercialUse=True,
-                         attribution=c["author"]+" · змінено розмір, WebP")))
+                         attribution=c["author"]+" · видалено фон, змінено розмір, WebP")))
         provenance.append(dict(id=c["id"], source=page, author=c["author"], license=c["license"],
                                license_url=c["license_url"], original_sha256=hashlib.sha256(raw).hexdigest(),
                                asset=filename, asset_sha256=hashlib.sha256(data).hexdigest(),
-                               width=width,height=height,bytes=len(data),changes="EXIF orientation, resize, WebP conversion"))
+                               width=width,height=height,bytes=len(data),changes="background removed, resize, WebP conversion"))
     target=ROOT/"src"/"assets"/"vehicles"
     manifest=ROOT/"src"/"vehicleModelReferenceAssets.ts"
     # Only write after every selected candidate has validated. Full selection replaces generated registry.
