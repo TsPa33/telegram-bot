@@ -71,10 +71,14 @@ def metadata(page):
     info=infos[0]; ext=info.get("extmetadata",{})
     def field(name):return ext.get(name,{}).get("value","")
     # Only explicit allowlisted free licenses. No inferred copyright or fair use.
-    license_id=str(field("License")).lower()
+    license_id=str(field("License")).strip().lower()
+    # Commons uses cc-zero for CC0 in some extmetadata records.
+    if license_id in ("cc-zero","cc0","cc0-1.0"):license_id="cc0-1.0"
     if license_id not in LICENSES:raise ValueError("unsupported license")
     label,license_url=LICENSES[license_id]
-    actual=str(field("LicenseUrl")).replace("http://","https://",1).rstrip("/")
+    actual=str(field("LicenseUrl")).strip().replace("http://","https://",1).rstrip("/")
+    # Deed language variants are the same license, not additional grants.
+    actual=re.sub(r"/deed(?:\.[a-zA-Z_-]+)?$","",actual)
     if actual!=license_url.rstrip("/"):raise ValueError("license URL mismatch")
     author=plain(field("Artist"))
     if not author or len(author)>180:raise ValueError("missing or oversized author credit")
@@ -137,7 +141,14 @@ def session(path,digest):
     with open(path,"rb") as f:
         if hashlib.file_digest(f,"sha256").hexdigest()!=digest:raise ValueError("weight digest mismatch")
     opts=ort.SessionOptions();opts.intra_op_num_threads=1;opts.inter_op_num_threads=1
+    opts.enable_cpu_mem_arena=False
+    opts.enable_mem_pattern=False
     return ort.InferenceSession(path,sess_options=opts,providers=["CPUExecutionProvider"])
+
+def refine_mask(pred):
+    import numpy as np
+    norm=(pred-pred.min())/(pred.max()-pred.min())
+    return (np.clip((norm-.15)/(.68-.15),0,1)*255).astype("uint8")
 
 def segment(config,raw):
     import numpy as np
@@ -151,8 +162,9 @@ def segment(config,raw):
     sess=session(config["weight"],config["digest"])
     pred=np.squeeze(sess.run(None,{sess.get_inputs()[0].name:inp.transpose(2,0,1)[None]})[0])
     if pred.ndim!=2 or not np.isfinite(pred).all() or pred.max()-pred.min()<.01:raise ValueError("invalid mask")
-    mask=((pred-pred.min())/(pred.max()-pred.min())*255).astype("uint8")
-    alpha=Image.fromarray(mask).resize(image.size,Image.Resampling.LANCZOS)
+    # Suppress faint background remnants and keep confident vehicle pixels opaque.
+    # Pilot tuning, not proof of semantic accuracy. Review resulting wheels/mirrors.
+    alpha=Image.fromarray(refine_mask(pred)).resize(image.size,Image.Resampling.LANCZOS)
     rgba=image.convert("RGBA");rgba.putalpha(alpha)
     out=io.BytesIO();rgba.save(out,"WEBP",quality=87)
     return out.getvalue()

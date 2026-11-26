@@ -37,7 +37,7 @@ jobs:
         run: |
           curl --fail --location --max-time 90 --retry 2 --max-filesize 12000000 https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx -o "$PHOTO_PILOT_WEIGHT"
           echo "8e83ca70e441ab06c318d82300c84806  $PHOTO_PILOT_WEIGHT" | md5sum -c -
-          sha256sum "$PHOTO_PILOT_WEIGHT"
+          echo "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8  $PHOTO_PILOT_WEIGHT" | sha256sum -c -
       - name: Test cache, license gates and transparency
         working-directory: warehouse/backend
         run: |

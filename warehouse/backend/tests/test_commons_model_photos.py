@@ -31,3 +31,18 @@ def test_no_review_no_provider_claim(tmp_path):
     assert called==[i]
     with m.connect(db,True) as d:
         assert d.execute("SELECT attempts FROM photos WHERE key=?",(m.key_for(j),)).fetchone()[0]==0
+
+
+def test_cc0_alias_and_deed_url():
+    ext={"License":{"value":"cc-zero"},"LicenseUrl":{"value":"http://creativecommons.org/publicdomain/zero/1.0/deed.en"},"Artist":{"value":"Example"}}
+    assert c.metadata(page(extmetadata=ext))["license"]=="CC0 1.0"
+    ext["LicenseUrl"]["value"]="https://creativecommons.org/licenses/by-nc/4.0/"
+    with pytest.raises(ValueError):c.metadata(page(extmetadata=ext))
+
+
+def test_mask_confident_foreground_and_background():
+    import numpy as np
+    mask=c.refine_mask(np.array([[0,.1,.4,.8,1.0]],dtype=np.float32))
+    assert mask[0,0]==mask[0,1]==0
+    assert 0<mask[0,2]<255
+    assert mask[0,3]==mask[0,4]==255

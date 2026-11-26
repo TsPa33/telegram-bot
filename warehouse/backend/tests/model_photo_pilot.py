@@ -31,6 +31,8 @@ def main():
                 try:
                     pages=c.api_query(client,{"titles":title,"prop":"imageinfo","iiprop":"url|sha1|mime|size|extmetadata","iilimit":1})
                     if len(pages)!=1:raise ValueError("ambiguous source")
+                    ext=(pages[0].get("imageinfo") or [{}])[0].get("extmetadata",{})
+                    result["source_license_metadata"]={k:ext.get(k,{}).get("value") for k in ("License","LicenseUrl","LicenseShortName")}
                     source=c.metadata(pages[0])
                     result["source"]={k:v for k,v in source.items() if k!="url"}
                     if source["title"]!=title:raise ValueError("file title mismatch")
