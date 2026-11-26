@@ -76,9 +76,21 @@ existing read-only session and 3-second statement limit. Before installing the
 adapter update on Oracle, verify that the link import is complete, SELECT
 access is present, and the live query plans use the expected indexes. The
 commercial audit requires confirming the source table
-`commercial_vehicle_pds(commercialvehicleid, nodeid, productid, supplierid)`,
-its leading primary key, and the commercial link discriminator. Set
-`ORACLE_COMMERCIAL_LINKAGE_TYPE` on the adapter to the verified value.
+`commercial_vehicle_pds(commertialvehicleid, nodeid, productid, supplierid)`,
+its leading primary key, and live commercial link evidence. For `td1q2018`,
+TecAlliance's table 400 and key table 271 define `16` as the direct CV type
+(`CV-Type-No`), `7` as the CV producer ID (`ManID-No`), and `14` as the
+engine ID (`EngineNo`). The commercial adapter accepts the verified direct
+type `16`. Producer and engine linkages require their own identity mapping.
+[TecDoc Data Format](https://dwnld.aws.tecalliance.com/TecDoc/Downloads/TecDoc-Data-Format.pdf#page=183)
+
+The release installer uses the `linkage` probe before changing the service.
+The probe requires live type-16 article links matching commercial PDS
+supplier/product pairs for vehicles in two distinct models. It uses the
+confirmed read-only connection, tries optional supplied witness IDs first,
+then searches a bounded set of models if required. MySQL 3024 skips the
+individual timed-out witness. Other query errors, or a shortage of exact
+witnesses, block installation.
 The gateway can be deployed separately and returns 503 while the upstream
 audit routes are unavailable.
 

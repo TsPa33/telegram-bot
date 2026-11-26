@@ -5,13 +5,16 @@ No direct MySQL connection and no automatic Warehouse OEM mutations.
 import json
 import logging
 import os
-from typing import Literal
+from time import monotonic
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 MAX_BODY = 96 * 1024
+MAX_CATALOGUE_BODY = 8 * 1024 * 1024
+AUDIT_PAGE_SIZE = 100
 logger = logging.getLogger("carpot.oracle_gateway")
 
 
@@ -34,33 +37,43 @@ def _settings():
     return raw.rstrip("/"), secret, (proxy or None)
 
 
-def _request(path, params, *, audit_summary=False, modification_lookup=False):
+def _request(path, params, *, audit_summary=False, modification_lookup=False, source_graph=False):
     base, secret, proxy = _settings()
+    started = monotonic()
+    operation = path.rsplit("/", 1)[-1]
+    failure = "timeout_or_transport"
     try:
         with httpx.Client(follow_redirects=False, trust_env=False, proxy=proxy,
-                          timeout=httpx.Timeout(10.0, connect=8.0)) as client:
+                          timeout=httpx.Timeout(24.0 if source_graph else 10.0, connect=8.0)) as client:
             with client.stream("GET", base + path, params=params,
                                headers={"X-Oracle-Adapter-Key": secret,
                                         "Accept": "application/json"}) as response:
                 missing = modification_lookup and response.status_code == 404
                 if response.status_code != 200 and not missing:
-                    logger.warning("oracle_gateway_upstream_status status=%d", response.status_code)
+                    failure = f"upstream_http_{response.status_code}"
                     raise ValueError("Remote adapter is unavailable")
                 if "application/json" not in response.headers.get("content-type", ""):
+                    failure = "non_json"
                     raise ValueError("Adapter returned non-JSON")
                 chunks = []
                 size = 0
                 for chunk in response.iter_bytes():
                     size += len(chunk)
-                    if size > MAX_BODY:
+                    if size > (MAX_CATALOGUE_BODY if source_graph or audit_summary else MAX_BODY):
+                        failure = "response_too_large"
                         raise ValueError("Adapter response too large")
                     chunks.append(chunk)
+        failure = "invalid_contract"
         value = json.loads(b"".join(chunks))
         if missing:
             if value == {"detail": "Modification absent from requested catalogue"}:
                 raise HTTPException(404, value["detail"])
             logger.warning("oracle_gateway_audit_route_missing upstream_status=404")
             raise ValueError("Audit endpoint unavailable")
+        if source_graph:
+            if not isinstance(value, dict):
+                raise ValueError("Unexpected source graph")
+            return value
         if audit_summary:
             if not isinstance(value, dict) or not isinstance(value.get("categories"), list):
                 raise ValueError("Unexpected audit summary")
@@ -73,7 +86,8 @@ def _request(path, params, *, audit_summary=False, modification_lookup=False):
         return value
     except (httpx.HTTPError, ValueError, json.JSONDecodeError) as exc:
         # Log the exception CLASS only: errors can embed URLs, credentials or proxy internals.
-        logger.warning("oracle_gateway_upstream_error kind=%s", type(exc).__name__)
+        logger.warning("oracle_gateway_upstream_error operation=%s reason=%s kind=%s elapsed_ms=%d",
+                       operation, failure, type(exc).__name__, (monotonic() - started) * 1000)
         raise HTTPException(503, "Oracle catalogue unavailable") from None
 
 
@@ -177,6 +191,23 @@ def build_router(catalogue_auth):
                     truncated=data["truncated"], vehicle_identity_only=True,
                     fitment_verified=False)
 
+    @router.get("/vehicles/manufacturer-directory")
+    def manufacturer_directory(kind: Literal["passenger", "commercial"],
+                               name: str = Query("", max_length=100), after: int = Query(0, ge=0),
+                               limit: int = Query(50, ge=1, le=50)):
+        data = _request("/api/v1/oracle/vehicles/manufacturer-directory",
+                        {"kind": kind, "name": name, "after": after, "limit": limit})
+        items = _vehicle_items(data, {"id": "id", "name": "name"})
+        ids = [item["id"] for item in items]
+        next_after = data.get("next_after")
+        if (data.get("source") != "oracle" or data.get("kind") != kind
+                or len(ids) > limit or ids != sorted(set(ids)) or any(i <= after for i in ids)
+                or (data["truncated"] and (len(ids) != limit or next_after != ids[-1]))
+                or (not data["truncated"] and next_after is not None)):
+            raise HTTPException(503, "Invalid Oracle manufacturer page")
+        return dict(source="oracle", kind=kind, items=items, truncated=data["truncated"],
+                    next_after=next_after, vehicle_identity_only=True, fitment_verified=False)
+
     @router.get("/vehicles/models")
     def models(manufacturer_id: int = Query(ge=1),
                kind: str = Query(pattern=r"^(passenger|commercial)$"),
@@ -239,7 +270,18 @@ def build_router(catalogue_auth):
                 or data.get("source_association_only") is not True
                 or type(data.get("manufacturer_id")) is not int or data["manufacturer_id"] < 1):
             raise HTTPException(503, "Invalid Oracle audit identity")
-        if pagination:
+        if pagination and endpoint == "audit":
+            start, limit = pagination["offset"], pagination["limit"]
+            total = data.get("category_total")
+            if type(total) is not int or total < 0:
+                raise HTTPException(503, "Invalid Oracle audit category total")
+            remaining = max(0, total - start)
+            truncated = remaining > limit
+            if (len(data["categories"]) != min(remaining, limit)
+                    or data.get("truncated") is not truncated
+                    or data.get("next_offset") != (start + limit if truncated else None)):
+                raise HTTPException(503, "Invalid Oracle audit category page")
+        elif pagination:
             limit = pagination["limit"]
             expected = pagination["offset"] + limit if data["truncated"] else None
             if (len(data["items"]) > limit or (data["truncated"] and len(data["items"]) != limit)
@@ -248,8 +290,13 @@ def build_router(catalogue_auth):
         return data
 
     @router.get("/vehicles/{car_id}/audit")
-    def vehicle_audit(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1)):
-        return vehicle_audit_request(car_id, kind, "audit")
+    def vehicle_audit(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                      offset: Annotated[int | None, Query(ge=0, le=2147483647)] = None,
+                      limit: Annotated[int | None, Query(ge=1, le=AUDIT_PAGE_SIZE)] = None):
+        if offset is None and limit is None:
+            return vehicle_audit_request(car_id, kind, "audit")
+        return vehicle_audit_request(car_id, kind, "audit", offset=offset or 0,
+                                     limit=limit or AUDIT_PAGE_SIZE)
 
     @router.get("/vehicles/{car_id}/articles")
     def vehicle_articles(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
@@ -297,3 +344,11 @@ def build_router(catalogue_auth):
         return named_source_page(car_id, kind, "part-articles", offset, limit, product_id=product_id)
 
     return router
+
+
+
+def source_graph(identity):
+    car_id = identity["car_id"]
+    return _request(f"/api/v1/oracle/vehicles/{car_id}/source-graph",
+                    {key: value for key, value in identity.items() if key != "car_id"},
+                    source_graph=True)
