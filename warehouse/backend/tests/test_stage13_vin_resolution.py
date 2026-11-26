@@ -189,15 +189,36 @@ def test_scoped_variant_paging_resumes_at_last_consumed_id(source):
     identity = who()
     source.variants[701] = [dict(id=index, model_id=701, name=str(index), construction_interval="2014 - 2018")
                             for index in range(900, 951)]
+    # Explicitly place incompatible rows on both sides of the source page boundary.
+    source.attributes = {
+        index: [("Fuel Type", "Petrol" if index in (901, 949, 950) else "Diesel"),
+                ("Body Type", "Saloon")]
+        for index in range(900, 951)
+    }
+    # Include a compatible late row after an entirely filtered page.
+    source.variants[701].extend(
+        dict(id=index, model_id=701, name=str(index), construction_interval="2014 - 2018")
+        for index in range(951, 1001))
+    source.attributes.update({
+        index: [("Fuel Type", "Diesel" if index == 1000 else "Petrol")]
+        for index in range(951, 1001)
+    })
     after = 0
     seen = []
-    while after is not None:
+    cursors = []
+    for _ in range(3):
         page = resolution.search(source, context(identity), VinClarifications(), identity,
                                  selected_maker="passenger:840", selected_model=701, after=after)
         assert not page["search_complete"] and page["automatic"] is None
+        assert all("mismatch" not in row["matches"].values() for row in page["items"])
+        if after == 949:
+            assert page["items"] == []  # an empty filtered page must preserve the source cursor
         seen.extend(row["source_modification_id"] for row in page["items"])
         after = page["next_after"]
-    assert sorted(seen) == list(range(900, 951))
+        cursors.append(after)
+    assert cursors == [949, 999, None]
+    assert sorted(seen) == [index for index in range(900, 949) if index != 901] + [1000]
+
 
 
 def test_context_rejects_expiry_tampering_tenant_and_vin(source, monkeypatch):
