@@ -109,3 +109,56 @@ def receipt_allowed(vehicle, row, quantity):
                 and ref.get("identity") == pinned_identity(saved_state(vehicle)))
     except (ValueError, KeyError, TypeError):
         return False
+
+
+def auto_supplement_new_donor(db, vehicle, who):
+    """Extend a freshly saved exact-source donor, in the same transaction.
+
+    The existing create action authorizes potential plan rows only. Isolate
+    optional expansion in a savepoint so unavailable sources cannot prevent
+    donor creation. No update to existing source rows and no stock activation.
+    """
+    if not enabled() or "dismantling.manage" not in who.permissions:
+        return None
+    state = vehicle.dismantling_v3 or {}
+    if not state.get("unified_catalogue") or not state.get("oracle_vehicle_identity"):
+        return None
+    if state.get("master_intake"):
+        return state["master_intake"]
+    from uuid import NAMESPACE_URL, uuid5
+    from sqlalchemy import text
+    from fastapi import HTTPException
+    from app.schemas.dismantling_v3 import PlanPreview, PlanSave
+    from app.services import dismantling_plan_v3 as plan
+    from app.services.catalogue_import import LOCK
+    import logging
+
+    outcome = {"status": "deferred", "created": 0}
+    try:
+        with db.begin_nested():
+            if not db.scalar(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": LOCK}):
+                raise HTTPException(409, "Catalogue publication lock")
+            report = plan.make_preview(db, vehicle, who, PlanPreview(facts=[], universal=True))
+            if any(not any(r.get("kind") == KIND for r in p["item"]["source"])
+                   for p in report["proposals"]):
+                raise HTTPException(409, "Master projection unavailable")
+            safe, pending = plan.partial_plan(report, plan.rows_for(db, vehicle))
+            safe = {**safe, "proposals": [p for p in safe["proposals"]
+                    if p["action"] == "new" and not p["target_id"] and not p["candidates"]]}
+            if safe["proposals"]:
+                request = PlanSave(facts=[], universal=True, confirm=True, token=report["token"],
+                    request_key=uuid5(NAMESPACE_URL, "carpot.master.intake:" + vehicle.id))
+                cached, sha = plan.replay(db, vehicle, who, request, "master_intake")
+                result = cached if cached is not None else plan.persist_plan(
+                    db, vehicle, who, request, safe, sha, partial=True, pending=pending)
+                outcome = {"status": "supplemented", "created": result.get("created", 0),
+                           "pending": result.get("pending", 0)}
+            else:
+                outcome = {"status": "no_safe_additions", "created": 0, "pending": len(pending)}
+    except HTTPException as exc:
+        # A source outage/conflict does not roll back creation of the donor.
+        if exc.status_code not in (409, 503):
+            raise
+        logging.getLogger(__name__).info("Master intake deferred: %s", exc.status_code)
+    vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), "master_intake": outcome}
+    return outcome
