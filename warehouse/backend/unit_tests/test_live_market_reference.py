@@ -25,6 +25,9 @@ def card(i, amount, *, oem="8115006C41", title="Фара передня ліва
 def isolate(monkeypatch):
     monkeypatch.setattr(live, "_ATTEMPTS", [])
     monkeypatch.setattr(live, "_CACHE", live.OrderedDict())
+    monkeypatch.setattr(live, "_AUTOPALMA_CACHE", live.OrderedDict())
+    monkeypatch.setattr(live, "_AUTOPALMA_ROBOTS", None)
+    monkeypatch.delenv("WAREHOUSE_MARKET_AUTOPALMA_ENABLED", raising=False)
     monkeypatch.setattr(live, "_ROBOTS", None)
     monkeypatch.setattr(live, "_LAST", float("-inf"))
     monkeypatch.delenv("WAREHOUSE_MARKET_LIVE_ENABLED", raising=False)
@@ -151,3 +154,67 @@ def test_control_markup_with_labels_and_generation():
     assert groups[0]["availability"]=="unknown" and groups[0]["offer_count"]==3
     assert groups[0]["average"]=="19711.67"
     assert live.condition_for("Відновлений")=="refurbished"
+
+
+AP_PATH = "/daf/1686587"
+AP_CTX = dict(CTX, oem="1686587", manufacturer="DAF", model="XF 105", name="Повітряний фільтр")
+AP_ROBOTS = "User-agent: *\nDisallow: /currency\nDisallow: /price\nDisallow: /cart$\nDisallow: /search\nSitemap: https://autopalma.parts/sitemap.xml\n"
+
+
+def ap_html(**overrides):
+    import json
+    url = "https://autopalma.parts" + AP_PATH
+    product = {"@type": "Product", "name": "DAF 1686587 Повітряний фільтр",
+               "sku": "1686587", "brand": {"@type": "Brand", "name": "DAF"},
+               "url": url, "offers": {"@type": "Offer", "url": url,
+               "priceCurrency": "UAH", "price": 1174,
+               "availability": "https://schema.org/InStock"}}
+    product.update(overrides)
+    return '<script type="application/ld+json">'+json.dumps({"@context":"https://schema.org","@graph":[product]})+'</script>'
+
+
+def test_autopalma_exact_product_and_source_link():
+    from app.services import autopalma_market_reference as ap
+    from app.services.market_reference_public import public_groups
+    assert ap.lookup_path(AP_CTX) == AP_PATH
+    assert ap.lookup_path(dict(AP_CTX,oem="https://evil.test")) is None
+    assert ap.lookup_path(dict(AP_CTX,manufacturer="unknown")) is None
+    assert live.robots_allows(AP_ROBOTS, AP_PATH)
+    assert not live.robots_allows(AP_ROBOTS, "/cart")
+    assert not live.robots_allows(AP_ROBOTS, "/search?x=1")
+    group = ap.parse_product(ap_html(), AP_PATH, STAMP)[0]
+    assert group["minimum"] == "1174.00" and group["offer_count"] == 1
+    assert group["condition"] == "unknown" and group["average"] is None
+    assert group["match"] == "similar" and group["match_basis"] == "brand_oem"
+    assert public_groups([group],links=True)[0]["examples"][0]["reference_url"] == "https://autopalma.parts"+AP_PATH
+    assert "reference_url" not in public_groups([group])[0]["examples"][0]
+    assert not ap.parse_product(ap_html(sku="1686588"), AP_PATH, STAMP)
+    assert not ap.parse_product(ap_html(brand={"name":"Volvo"}), AP_PATH, STAMP)
+    assert not ap.parse_product(ap_html(url="https://evil.test/daf/1686587"), AP_PATH, STAMP)
+    assert not ap.parse_product(ap_html(offers={"@type":"AggregateOffer","lowPrice":100,"priceCurrency":"UAH"}), AP_PATH, STAMP)
+
+
+def test_fallback_on_404_and_cache_not_after_denial(monkeypatch):
+    authorize(monkeypatch)
+    monkeypatch.setenv("WAREHOUSE_MARKET_AUTOPALMA_ENABLED","true")
+    calls=[]
+    def fetch(path,limit=live.MAX_BYTES,*,host=live.HOST):
+        calls.append((host,path))
+        if host == live.HOST:
+            if path == "/robots.txt": return ROBOTS
+            raise live.LookupFailure("source_not_found")
+        if path == "/robots.txt": return AP_ROBOTS
+        assert path == AP_PATH
+        return ap_html()
+    monkeypatch.setattr(live,"fetch_text",fetch)
+    assert live.lookup(AP_CTX)[0] == "live"
+    assert live.lookup(AP_CTX)[0] == "cached"
+    assert len(calls) == 4 and len(live._ATTEMPTS) == 1
+    assert calls[-1] == ("autopalma.parts",AP_PATH)
+    monkeypatch.setattr(live,"_AUTOPALMA_CACHE",live.OrderedDict())
+    monkeypatch.setattr(live,"_LAST",float("-inf"))
+    def denied(path,limit=live.MAX_BYTES,*,host=live.HOST):
+        assert host == live.HOST
+        raise live.LookupFailure("source_access_denied")
+    monkeypatch.setattr(live,"fetch_text",denied)
+    assert live.lookup(AP_CTX)[0] == "source_access_denied"
