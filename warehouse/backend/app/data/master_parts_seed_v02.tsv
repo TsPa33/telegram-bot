@@ -1,0 +1,167 @@
+# key|ua|category|prd_ids|condition|placement
+battery|Акумулятор низьковольтний|Електрика/Живлення|1|ice|single
+starter|Стартер|Електрика/Запуск|2|conventional_ice|single
+alternator|Генератор|Електрика/Живлення|4|conventional_ice|single
+alternator_clutch|Муфта генератора|Електрика/Живлення|1390|conventional_ice|single
+fuse_box|Блок запобіжників|Електрика/Живлення|3420|all|single
+engine|Двигун у зборі|Двигун/Основні агрегати|1264|ice|single
+block|Блок циліндрів|Двигун/Основні агрегати|3701|ice|single
+head|Головка блока циліндрів|Двигун/Основні агрегати|1263|ice|single
+crankshaft|Колінчастий вал|Двигун/Кривошипний механізм|3702|ice|single
+camshaft|Розподільний вал|Двигун/ГРМ|566|ice|single
+rod|Шатун|Двигун/Кривошипний механізм|581|ice|single
+piston|Поршень|Двигун/Кривошипний механізм|443|ice|single
+rings|Поршневі кільця|Двигун/Кривошипний механізм|444|ice|single
+intake_valve|Впускний клапан|Двигун/ГРМ|1269|ice|single
+exhaust_valve|Випускний клапан|Двигун/ГРМ|1270|ice|single
+valve_cover|Клапанна кришка|Двигун/ГРМ|977|ice|single
+oil_pan|Масляний піддон|Двигун/Змащення|592|ice|single
+oil_pump|Масляний насос|Двигун/Змащення|596|ice|single
+oil_filter|Масляний фільтр|Двигун/Змащення|7|ice|single
+oil_cooler|Масляний радіатор|Двигун/Змащення|469|oil_cooler|single
+drain_plug|Зливна пробка піддона|Двигун/Змащення|593|ice|single
+head_bolts|Болти головки блока|Двигун/ГРМ|1217|ice|single
+engine_mount|Опора двигуна|Двигун/Кріплення|247|ice|single
+timing_chain|Ланцюг ГРМ|Двигун/ГРМ|1123|timing_chain|single
+chain_tensioner|Натягувач ланцюга ГРМ|Двигун/ГРМ|571|timing_chain|single
+exhaust_manifold|Випускний колектор|Двигун/Випуск|1543|ice|single
+intake_manifold|Впускний колектор|Двигун/Впуск||ice|single
+turbo|Турбокомпресор|Двигун/Наддув|2234|turbo|single
+intercooler|Інтеркулер|Двигун/Наддув|468|turbo|single
+boost_sensor|Датчик тиску наддуву|Двигун/Наддув|161,3945|turbo|single
+cam_sensor|Датчик положення розподільного вала|Двигун/Електроніка|3946|ice|single
+engine_ecu|Блок керування двигуном|Двигун/Електроніка|3956|ice|single
+spark_plug|Свічка запалювання|Двигун/Запалювання|686|petrol|single
+ignition_coil|Котушка запалювання|Двигун/Запалювання|689|petrol|single
+glow_plug|Свічка розжарювання|Двигун/Запалювання|243|diesel|single
+fuel_tank|Паливний бак|Паливна система/Подача|453|ice|single
+fuel_pump|Паливний насос|Паливна система/Подача|458|ice|single
+high_pressure_pump|Паливний насос високого тиску|Паливна система/Впорскування|3918|direct_injection|single
+injector|Паливна форсунка|Паливна система/Впорскування|3902|injection|single
+fuel_rail|Паливна рампа|Паливна система/Впорскування||direct_injection|single
+fuel_filter|Паливний фільтр|Паливна система/Подача|9|ice|single
+fuel_controller|Блок керування паливним насосом|Паливна система/Електроніка|5763|fuel_controller|single
+air_filter|Повітряний фільтр|Двигун/Впуск|8|ice|single
+maf|Витратомір повітря|Двигун/Впуск|3926|maf|single
+throttle|Дросельна заслінка|Двигун/Впуск||petrol|single
+radiator|Радіатор охолодження|Охолодження/Теплообмін|470|liquid_cooling|single
+radiator_fan|Вентилятор радіатора|Охолодження/Теплообмін|508|liquid_cooling|single
+water_pump|Водяний насос|Охолодження/Циркуляція|1260|liquid_cooling|single
+thermostat|Термостат|Охолодження/Циркуляція|316|liquid_cooling|single
+expansion_tank|Розширювальний бачок|Охолодження/Циркуляція||liquid_cooling|single
+catalyst|Каталізатор|Випуск/Очищення|429|catalyst|single
+lambda|Лямбда-зонд|Випуск/Датчики|3922|lambda|single
+muffler|Глушник|Випуск/Шумоглушення|3437|ice|single
+dpf|Сажовий фільтр|Випуск/Очищення|1256|dpf|single
+at|Автоматична коробка передач|Трансмісія/КПП|3066|automatic|single
+torque_converter|Гідротрансформатор|Трансмісія/КПП|3068|torque_converter|single
+at_filter|Фільтр автоматичної КПП|Трансмісія/КПП|416|automatic|single
+at_pan|Піддон автоматичної КПП|Трансмісія/КПП|3105|automatic|single
+at_ecu|Блок керування автоматичною КПП|Трансмісія/КПП|1278|automatic|single
+mt|Механічна коробка передач|Трансмісія/КПП|4301|manual|single
+clutch|Комплект зчеплення|Трансмісія/Зчеплення|479|manual|single
+flywheel|Маховик|Трансмісія/Зчеплення|577|flywheel|single
+transfer_case|Роздавальна коробка|Трансмісія/Повний привід||transfer_case|single
+differential|Диференціал|Трансмісія/Головна передача|5487|differential|axle
+propshaft|Карданний вал|Трансмісія/Привід|3675|propshaft|single
+halfshaft|Піввісь|Трансмісія/Привід|13|halfshaft|driven_axle_lr
+cv_joint|ШРУС|Трансмісія/Привід|5|cv_joint|driven_axle_lr
+cv_boot|Пильник приводного вала|Трансмісія/Привід|194|cv_joint|driven_axle_lr
+subframe|Підрамник|Ходова/Рама|2980|subframe|axle
+knuckle|Поворотний кулак|Ходова/Підвіска|1159|knuckle|axle_lr
+shock|Амортизатор|Ходова/Підвіска|854|all|axle_lr
+spring|Пружина підвіски|Ходова/Підвіска|188|coil_spring|axle_lr
+arm|Важіль підвіски|Ходова/Підвіска|273|independent_suspension|axle_lr
+hub|Маточина колеса|Ходова/Маточина|653|all|axle_lr
+hub_bearing|Підшипник маточини|Ходова/Маточина|654|all|axle_lr
+stabilizer|Стабілізатор|Ходова/Підвіска|274|stabilizer|axle
+stabilizer_link|Стійка стабілізатора|Ходова/Підвіска|3229|stabilizer|axle_lr
+stabilizer_bush|Втулка стабілізатора|Ходова/Підвіска|1334|stabilizer|axle_lr
+ball_joint|Кульова опора|Ходова/Підвіска|2462|independent_suspension|axle_lr
+steering_gear|Кермовий механізм|Кермове/Механізм|286|all|single
+steering_rod|Кермова тяга|Кермове/Тяги|51|rack_steering|lr
+steering_end|Кермовий наконечник|Кермове/Тяги|914|all|lr
+steering_wheel|Кермо|Кермове/Колонка|1547|all|single
+brake_disc|Гальмівний диск|Гальма/Колісні гальма|82,3531|disc_brakes|axle_lr
+brake_pad|Гальмівні колодки|Гальма/Колісні гальма|402|disc_brakes|axle
+caliper|Гальмівний супорт|Гальма/Колісні гальма|78|disc_brakes|axle_lr
+brake_hose|Гальмівний шланг|Гальма/Гідравліка|83|hydraulic_brakes|axle_lr
+master_cylinder|Головний гальмівний циліндр|Гальма/Гідравліка|258|hydraulic_brakes|single
+booster|Підсилювач гальм|Гальма/Гідравліка|74|hydraulic_brakes|single
+abs_sensor|Датчик ABS|Гальма/Електроніка|412|abs|axle_lr
+abs_ecu|Блок керування гальмами|Гальма/Електроніка|282|abs|single
+wheel|Колісний диск|Ходова/Колеса||all|axle_lr
+wheel_bolt|Колісний болт|Ходова/Колеса|2070|wheel_bolts|single
+bumper|Бампер|Кузов/Зовнішні панелі|938|passenger|front_rear
+bumper_cover|Облицювання бампера|Кузов/Зовнішні панелі|20|passenger|front_rear
+bumper_carrier|Підсилювач бампера|Кузов/Зовнішні панелі|1566|passenger|front_rear
+hood|Капот|Кузов/Зовнішні панелі|531|hood|single
+fender|Крило|Кузов/Зовнішні панелі|449|passenger|lr
+door|Двері кузова|Кузов/Двері|530|passenger|doors
+trunk_lid|Кришка багажника|Кузов/Двері|1506|trunk_lid|single
+grille|Решітка радіатора|Кузов/Зовнішні панелі|472|grille|single
+mirror|Бокове дзеркало|Кузов/Дзеркала|50|passenger|lr
+windscreen|Лобове скло|Кузов/Скло|1191|all|single
+rear_glass|Заднє скло|Кузов/Скло|1192|rear_glass|single
+door_glass|Скло дверей|Кузов/Скло|1193|passenger|doors
+roof|Панель даху|Кузов/Зовнішні панелі||fixed_roof|single
+trunk_strut|Газовий упор багажника|Кузов/Двері|219,5032|trunk_strut|single
+spoiler|Спойлер|Кузов/Зовнішні панелі|845|spoiler|single
+undertray|Захист двигуна|Кузов/Захист|4624|undertray|single
+headlamp|Основна фара|Освітлення/Переднє|259|all|lr
+taillamp|Задній ліхтар|Освітлення/Заднє|391|all|lr
+foglamp|Протитуманна фара|Освітлення/Переднє|289|foglamp|lr
+rear_fog|Задній протитуманний ліхтар|Освітлення/Заднє|291|rear_fog|single
+wiper_motor|Мотор склоочисника|Кузов/Склоочисники|295|all|single
+wiper|Щітка склоочисника|Кузов/Склоочисники|298|all|single
+parking_sensor|Датчик паркування|Електрика/Допомога водію|2412|parking_sensor|single
+parking_ecu|Блок паркування|Електрика/Допомога водію|930|parking_sensor|single
+instrument_panel|Панель приладів|Салон/Прилади|4220|all|single
+front_seat|Переднє сидіння у зборі|Салон/Сидіння||passenger|lr
+rear_seat|Заднє сидіння у зборі|Салон/Сидіння||rear_seat|single
+seat_frame|Каркас сидіння|Салон/Сидіння|5785|all|single
+seat_motor|Мотор регулювання сидіння|Салон/Сидіння|790|power_seat|single
+dashboard|Торпедо|Салон/Панелі||all|single
+rearview_mirror|Внутрішнє дзеркало|Салон/Дзеркала|3861,849|passenger|single
+airbag|Подушка безпеки|Безпека/Пасивна|3887|airbag|single
+clock_spring|Шлейф подушки безпеки|Безпека/Пасивна|4826|airbag|single
+seatbelt|Ремінь безпеки|Безпека/Пасивна|3695|all|single
+window_regulator|Склопідіймач|Кузов/Двері|1561|passenger|doors
+window_motor|Мотор склопідіймача|Кузов/Двері|200|power_windows|doors
+door_lock|Замок дверей|Кузов/Двері|1361|passenger|doors
+door_handle|Ручка дверей зовнішня|Кузов/Двері|1373|passenger|doors
+inner_handle|Ручка дверей внутрішня|Салон/Двері|3719|passenger|doors
+ac_compressor|Компресор кондиціонера|Клімат/Кондиціонер|447|ac|single
+ac_condenser|Радіатор кондиціонера|Клімат/Кондиціонер|448|ac|single
+ac_dryer|Осушувач кондиціонера|Клімат/Кондиціонер|851|ac|single
+ac_valve|Розширювальний клапан кондиціонера|Клімат/Кондиціонер|183|ac|single
+blower|Вентилятор салону|Клімат/Опалення|2669|all|single
+heater_core|Радіатор пічки|Клімат/Опалення|467|liquid_heater|single
+cabin_filter|Салонний фільтр|Клімат/Вентиляція|424|cabin_filter|single
+nut|Гайка|Кріплення/Універсальне|1220|all|single
+truck_cab|Кабіна вантажівки у зборі|Вантажне авто/Кабіна||heavy_truck|single
+cab_door|Двері кабіни|Вантажне авто/Кабіна|1259|heavy_truck|lr
+cab_mirror|Дзеркало кабіни|Вантажне авто/Кабіна|1299,3565|heavy_truck|lr
+cab_lock|Замок кабіни|Вантажне авто/Кабіна|525|tilting_cab|single
+cab_tilt_cylinder|Циліндр підйому кабіни|Вантажне авто/Кабіна|523|tilting_cab|single
+cab_tilt_pump|Насос підйому кабіни|Вантажне авто/Кабіна|608|tilting_cab|single
+leaf_spring|Листова ресора|Ходова/Підвіска|637,3527|leaf_spring|axle_lr
+air_spring|Пневмоподушка підвіски|Ходова/Підвіска|4119|air_suspension|axle_lr
+air_compressor|Пневмокомпресор|Гальма/Пневматика|332|air_brakes|single
+air_dryer|Осушувач пневмосистеми|Гальма/Пневматика|339|air_brakes|single
+brake_chamber|Гальмівна камера з енергоакумулятором|Гальма/Пневматика|354|spring_brake|axle_lr
+fifth_wheel|Сідельно-зчіпний пристрій|Вантажне авто/Зчеплення|4942|tractor|single
+traction_motor|Тяговий електродвигун|Електропривід/Агрегати||electric_drive|single
+hv_battery|Високовольтна тягова батарея|Електропривід/Живлення||electric_drive|single
+traction_inverter|Тяговий інвертор|Електропривід/Керування||electric_drive|single
+onboard_charger|Бортовий зарядний пристрій|Електропривід/Заряджання||plug_in|single
+charge_port|Зарядний порт|Електропривід/Заряджання||plug_in|single
+dc_dc|Перетворювач DC/DC|Електропривід/Живлення||electric_drive|single
+door_trim|Обшивка бокових дверей|Кузов/Двері|3696|all|doors
+door_hinge|Петля бокових дверей|Кузов/Двері|1568|all|doors
+door_seal|Ущільнювач бокових дверей|Кузов/Двері|2057|all|doors
+door_check|Обмежувач відкривання дверей|Кузов/Двері||all|doors
+door_speaker|Динамік у дверях|Салон/Аудіо||door_speaker|doors
+brake_drum|Гальмівний барабан|Гальма/Колісні гальма|123|all|axle_lr
+brake_shoe|Комплект барабанних колодок|Гальма/Колісні гальма||all|axle
+tire|Шина|Ходова/Колеса||all|axle_lr
