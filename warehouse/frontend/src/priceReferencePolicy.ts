@@ -24,6 +24,7 @@ export function chooseReference(data:Row,context:Row,rule:Rule){
  const g=eligible[0],value=adjusted(g[rule.mode],rule.percent);
  return value?{value,group:g}:null;
 }
+export function rowsForApply(rows:Row[],only?:string){return rows.filter(r=>(!only||r.id===only)&&['ready','uncertain'].includes(r.state));}
 export function summary(rows:Row[]){
  const count=(...states:string[])=>rows.filter(r=>states.includes(r.state)).length;
  return {total:rows.length,checked:count('ready','attention','skipped','applied','error'),ready:count('ready'),applied:count('applied'),attention:count('attention','error'),skipped:count('skipped'),pending:count('pending'),uncertain:count('uncertain')};

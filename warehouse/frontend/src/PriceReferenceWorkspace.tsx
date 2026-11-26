@@ -2,10 +2,10 @@ import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 
 import {api,ApiError,csrf,money,type Row} from './api';
 import {TeamIdentity,useCan} from './permissions';
 import {pricesChanged} from './MarketPricing';
-import {chooseReference,defaultRule,summary,type Rule} from './priceReferencePolicy';
+import {chooseReference,defaultRule,summary,rowsForApply,type Rule} from './priceReferencePolicy';
 import './price-reference-workspace.css';
 
-type Job={rows:Row[];phase:'lookup'|'review'|'apply'|'done';rule:Rule;overwrite:boolean};
+type Job={rows:Row[];phase:'lookup'|'review'|'apply'|'done';rule:Rule;overwrite:boolean;applyOnly?:string};
 type Controls={job:Job|null;busy:boolean;paused:boolean;error:string;start:(target:string,rule:Rule,overwrite:boolean)=>Promise<void>;resume:()=>void;pause:()=>void;apply:()=>void;applyOne:(id:string)=>void;reset:()=>void;selected:number;vehicle:boolean};
 const Context=createContext<Controls|null>(null);
 const LIMIT=5000;
@@ -37,7 +37,7 @@ function JobProvider({children,storage,selectedIds,vehicleId,query}:{children:Re
  async function idsFor(target:string,fence:()=>void){
   if(target==='selected')return [...new Set(selectedIds)];
   const q=new URLSearchParams(target==='filtered'?query:'');if(target==='vehicle')q.set('vehicle_id',vehicleId);
-  for(const key of ['limit','offset','in_stock','category_facets','condition'])q.delete(key);
+  for(const key of ['limit','offset','in_stock','category_facets'])q.delete(key);
   const ids:string[]=[];let cursor='';
   do{fence();if(cursor)q.set('after_id',cursor);const page=await api('/pricing/selection?'+q);fence();
    ids.push(...page.ids);if(ids.length>LIMIT)throw Error('Понад 5000 позицій. Виберіть автомобіль або категорію; часткову операцію не запущено.');
@@ -56,34 +56,34 @@ function JobProvider({children,storage,selectedIds,vehicleId,query}:{children:Re
     const result=await api('/parts/'+r.id+'/market-reference','POST',{});fence();
     if(result.price_token!==ctx.price_token){change(r.id,{state:'attention',name:ctx.name,reason:'Дані змінилися — потрібна повторна перевірка'});continue;}
     const chosen=chooseReference(result,ctx,current.current!.rule);
-    change(r.id,chosen?{state:'ready',name:ctx.name,value:chosen.value,currency:ctx.currency,token:ctx.price_token,old:ctx.selling_price,count:chosen.group.offer_count,match:chosen.group.match,observed_at:chosen.group.observed_at}:{state:'attention',name:ctx.name,reason:'Немає єдиної порівнюваної групи з 3+ цінами'});
+    change(r.id,chosen?{state:'ready',name:ctx.name,value:chosen.value,currency:ctx.currency,token:ctx.price_token,old:ctx.selling_price,count:chosen.group.offer_count,match:chosen.group.match,observed_at:chosen.group.observed_at,checked_at:Date.now()}:{state:'attention',name:ctx.name,reason:'Немає єдиної порівнюваної групи з 3+ цінами'});
     if(result.live_enabled)await delay(3200);
    }catch(e){if(stop.current||!mounted.current||denied(e)||uncertain(e))throw e;change(r.id,{state:'error',reason:(e as Error).message});}
   }
   fence();persist({...current.current!,phase:'review'});
  }
  async function applyRows(fence:()=>void,only?:string){
-  for(const r of current.current!.rows){
-   if(only&&r.id!==only)continue;
-   if(!['ready','uncertain'].includes(r.state))continue;fence();
+  for(const r of rowsForApply(current.current!.rows,only)){
+   fence();
    // Persist the exact request before sending it. A lost response is replayed
    // with the same key; never obtain a newer token to overwrite another edit.
+   if(!r.body&&(!r.checked_at||Date.now()-r.checked_at>86400000)){change(r.id,{state:'attention',reason:'Орієнтир застарів — повторіть уточнення'});continue;}
    const body=r.body||{selling_price:r.value,currency:r.currency,expected_token:r.token,request_key:crypto.randomUUID()};
    change(r.id,{state:'uncertain',body});
    try{await api('/parts/'+r.id+'/price','PATCH',body);change(r.id,{state:'applied',body:null});}
    catch(e){if(denied(e)||uncertain(e))throw e;change(r.id,{state:'error',body:null,reason:(e as Error).message});}
    fence();
   }
-  const j=current.current!;persist({...j,phase:j.rows.some(r=>r.state==='ready'||r.state==='uncertain')?'review':'done'});
+  const j=current.current!;persist({...j,phase:j.rows.some(r=>r.state==='ready'||r.state==='uncertain')?'review':'done',applyOnly:undefined});
  }
  async function start(target:string,rule:Rule,overwrite:boolean){await run(async fence=>{
   if(current.current?.rows.some(r=>r.state==='uncertain'))throw Error('Спочатку перевірте непідтверджений запис ціни.');
   const ids=await idsFor(target,fence);fence();if(!ids.length)throw Error('Немає вибраних активних запчастин.');if(ids.length>LIMIT)throw Error('Не більше 5000 позицій за одну перевірку.');
   persist({rows:ids.map(id=>({id,state:'pending'})),phase:'lookup',rule,overwrite});await lookup(fence);
  });}
- function resume(){void run(async fence=>{const j=current.current;if(!j)return;if(j.phase==='lookup')await lookup(fence);else if(j.phase==='apply'||j.rows.some(r=>r.state==='uncertain')){persist({...j,phase:'apply'});try{await applyRows(fence);}finally{pricesChanged();}}});}
- function apply(){void run(async fence=>{const j=current.current;if(!j||j.phase!=='review')return;persist({...j,phase:'apply'});try{await applyRows(fence);}finally{pricesChanged();}});}
- function applyOne(id:string){void run(async fence=>{const j=current.current;if(!j||j.phase!=='review'||j.rows.some(r=>r.state==='uncertain'))return;persist({...j,phase:'apply'});try{await applyRows(fence,id);}finally{pricesChanged();}});}
+ function resume(){void run(async fence=>{const j=current.current;if(!j)return;if(j.phase==='lookup')await lookup(fence);else if(j.phase==='apply'||j.rows.some(r=>r.state==='uncertain')){persist({...j,phase:'apply'});try{await applyRows(fence,j.applyOnly);}finally{pricesChanged();}}});}
+ function apply(){void run(async fence=>{const j=current.current;if(!j||j.phase!=='review')return;persist({...j,phase:'apply',applyOnly:undefined});try{await applyRows(fence);}finally{pricesChanged();}});}
+ function applyOne(id:string){void run(async fence=>{const j=current.current;if(!j||j.phase!=='review'||j.rows.some(r=>r.state==='uncertain'))return;persist({...j,phase:'apply',applyOnly:id});try{await applyRows(fence,id);}finally{pricesChanged();}});}
  function reset(){if(guard.current||current.current?.rows.some(r=>r.state==='uncertain'))return;try{persist(null);setPaused(false);setError('');}catch(e){setError((e as Error).message);}}
  return <Context.Provider value={{job,busy,paused,error,start,resume,pause:()=>{stop.current=true;setPaused(true);},apply,applyOne,reset,selected:selectedIds.length,vehicle:!!vehicleId}}>{children}</Context.Provider>;
 }
@@ -98,10 +98,10 @@ export function PriceReferenceToolbar(){
   <header><strong>Масове уточнення цін</strong><button type="button" className="secondary" onClick={()=>setOpen(v=>!v)}>{open?'Згорнути':'Налаштувати'}</button></header>
   {(open||j)&&<><div className="price-workspace-controls">
    <label>Запчастини<select aria-label="Обсяг уточнення цін" value={target} disabled={locked} onChange={e=>setTarget(e.target.value)}><option value="filtered">Поточний пошук / категорія</option><option value="selected">Вибрані ({c.selected})</option>{c.vehicle&&<option value="vehicle">Усі запчастини автомобіля</option>}<option value="all">Увесь активний склад</option></select></label>
-   <label>Правило<select value={rule.mode} disabled={locked} onChange={e=>setRule({...rule,mode:e.target.value as Rule['mode']})}><option value="average">Середня ціна</option><option value="minimum">Мінімальна ціна</option><option value="maximum">Максимальна ціна</option></select></label>
-   <label>Коригування, %<input aria-label="Коригування ціни" value={rule.percent} disabled={locked} onChange={e=>setRule({...rule,percent:e.target.value})} inputMode="decimal"/></label>
-  </div><label className="check-inline"><input type="checkbox" checked={overwrite} disabled={locked} onChange={e=>setOverwrite(e.target.checked)}/>Дозволити заміну встановлених цін</label>
-  <label className="check-inline"><input type="checkbox" checked={rule.similar} disabled={locked} onChange={e=>setRule({...rule,similar:e.target.checked})}/>Враховувати схожі деталі (сумісність не підтверджена)</label>
+   <label>Правило<select value={j?.rule.mode||rule.mode} disabled={locked} onChange={e=>setRule({...rule,mode:e.target.value as Rule['mode']})}><option value="average">Середня ціна</option><option value="minimum">Мінімальна ціна</option><option value="maximum">Максимальна ціна</option></select></label>
+   <label>Коригування, %<input aria-label="Коригування ціни" value={j?.rule.percent??rule.percent} disabled={locked} onChange={e=>setRule({...rule,percent:e.target.value})} inputMode="decimal"/></label>
+  </div><label className="check-inline"><input type="checkbox" checked={j?.overwrite??overwrite} disabled={locked} onChange={e=>setOverwrite(e.target.checked)}/>Дозволити заміну встановлених цін</label>
+  <label className="check-inline"><input type="checkbox" checked={j?.rule.similar??rule.similar} disabled={locked} onChange={e=>setRule({...rule,similar:e.target.checked})}/>Враховувати схожі деталі (сумісність не підтверджена)</label>
   {!j&&<button type="button" className="primary" disabled={c.busy||(target==='selected'&&!c.selected)||!(/^-?\d{1,3}(\.\d{1,2})?$/.test(rule.percent))||Number(rule.percent)<-99||Number(rule.percent)>100} onClick={()=>void c.start(target,rule,overwrite)}>Отримати орієнтири</button>}
   {j&&<><div className="price-workspace-progress" role="status" aria-live="polite"><strong>{lookup?'Прогрес уточнення':apply?'Прогрес встановлення':'Орієнтири готові'}</strong><progress max={s.total||1} value={lookup?s.checked:apply?progress:s.checked}/><span>{lookup?s.checked:apply?progress:s.checked} із {s.total}</span></div>
   <div className="price-workspace-counts"><span>Готово: {s.ready}</span><span>Встановлено: {s.applied}</span><span>Потребує уваги: {s.attention}</span><span>Пропущено: {s.skipped}</span>{s.uncertain>0&&<span>Не підтверджено: {s.uncertain}</span>}</div>
@@ -118,7 +118,7 @@ export function PriceReferenceRow({part}:{part:Row}){
  const c=useContext(Context),r=c?.job?.rows.find(r=>r.id===part.id);
  if(!r||!c)return null;
  return <div className={'price-workspace-row state-'+r.state}>
-  <span>{r.state==='ready'?'Орієнтир: '+money(r.value,r.currency):r.state==='applied'?'Ціну встановлено':r.state==='pending'?'Очікує уточнення':r.state==='uncertain'?'Перевірка запису ціни':r.state==='skipped'?'Пропущено: '+r.reason:'Потребує уваги'}</span>
+  <span>{r.state==='ready'?'Орієнтир: '+money(r.value,r.currency):r.state==='applied'?'Ціну встановлено: '+money(r.value,r.currency):r.state==='pending'?'Очікує уточнення':r.state==='uncertain'?'Перевірка запису ціни':r.state==='skipped'?'Пропущено: '+r.reason:'Потребує уваги'}</span>
   {r.state==='ready'&&c.job?.phase==='review'&&<button type="button" disabled={c.busy||c.job.rows.some(r=>r.state==='uncertain')} onClick={()=>c.applyOne(part.id)}>{r.old!=null?'Замінити ціну':'Додати ціну'}</button>}
  </div>;
 }

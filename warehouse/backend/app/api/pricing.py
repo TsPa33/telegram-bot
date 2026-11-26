@@ -56,7 +56,7 @@ def price_context(id:str,db:DB,who:Auth):
                 name=row.name,condition=row.condition,eligible=not row.archived and row.assortment_enabled and row.quantity>0)
 
 @router.get('/pricing/selection')
-def selection(db:DB,who:Auth,vehicle_id:str|None=None,q:str=Query('',max_length=200),category_id:str|None=None,subcategory_id:str|None=None,manufacturer:str=Query('',max_length=100),model:str=Query('',max_length=100),after_id:str|None=Query(None,max_length=36)):
+def selection(db:DB,who:Auth,vehicle_id:str|None=None,q:str=Query('',max_length=200),category_id:str|None=None,subcategory_id:str|None=None,manufacturer:str=Query('',max_length=100),model:str=Query('',max_length=100),after_id:str|None=Query(None,max_length=36),condition:str|None=Query(None,max_length=30)):
     from sqlalchemy import or_,func
     pricing.owner(who)
     stmt=select(Part.id).where(Part.account_id==who.workspace_account_id,Part.archived.is_(False),Part.assortment_enabled.is_(True),Part.quantity>0)
@@ -69,6 +69,7 @@ def selection(db:DB,who:Auth,vehicle_id:str|None=None,q:str=Query('',max_length=
         if model:donors=donors.where(func.lower(Vehicle.model)==model.casefold())
         stmt=stmt.where(Part.vehicle_id.in_(donors))
     if q:stmt=stmt.where(or_(*[column.ilike('%'+q.replace('%',r'\%').replace('_',r'\_')+'%') for column in (Part.name,Part.oem_number,Part.article_number,Part.location,Part.serial_number)]))
+    if condition:stmt=stmt.where(Part.condition==condition)
     if after_id:stmt=stmt.where(Part.id>after_id)
     ids=list(db.scalars(stmt.order_by(Part.id).limit(1001)))
     return dict(ids=ids[:1000],truncated=len(ids)>1000,limit=1000,next_after_id=ids[999] if len(ids)>1000 else None)

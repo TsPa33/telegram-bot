@@ -42,10 +42,10 @@ export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicl
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
       <small>Останнє спостереження: {date(r.observed_at)}. Показано {r.examples.length} із {r.offer_count}.</small>
       {r.examples.map((e:Row,index:number)=><div className="aleto-reference-offer" key={index}><span>Ціна №{index+1}</span><strong>{money(e.amount,r.currency)}</strong><small>{date(e.observed_at)}</small></div>)}
-       {can('parts.change_price')&&!part.archived&&data.price_token&&r.average!=null&&r.offer_count>=3&&<ReferenceQuickApply part={part} group={r} token={data.price_token} onSaved={onSaved}/>}
-     </section>)}
+      </section>)}
      {historical.length>0&&<details><summary>Історичні пропозиції ({historical.length})</summary><p>Старі спостереження не враховано в середній ціні.</p>{historical.map((e,index)=><p key={index}>{money(e.amount,e.currency)} · {date(e.observed_at)}</p>)}</details>}
     </div>}
+    {can('parts.change_price')&&!part.archived&&<ReferenceQuickApply part={part} groups={references} token={data?.price_token} onSaved={onSaved}/>}
    </div>
   </Modal>}
  </div>;
