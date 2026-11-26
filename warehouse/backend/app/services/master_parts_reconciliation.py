@@ -4,7 +4,7 @@ The compact Oracle graph deliberately carries no installation attributes. It can
 prove source article associations, not the side, axle or ordinal of a new item.
 Never fabricate physical rows or transfer OEM from sibling modifications.
 """
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 import re
 
@@ -84,6 +84,7 @@ def reconcile(saved, profile, *, existing_rows=(), seed=None):
     report = preview(seed, profile, products, existing_rows, identity=identity)
     by_type = Counter(r["master_key"] for r in report["positions"])
     reviews = {r["master_key"] for r in report["review"]}
+    by_product = {p['product_id']: p for p in products}
     proposed = []
     for row in report["positions"]:
         item = dict(row, physical_key=physical_key(row["master_key"], row["placement"]))
@@ -93,7 +94,7 @@ def reconcile(saved, profile, *, existing_rows=(), seed=None):
         if (row["placement"] == "unit:1" and by_type[row["master_key"]] == 1
                 and row["master_key"] not in reviews and len(row["source_ids"]) == 1):
             pid = row["source_ids"][0]
-            product = next(p for p in products if p["product_id"] == pid)
+            product = by_product[pid]
             if product.get("kind") == "part" and product.get("source_fitment_linked") is True:
                 item["source_article_candidates"] = [
                     dict(a, product_id=pid, evidence="exact_source_article_cross_reference",
