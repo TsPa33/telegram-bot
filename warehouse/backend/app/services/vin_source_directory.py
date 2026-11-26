@@ -10,7 +10,21 @@ from app.services.unified_catalogue import CatalogueAdapter, CatalogueUnavailabl
 
 
 def norm(value):
-    return "".join(c for c in unicodedata.normalize("NFKC",str(value or "")).casefold() if c.isalnum())
+    return "".join(c for c in unicodedata.normalize("NFKD",str(value or "")).casefold() if c.isalnum())
+
+
+# Regional rows are alternate identities. Their IDs and namespaces remain separate.
+_MAKE_ALIASES = {
+    "volkswagen": ("Volkswagen", "VW"),
+    "mercedesbenz": ("Mercedes-Benz", "Mercedes Benz"),
+}
+_REGION = re.compile(r"\s*\((?:usa|us|nordamerika|north america|europa|europe|japan|china|south africa|brazil|brasil|faw|svw|shanghai)\)$", re.I)
+
+
+def maker_key(name):
+    normalized = norm(_REGION.sub("", name).strip())
+    return next((key for key, aliases in _MAKE_ALIASES.items()
+                 if normalized in {norm(alias) for alias in aliases}), normalized)
 
 
 def fetch(adapter, endpoint, args, expected_kind=None):
@@ -27,30 +41,38 @@ def fetch(adapter, endpoint, args, expected_kind=None):
     return result
 
 
-def manufacturer_choices(name, adapter=None):
+def manufacturer_choices(name, adapter=None, *, kinds=("passenger", "commercial")):
     """Return exact make matches in both passenger and commercial namespaces."""
     name=name.strip()
-    if len(name)<2 or len(name)>40 or not re.fullmatch(r"[A-Za-z0-9 .-]+",name):
-        raise HTTPException(422,"Уточніть марку латинськими літерами")
+    query = "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
+    prefix = re.match(r"[A-Za-z0-9 .-]+", query)
+    prefix = prefix[0].strip() if prefix else ""
+    if len(name) > 100 or not 2 <= len(prefix) <= 40:
+        raise HTTPException(422, "Уточніть назву виробника з довідника")
     adapter=adapter or CatalogueAdapter()
-    values=[]
-    unavailable=[]
-    for kind in ("passenger","commercial"):
-        try:
-            response=fetch(adapter,"manufacturers",{"name":name,"kind":kind,"limit":50},kind)
-        except HTTPException as e:
-            if e.status_code==503:
+    values = {}
+    unavailable = []
+    identity = maker_key(name)
+    prefixes = tuple(dict.fromkeys((prefix, *_MAKE_ALIASES.get(identity, ()))))
+    for kind in kinds:
+        for term in prefixes:
+            try:
+                response = fetch(adapter, "manufacturers", {"name": term, "kind": kind, "limit": 50}, kind)
+            except HTTPException as error:
+                if error.status_code != 503:
+                    raise
                 unavailable.append(kind)
                 continue
-            raise
-        for item in response["items"]:
-            if (type(item.get("id")) is int and item["id"]>0
-                    and isinstance(item.get("name"),str)
-                    and norm(item["name"])==norm(name)):
-                values.append(dict(manufacturer_id=item["id"],manufacturer=item["name"],kind=kind))
+            if response.get("truncated") is True:
+                unavailable.append(kind)
+            for item in response["items"]:
+                if (isinstance(item, dict) and type(item.get("id")) is int and item["id"] > 0
+                        and isinstance(item.get("name"), str) and maker_key(item["name"]) == identity):
+                    values[(kind, item["id"])] = dict(
+                        manufacturer_id=item["id"], manufacturer=item["name"], kind=kind)
     if not values and unavailable:
         raise HTTPException(503,"Не вдалося завантажити виробника з каталогу")
-    return dict(items=values, partial=bool(unavailable), source="oracle",
+    return dict(items=list(values.values()), partial=bool(unavailable), source="oracle",
                 identity_only=True, vin_fitment_verified=False)
 
 
@@ -64,11 +86,13 @@ def source_page(endpoint, *, source_id, kind, after=0, adapter=None):
     data=fetch(adapter,endpoint,{key:source_id,"kind":kind,"after":after,"limit":50},kind)
     items=data["items"]
     if len(items)>50 or any(
-            type(item.get("id")) is not int or item["id"]<=after
+            not isinstance(item, dict) or type(item.get("id")) is not int or item["id"]<=after
             or not isinstance(item.get("name"),str)
             or (endpoint=="modifications" and item.get("model_id")!=source_id)
             for item in items):
         raise HTTPException(503,"Некоректні дані модифікацій")
+    if any(a["id"] >= b["id"] for a, b in zip(items, items[1:])):
+        raise HTTPException(503,"Некоректний порядок модифікацій")
     next_after=data.get("next_after")
     if next_after is not None and (type(next_after) is not int or next_after<=after
                                    or not items or next_after!=items[-1]["id"]):

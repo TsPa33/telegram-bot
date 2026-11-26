@@ -1,43 +1,94 @@
-.vin-intake{min-width:0;color:var(--color-text)}
-.vin-intake p{font-size:.85rem;margin:10px 0;overflow-wrap:anywhere}
-.vin-intake .vin-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
-.vin-intake .vin-actions>label{flex:1 1 220px;min-width:0}
-.vin-intake fieldset{margin:10px 0;padding:10px;border:1px solid var(--color-border);border-radius:8px;min-width:0}
-.vin-intake legend{font-weight:650;font-size:.9rem;padding:0 4px}
-.vin-intake .vin-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
-.vin-intake label{font-size:.78rem;display:flex;flex-direction:column;gap:3px;min-width:0}
-.vin-intake input:not([type=checkbox]){width:100%;min-width:0;height:34px;min-height:34px;padding:6px 8px;font-size:.85rem}
-.vin-intake small{font-size:.68rem;color:var(--color-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.vin-intake .vin-summary{padding:12px;border:1px solid var(--color-border);background:var(--color-accent-surface);border-radius:8px}
-.vin-intake .vin-summary>strong{font-size:1rem}
-.vin-intake dl{margin:8px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}
-.vin-intake dt{font-size:.7rem;color:var(--color-secondary)}
-.vin-intake dd{font-size:.82rem;margin:0;overflow-wrap:anywhere}
-.vin-intake .vin-unknown,.vin-intake .vin-source-status{margin:10px 0;border:1px solid var(--color-border);border-radius:8px;padding:8px}
-.vin-intake summary{font-size:.85rem;font-weight:600;cursor:pointer}
-.vin-intake details[open]>.vin-fields{margin-top:8px}
-.vin-intake .vin-confirm{flex-direction:row;align-items:center;margin:12px 0;line-height:1.4}
-.vin-intake .vin-conflict{white-space:normal;color:var(--color-warning)}
-@media(max-width:420px){.vin-intake .vin-actions>label{flex-basis:100%}.vin-intake .vin-fields{gap:8px}.vin-intake fieldset{padding:8px}}
-
-.vin-intake .vin-paid-panel{margin:12px 0;padding:12px;border:1px solid var(--color-border);border-radius:9px;min-width:0}
-.vin-intake .vin-paid-panel>strong{font-size:.9rem}
-.vin-intake .vin-paid-panel>button{max-width:100%;white-space:normal}
-.vin-intake .vin-paid-quote{margin-top:10px;padding:10px;border-radius:8px;background:var(--color-accent-surface)}
-.vin-intake .vin-paid-quote p[role=status]{color:var(--color-warning);font-weight:600}
-.vin-intake .vin-paid-quote button:disabled{opacity:.55;cursor:not-allowed}
-
-.vin-intake .vinstate-test{margin-top:12px;padding-top:10px;border-top:1px solid var(--color-border);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
-.vin-intake .vinstate-test p{margin:4px 0;overflow-wrap:anywhere}
-.vin-intake .vinstate-test button{max-width:100%;white-space:normal}
-
-/* Source directory must fit inside the VIN dialog at all viewport widths. */
-.vin-intake,.vin-intake fieldset,.vin-intake .vin-source-picker{box-sizing:border-box;max-width:100%;min-width:0}
-.vin-intake select{box-sizing:border-box;display:block;max-width:100%;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.vin-intake .vin-source-picker{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
-.vin-intake .vin-source-picker>label{min-width:0}
-.vin-intake .vin-source-picker p{white-space:normal;overflow-wrap:anywhere;margin:2px 0}
-.vin-intake .vin-source-picker small,
-.vin-intake .vin-catalogue-select>small{display:block;white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip}
-.vin-intake .vin-source-picker button{width:fit-content;max-width:100%;white-space:normal}
-.vin-intake .vin-source-alternative{min-width:0;max-width:100%}
+.vin-intake-dialog {
+  width: min(100% - 24px, 600px);
+  max-height: min(88dvh, 780px);
+  overflow-y: auto;
+}
+.vin-mode {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.vin-mode button { min-width: 0; white-space: normal; }
+.vin-mode button[aria-pressed=true] {
+  background: var(--color-accent-surface);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.vin-intake { min-width: 0; color: var(--color-text); }
+.vin-intake p { font-size: .85rem; margin: 8px 0; overflow-wrap: anywhere; }
+.vin-intake [role=alert] { color: var(--color-danger); }
+.vin-intake .vin-actions { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.vin-intake .vin-actions > label { flex: 1 1 195px; }
+.vin-intake fieldset, .vin-intake .vin-details, .vin-intake .vin-source-status {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  min-width: 0;
+}
+.vin-intake legend { font-weight: 650; font-size: .9rem; padding: 0 4px; }
+.vin-intake .vin-fields, .vin-intake dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+}
+.vin-intake .vin-manual-fields { margin-top: 12px; }
+.vin-intake .vin-manual-fields p { grid-column: 1 / -1; }
+.vin-intake label {
+  font-size: .82rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.vin-intake select, .vin-intake input:not([type=checkbox]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+}
+.vin-intake select { overflow: hidden; text-overflow: ellipsis; }
+.vin-intake .vin-summary {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-accent-surface);
+  border-radius: var(--radius-panel);
+}
+.vin-intake dl { margin: 8px 0 0; }
+.vin-intake dt, .vin-intake small { font-size: .75rem; color: var(--color-secondary); }
+.vin-intake dd { font-size: .87rem; margin: 0; overflow-wrap: anywhere; }
+.vin-intake dd small { display: block; }
+.vin-intake summary { font-size: .85rem; font-weight: 650; cursor: pointer; }
+.vin-intake details .vin-actions { margin-top: 12px; }
+.vin-intake .vin-catalogue-select > label + label { margin-top: 8px; }
+.vin-intake .vin-confirm { flex-direction: row; align-items: center; margin-bottom: 8px; }
+.vin-intake .vin-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 4px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  z-index: 1;
+}
+.vin-intake .vin-footer .vin-actions { justify-content: flex-end; }
+.vin-intake .vin-footer .primary:disabled {
+  background: var(--color-control-surface);
+  border-color: var(--color-border);
+  color: var(--color-secondary);
+}
+.vin-intake .vinstate-test {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 6px;
+}
+.vin-intake button { max-width: 100%; white-space: normal; }
+@media (max-width: 420px) {
+  .vin-intake-dialog { width: calc(100% - 16px); padding-inline: 12px; }
+  .vin-intake .vin-actions > label { flex-basis: 100%; }
+  .vin-intake .vin-footer .vin-actions { justify-content: stretch; }
+  .vin-intake .vin-footer .vin-actions button { flex: 1 1 135px; }
+}

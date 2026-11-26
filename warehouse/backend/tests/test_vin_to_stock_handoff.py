@@ -39,7 +39,7 @@ def bulk(c,v,ids,action,**extra):
  ('VF1AAAAA000000001','Renault',222222,93)])
 def test_vin_same_donor_exact_selection_bulk_receipt_replay(logged,monkeypatch,vin,maker,car,mid):
     entry=setup_source(monkeypatch,car,maker,mid)
-    monkeypatch.setattr(vin_lookup,'lookup',lambda vin:dict(vin=vin,source='offline synthetic fixture',vehicle=dict(manufacturer=maker,model='Synthetic VIN model',year=2020),additional={},field_sources={}))
+    monkeypatch.setattr(vin_lookup,'lookup',lambda vin, **kwargs:dict(vin=vin,source='offline synthetic fixture',vehicle=dict(manufacturer=maker,model='Synthetic VIN model',year=2020),additional={},field_sources={}))
     decoded=logged.get('/api/v1/vehicles/vin/decode',params={'vin':vin});assert decoded.status_code==200
     body={**decoded.json()['vehicle'],'vin':vin,'vin_details':dict(source='offline synthetic fixture',characteristics=decoded.json()['vehicle'])}
     r=logged.post('/api/v1/vehicles',json=body);assert r.status_code==201,r.text

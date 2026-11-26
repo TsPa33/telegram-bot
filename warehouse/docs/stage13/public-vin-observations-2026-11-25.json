@@ -1,0 +1,599 @@
+{
+  "warehouse_code": "4d4c2acdf85b154bd0d7b91923e3a6dc7d083627",
+  "scope": "Direct invocation of Warehouse lookup(vin, public_only=True). No authenticated catalogue measurements.",
+  "results": [
+    {
+      "vin": "WBAWB73549P045741",
+      "observed_at": "2026-11-25T12:11:58.933180+00:00",
+      "vehicle": {
+        "manufacturer": "BMW",
+        "model": "335i",
+        "year": 2009,
+        "engine_displacement_l": "3.0",
+        "fuel_type": "Бензин",
+        "body_class": "Купе",
+        "plant_country": "Німеччина",
+        "plant_city": "REGENSBURG",
+        "engine_cylinders": "6",
+        "engine_power_hp": "300",
+        "doors": "2",
+        "series": "3-Series",
+        "vehicle_type": "Легковий автомобіль"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "BMW AG",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "2979.1682352",
+          "source": "NHTSA vPIC"
+        },
+        "tpms": {
+          "label": "Контроль тиску шин",
+          "value": "Прямий контроль (TPMS)",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "engine_power_hp": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "series": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_power_kw",
+        "transmission",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "WAUUL78E78A124660",
+      "observed_at": "2026-11-25T12:11:58.933601+00:00",
+      "vehicle": {
+        "manufacturer": "AUDI",
+        "model": "S4",
+        "year": 2008,
+        "engine_displacement_l": "4.163000",
+        "fuel_type": "Бензин",
+        "body_class": "Універсал",
+        "plant_country": "Німеччина",
+        "plant_city": "INGOLSTADT",
+        "engine_cylinders": "8",
+        "engine_power_hp": "344",
+        "doors": "4",
+        "series": "Avant",
+        "vehicle_type": "Легковий автомобіль",
+        "engine_manufacturer": "Audi"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "AUDI AG",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "4163",
+          "source": "NHTSA vPIC"
+        },
+        "tpms": {
+          "label": "Контроль тиску шин",
+          "value": "Прямий контроль (TPMS)",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "engine_power_hp": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "series": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC",
+        "engine_manufacturer": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_power_kw",
+        "transmission",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "WVWDC21JX1W158839",
+      "observed_at": "2026-11-25T12:11:59.116944+00:00",
+      "vehicle": {
+        "manufacturer": "VOLKSWAGEN",
+        "model": "GTI",
+        "year": 2001,
+        "engine_displacement_l": "1.781000",
+        "fuel_type": "Бензин",
+        "body_class": "Hatchback/Liftback/Notchback",
+        "trim": "GLS",
+        "plant_country": "Німеччина",
+        "plant_city": "WOLFSBURG",
+        "engine_cylinders": "4",
+        "engine_power_hp": "150",
+        "doors": "2",
+        "vehicle_type": "Легковий автомобіль",
+        "engine_manufacturer": "Volkswagen"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "VOLKSWAGEN AG",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "1781",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "trim": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "engine_power_hp": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC",
+        "engine_manufacturer": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_power_kw",
+        "transmission",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "WDDHH8JB5EA971934",
+      "observed_at": "2026-11-25T12:12:01.265937+00:00",
+      "vehicle": {
+        "manufacturer": "MERCEDES-BENZ",
+        "model": "E-Class",
+        "year": 2014,
+        "engine_displacement_l": "3.5",
+        "fuel_type": "Бензин",
+        "drive_type": "Повний привід (AWD)",
+        "body_class": "Універсал",
+        "trim": "E350 4-MATIC",
+        "plant_country": "Німеччина",
+        "plant_city": "SINDELFINGEN",
+        "engine_cylinders": "6",
+        "doors": "4",
+        "vehicle_type": "Легковий автомобіль",
+        "engine_configuration": "V-подібний"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "MERCEDES-BENZ CARS",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "3500.0",
+          "source": "NHTSA vPIC"
+        },
+        "tpms": {
+          "label": "Контроль тиску шин",
+          "value": "Прямий контроль (TPMS)",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "drive_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "trim": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC",
+        "engine_configuration": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "no_explicit_vehicle_data",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "engine",
+        "engine_code",
+        "engine_power_kw",
+        "transmission",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "YV4A22PK5G1081029",
+      "observed_at": "2026-11-25T12:12:01.906915+00:00",
+      "vehicle": {
+        "manufacturer": "VOLVO",
+        "model": "XC90",
+        "year": 2016,
+        "engine": "B4204T27",
+        "engine_displacement_l": "2",
+        "fuel_type": "Бензин",
+        "drive_type": "Повний привід (AWD)",
+        "body_class": "Sport Utility Vehicle [SUV]/Multipurpose Vehicle [MPV]",
+        "trim": "SV42 Momentum",
+        "trim_secondary": "Hybrid",
+        "plant_country": "Швеція",
+        "plant_city": "TORSLANDA",
+        "plant_company": "Volvo Cars",
+        "engine_cylinders": "4",
+        "engine_power_hp": "316",
+        "doors": "4",
+        "vehicle_type": "Багатоцільовий пасажирський автомобіль (MPV)",
+        "transmission": "Автоматична КПП",
+        "engine_power_kw": "228"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "VOLVO CAR CORPORATION",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "2000",
+          "source": "NHTSA vPIC"
+        },
+        "turbo": {
+          "label": "Турбонаддув",
+          "value": "Так",
+          "source": "NHTSA vPIC"
+        },
+        "seats": {
+          "label": "Місця",
+          "value": "7",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "drive_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "trim": "NHTSA vPIC",
+        "trim_secondary": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "plant_company": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "engine_power_hp": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC",
+        "transmission": "FreeVINDecoder",
+        "engine_power_kw": "FreeVINDecoder"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "reported",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "engine_code",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "JT3FJ62G9K1100779",
+      "observed_at": "2026-11-25T12:11:59.149985+00:00",
+      "vehicle": {
+        "manufacturer": "TOYOTA",
+        "model": "Land Cruiser",
+        "year": 1989,
+        "engine": "3F-E",
+        "engine_displacement_l": "3.955000",
+        "fuel_type": "Бензин",
+        "drive_type": "Повний привід (4WD)",
+        "body_class": "Sport Utility Vehicle [SUV]/Multipurpose Vehicle [MPV]",
+        "trim": "GX",
+        "plant_country": "Японія",
+        "plant_city": "TOYOTA CITY",
+        "plant_company": "Toyota Motor Corporation - Honsha Plant",
+        "engine_cylinders": "6",
+        "doors": "4",
+        "vehicle_type": "Багатоцільовий пасажирський автомобіль (MPV)"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "TOYOTA MOTOR CORPORATION",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "3955",
+          "source": "NHTSA vPIC"
+        },
+        "wheelbase_type": {
+          "label": "Тип колісної бази",
+          "value": "Довга",
+          "source": "NHTSA vPIC"
+        },
+        "brake_system": {
+          "label": "Гальмівна система",
+          "value": "Гідравлічна",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "drive_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "trim": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "plant_company": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "engine_code",
+        "engine_power_kw",
+        "transmission",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "VF1RJB00067926560",
+      "observed_at": "2026-11-25T12:11:59.311247+00:00",
+      "vehicle": {
+        "vehicle_type": "Легковий автомобіль"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "RENAULT GROUP",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "vehicle_type": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "body_class",
+        "doors",
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_displacement_l",
+        "engine_power_kw",
+        "fuel_type",
+        "manufacturer",
+        "model",
+        "transmission",
+        "transmission_speeds",
+        "year"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "1FAFP42X3WF184546",
+      "observed_at": "2026-11-25T12:11:59.359075+00:00",
+      "vehicle": {
+        "manufacturer": "FORD",
+        "model": "Mustang",
+        "year": 1998,
+        "engine_displacement_l": "4.6",
+        "fuel_type": "Бензин",
+        "body_class": "Купе",
+        "trim": "GT",
+        "plant_country": "США",
+        "plant_city": "DEARBORN",
+        "engine_cylinders": "8",
+        "engine_power_hp": "225",
+        "doors": "2",
+        "vehicle_type": "Легковий автомобіль",
+        "engine_manufacturer": "Ford",
+        "engine_configuration": "V-подібний"
+      },
+      "additional": {
+        "manufacturer_company": {
+          "label": "Компанія-виробник",
+          "value": "FORD MOTOR COMPANY",
+          "source": "NHTSA vPIC"
+        },
+        "displacement_cc": {
+          "label": "Об’єм двигуна, см³",
+          "value": "4600.0",
+          "source": "NHTSA vPIC"
+        },
+        "valve_train": {
+          "label": "Клапанний механізм",
+          "value": "Один верхній розподільний вал (SOHC)",
+          "source": "NHTSA vPIC"
+        }
+      },
+      "field_sources": {
+        "manufacturer": "NHTSA vPIC",
+        "model": "NHTSA vPIC",
+        "year": "NHTSA vPIC",
+        "engine_displacement_l": "NHTSA vPIC",
+        "fuel_type": "NHTSA vPIC",
+        "body_class": "NHTSA vPIC",
+        "trim": "NHTSA vPIC",
+        "plant_country": "NHTSA vPIC",
+        "plant_city": "NHTSA vPIC",
+        "engine_cylinders": "NHTSA vPIC",
+        "engine_power_hp": "NHTSA vPIC",
+        "doors": "NHTSA vPIC",
+        "vehicle_type": "NHTSA vPIC",
+        "engine_manufacturer": "NHTSA vPIC",
+        "engine_configuration": "NHTSA vPIC"
+      },
+      "provider_status": {
+        "NHTSA vPIC": "reported",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_power_kw",
+        "transmission",
+        "transmission_speeds"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "XLRASH4300G220293",
+      "observed_at": "2026-11-25T12:11:59.446335+00:00",
+      "vehicle": {},
+      "additional": {},
+      "field_sources": {},
+      "provider_status": {
+        "NHTSA vPIC": "empty",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "body_class",
+        "doors",
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_displacement_l",
+        "engine_power_kw",
+        "fuel_type",
+        "manufacturer",
+        "model",
+        "transmission",
+        "transmission_speeds",
+        "year"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    },
+    {
+      "vin": "WMAT72ZZZ1L027315",
+      "observed_at": "2026-11-25T12:11:59.615184+00:00",
+      "vehicle": {},
+      "additional": {},
+      "field_sources": {},
+      "provider_status": {
+        "NHTSA vPIC": "empty",
+        "FreeVINDecoder": "rate_limited",
+        "CarAPI.dev": "not_enabled",
+        "Vincario": "not_enabled_or_no_data"
+      },
+      "missing_fields": [
+        "body_class",
+        "doors",
+        "drive_type",
+        "engine",
+        "engine_code",
+        "engine_displacement_l",
+        "engine_power_kw",
+        "fuel_type",
+        "manufacturer",
+        "model",
+        "transmission",
+        "transmission_speeds",
+        "year"
+      ],
+      "consistency_issues": {},
+      "diagnostics": {}
+    }
+  ]
+}

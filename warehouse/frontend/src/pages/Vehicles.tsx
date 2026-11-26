@@ -67,7 +67,7 @@ const vehicleFields: Field[] = [
 export default function Vehicles({notify}:{notify:Notify}) {
   const can=useCan();
   const [deleting,setDeleting]=useState<Row|null>(null);
-  const [catalogueCreate,setCatalogueCreate]=useState(false);
+  const [intakeMode,setIntakeMode]=useState<"vin"|"catalogue"|"manual">("vin");
   const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[yearFilter,setYearFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   // The workshop currently holds tens of donors. Fetch all account-scoped pages so every
   // filter works on the entire dataset (not merely one displayed page).
@@ -100,7 +100,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
 
   return <>
     {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
-      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>{setCatalogueCreate(false);setEdit({status:'dismantling'});}}><Plus size={17}/>Додати автомобіль</button></div></Permit>
+      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>{setIntakeMode("vin");setEdit({status:'dismantling'});}}><Plus size={17}/>Додати автомобіль</button></div></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year??'рік не визначено'}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <div className="r114-toolbar r1146-toolbar">
@@ -123,11 +123,22 @@ export default function Vehicles({notify}:{notify:Notify}) {
      </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
     </section>}
     {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
-    {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
+    {edit&&<Modal className={edit.id?undefined:"vin-intake-dialog"} title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
       {edit.id?<RecordForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} submit="Зберегти зміни" onSave={async values=>{
         const row=await api('/vehicles/'+edit.id,'PUT',values);
         saved(row);setEdit(null);notify('Дані автомобіля збережено');
-      }}/>:<><button onClick={()=>setCatalogueCreate(v=>!v)}>{catalogueCreate?'Додати за VIN':'Вибрати автомобіль із каталогу'}</button>{catalogueCreate?<GlobalVehicleForm onSaved={row=>{saved(row);setEdit(null);openDetail(row,true);}}/>:<VehicleVinQuickAdd onBack={()=>setEdit(null)} onCreated={row=>{setCreated(row);saved(row);setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');}}/>}</>}
+      }}/>:<>
+        <div className="vin-mode" role="group" aria-label="Спосіб додавання автомобіля">
+          {([['vin','За VIN'],['catalogue','Із каталогу'],['manual','Вручну']] as const)
+            .filter(([mode])=>mode!=='catalogue'||can('catalog.view'))
+            .map(([mode,label])=><button key={mode} type="button" aria-pressed={intakeMode===mode}
+              onClick={()=>setIntakeMode(mode)}>{label}</button>)}
+        </div>
+        {intakeMode==='catalogue'?<GlobalVehicleForm onSaved={row=>{saved(row);setEdit(null);openDetail(row,true);}}/>:
+          <VehicleVinQuickAdd key={intakeMode} mode={intakeMode} onBack={()=>setEdit(null)} onCreated={row=>{
+            setCreated(row);saved(row);setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');
+          }}/>}
+      </>}
     </Modal>}
     {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>
       <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onDelete={can('vehicles.delete')?()=>setDeleting(detail):undefined} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
