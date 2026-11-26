@@ -81,14 +81,20 @@ def enqueue(path, identities):
     with connect(path) as db:
         db.executemany("INSERT OR IGNORE INTO photos(key,identity) VALUES (?,?)", rows)
 
-def claim(path, now):
+def claim(path, now, allowed=None):
     # Claim before external work: persistent rate limit and retry ceiling, even across restarts.
     with connect(path) as db:
         db.execute("BEGIN IMMEDIATE")
         day = int(now)//86400
         count = db.execute("SELECT count FROM daily_attempts WHERE day=?", (day,)).fetchone()
         if count and count[0]>=DAILY_LIMIT: return None
-        row = db.execute("SELECT * FROM photos WHERE state='pending' AND attempts<? AND next_try<=? ORDER BY attempts,key LIMIT 1",(MAX_ATTEMPTS,int(now))).fetchone()
+        params=[MAX_ATTEMPTS,int(now)]
+        clause=""
+        if allowed is not None:
+            if not allowed:return None
+            clause=" AND key IN ("+",".join("?" for _ in allowed)+")"
+            params.extend(sorted(allowed))
+        row = db.execute("SELECT * FROM photos WHERE state='pending' AND attempts<? AND next_try<=?"+clause+" ORDER BY attempts,key LIMIT 1",params).fetchone()
         if not row:return None
         db.execute("UPDATE photos SET attempts=attempts+1,next_try=? WHERE key=?", (int(now)+21600,row["key"]))
         db.execute("INSERT INTO daily_attempts VALUES (?,1) ON CONFLICT(day) DO UPDATE SET count=count+1",(day,))
@@ -142,6 +148,9 @@ def validate_result(identity, result):
     return prepare_cutout(raw)
 
 def provider_settings():
+    if os.getenv("WAREHOUSE_MODEL_PHOTO_PROVIDER") == "commons":
+        from app.services.commons_model_photos import settings as commons_settings
+        return commons_settings()
     url=os.getenv("WAREHOUSE_MODEL_PHOTO_PROVIDER_URL","")
     token=os.getenv("WAREHOUSE_MODEL_PHOTO_PROVIDER_TOKEN","")
     if os.getenv("WAREHOUSE_MODEL_PHOTO_PROVIDER_APPROVED")!="true" or not https_url(url) or not token:
@@ -150,6 +159,9 @@ def provider_settings():
 
 def fetch_photo(settings, identity):
     import httpx
+    if isinstance(settings,dict) and settings.get("kind")=="commons":
+        from app.services.commons_model_photos import fetch_reviewed
+        return fetch_reviewed(settings,identity)
     url,token=settings
     with httpx.Client(timeout=httpx.Timeout(20.0,connect=5.0),follow_redirects=False,trust_env=False) as client:
         with client.stream("POST",url,json=identity,headers={"Authorization":"Bearer "+token,"Accept":"application/json"}) as response:
@@ -162,7 +174,12 @@ def fetch_photo(settings, identity):
 
 def process_one(path, settings, now=None, fetch=fetch_photo):
     if not settings:return False
-    row=claim(path,time.time() if now is None else now)
+    allowed=None
+    if isinstance(settings,dict) and settings.get("kind")=="commons":
+        from app.services.commons_model_photos import reviewed_keys
+        allowed=reviewed_keys(settings)
+        if not allowed:return False
+    row=claim(path,time.time() if now is None else now,allowed)
     if not row:return False
     try:
         identity=json.loads(row["identity"])
