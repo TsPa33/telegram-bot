@@ -9,6 +9,8 @@ import {useCan} from './permissions';
 
 import {categoryLabelUk} from './PartsQuickCategories';
 import {SellerPriceEditor} from './MarketPricing';
+import AletoPriceButton from './AletoPriceButton';
+import {PriceReferenceRow} from './PriceReferenceWorkspace';
 import PartCharacteristicsEditor from './PartCharacteristicsEditor';
 import {StockOemField,oemOptions} from './OemField';
 
@@ -83,6 +85,7 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <PartCharacteristicsEditor key={part.id} part={part} kind="oem" onSaved={row=>{setEditingOem(false);onSaved(row);}} onClose={()=>setEditingOem(false)}/>
    </div>}
    <div className="ui11-preview-buttons">
+    {!part.catalogue_only&&!part.archived&&<><AletoPriceButton key={part.id} part={part} vehicle={vehicle} onSaved={onSaved} inline/><PriceReferenceRow part={part}/></>}
     
     {part.id&&can('parts.change_price')&&!part.archived&&<details ref={pricePanel} className="part-preview-price-edit"><summary>Змінити ціну</summary><SellerPriceEditor key={part.id} part={part} initialOpen onSaved={row=>{if(pricePanel.current)pricePanel.current.open=false;onSaved(row);}}/></details>}
     {part.id&&can('inventory.edit')&&!part.archived&&<>{oemOptions(part).length===0&&<button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button>}<button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}

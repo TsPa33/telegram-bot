@@ -7,6 +7,8 @@ import { Package } from "lucide-react";
 import { type Row } from "./api";
 import { PriceSummary } from "./CompactParts";
 import { SellerPriceEditor } from "./MarketPricing";
+import AletoPriceButton from "./AletoPriceButton";
+import {PriceReferenceRow} from "./PriceReferenceWorkspace";
 import { inventoryStockKind } from "./inventoryPresentation";
 const states: Record<string, string> = {
   available: "В наявності",
@@ -201,6 +203,8 @@ export function InventoryPartRow({
       )}
       <div className="ui3-own">
         <SellerPriceEditor part={p} compact onSaved={onSaved} />
+        <AletoPriceButton part={p} vehicle={vehicle} onSaved={onSaved} />
+        <PriceReferenceRow part={p}/>
       </div>
       <div className="ui3-actions">{actions}</div>
     </article>

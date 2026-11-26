@@ -5,7 +5,7 @@ import {State, useLoad} from './shared';
 export default function AletoCatalogue({vehicleId}:{vehicleId:string}) {
   const [open,setOpen]=useState(false);
   return <details className="vehicle-secondary" onToggle={e=>setOpen(e.currentTarget.open)}>
-    <summary>Aleto — довідник пропозицій</summary>
+    <summary>Довідник ринкових цін</summary>
     {open&&<CatalogueContent vehicleId={vehicleId}/>}
   </details>;
 }
@@ -19,15 +19,15 @@ function CatalogueContent({vehicleId}:{vehicleId:string}) {
   return <div>
     <p>Довідкові пропозиції для моделі. Сумісність за роком, VIN і комплектацією не перевірена. Каталог неповний.</p>
     <div className="form-grid">
-      <label>Категорія Aleto<select aria-label="Категорія Aleto" value={category} onChange={e=>{setCategory(e.target.value);setSubcategory('');setOffset(0);}}><option value="">Усі категорії</option>{roots.map(n=><option key={n.category_id} value={n.category_id}>{n.category_name}</option>)}</select></label>
-      <label>Підкатегорія Aleto<select aria-label="Підкатегорія Aleto" disabled={!category} value={subcategory} onChange={e=>{setSubcategory(e.target.value);setOffset(0);}}><option value="">Усі підкатегорії</option>{subs.map(n=><option key={n.subcategory_id} value={n.subcategory_id}>{n.subcategory_name}</option>)}</select></label>
-      <label>Пошук назви, артикулу або OEM<input value={q} onChange={e=>{setQ(e.target.value);setOffset(0);}}/></label>
+      <label>Категорія довідника<select aria-label="Категорія довідника" value={category} onChange={e=>{setCategory(e.target.value);setSubcategory('');setOffset(0);}}><option value="">Усі категорії</option>{roots.map(n=><option key={n.category_id} value={n.category_id}>{n.category_name}</option>)}</select></label>
+      <label>Підкатегорія довідника<select aria-label="Підкатегорія довідника" disabled={!category} value={subcategory} onChange={e=>{setSubcategory(e.target.value);setOffset(0);}}><option value="">Усі підкатегорії</option>{subs.map(n=><option key={n.subcategory_id} value={n.subcategory_id}>{n.subcategory_name}</option>)}</select></label>
+      <label>Пошук назви або OEM<input value={q} onChange={e=>{setQ(e.target.value);setOffset(0);}}/></label>
     </div>
     <State error={error} loading={loading}/>
     {error&&<button onClick={reload}>Повторити</button>}
-    {data&&!loading&&<><p>Пропозицій: {data.total}. Ціна Aleto (орієнтир) — окремо від вашої ціни продажу.</p>
-      <div className="table-scroll"><table><thead><tr><th>Пропозиція</th><th>Артикул / OEM</th><th>Ціна Aleto (орієнтир)</th><th>Перевірено</th></tr></thead><tbody>
-        {data.items.map((r:Row)=><tr key={r.id}><td><a href={r.source_url} target="_blank" rel="noopener noreferrer">{r.title}</a></td><td>{r.article}<br/>{r.oem||'OEM не вказано'}</td><td>{r.price_uah==null?'Не вказано':`${r.price_uah} ₴`}{r.price_usd!=null&&<small> · {r.price_usd} USD (джерело)</small>}</td><td>{new Date(r.observed_at).toLocaleString('uk-UA')}</td></tr>)}
+    {data&&!loading&&<><p>Пропозицій: {data.total}. Ринкова ціна (орієнтир) — окремо від вашої ціни продажу.</p>
+      <div className="table-scroll"><table><thead><tr><th>Пропозиція</th><th>OEM</th><th>Ринкова ціна (орієнтир)</th><th>Перевірено</th></tr></thead><tbody>
+        {data.items.map((r:Row)=><tr key={r.id}><td>{r.title}</td><td>{r.oem||'OEM не вказано'}</td><td>{r.price_uah==null?'Не вказано':`${r.price_uah} ₴`}{r.price_usd!=null&&<small> · {r.price_usd} USD</small>}</td><td>{new Date(r.observed_at).toLocaleString('uk-UA')}</td></tr>)}
       </tbody></table></div>
       <div className="modal-actions"><button disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-50))}>Назад</button><button disabled={offset+50>=data.total} onClick={()=>setOffset(offset+50)}>Далі</button></div>
     </>}

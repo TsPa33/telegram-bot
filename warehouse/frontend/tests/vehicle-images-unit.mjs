@@ -50,3 +50,21 @@ test('shipped WebP resources match provenance hashes/dimensions, alpha and size 
 
 test('reviewed reference photos allow unknown year without claiming generation',()=>{const a={...model('photo',undefined,2008,2017),referencePhoto:true,allowUnknownYear:true};const resolve=resolver([a]);assert.equal(resolve({...input,year:undefined})[0].tier,'model-reference');assert.equal(resolve({...input,year:null})[0].asset.id,'photo');assert.equal(resolve({...input,year:2024})[0].tier,'unknown');assert.equal(resolve({...input,year:undefined,generation:'II'})[0].tier,'unknown');assert.equal(resolve({...input,year:'unknown'})[0].tier,'unknown');assert.equal(resolve({...input,year:undefined,model:'Other'})[0].tier,'unknown');});
 test('generated or unapproved photos cannot supply unknown-year references',()=>{const a={...model('photo',undefined,2008,2017),referencePhoto:true,allowUnknownYear:true};for(const change of [{source:{...source,type:'generated'}},{verified:false},{allowUnknownYear:false}])assert.equal(resolver([{...a,...change}])({...input,year:undefined})[0].tier,'unknown');});
+
+test('reviewed seed contains four hashed transparent model images and matches control identities',async()=>{
+ const provenance=JSON.parse(await readFile(new URL('../src/assets/vehicles/model-reference-provenance.json',import.meta.url),'utf8'));
+ assert.equal(provenance.length,4);
+ for(const a of provenance){
+  const b=await readFile(new URL('../src/assets/vehicles/'+a.file,import.meta.url));
+  assert.equal(createHash('sha256').update(b).digest('hex'),a.sha256);
+  assert.equal(b.length,a.bytes);assert(b.length<=100000);
+  assert.equal(b.toString('ascii',8,16),'WEBPVP8X');assert(b[20]&16);
+  assert.equal(b.readUIntLE(24,3)+1,a.width);assert.equal(b.readUIntLE(27,3)+1,a.height);
+ }
+ const {modelReferenceAssets}=await import(encode(compile(await readFile(new URL('../src/vehicleModelReferenceAssets.ts',import.meta.url),'utf8'))));
+ const resolve=resolver(modelReferenceAssets);
+ for(const [vehicle,expected] of [[{manufacturer:'Alfa Romeo',model:'147 (937_)',year:2008},'reference-alfa-147.webp'],[{manufacturer:'Audi',model:'Q5',year:null},'reference-audi-q5.webp'],[{manufacturer:'DAF',model:'XF 105',year:2007},'reference-daf-xf.webp'],[{manufacturer:'Volvo',model:'XC90',year:2016},'reference-volvo-xc90.webp']]) {
+  const a=resolve(vehicle)[0].asset;assert.equal(a.file,expected);assert.equal(a.transparentCutout,true);
+ }
+ assert(!resolve({manufacturer:'Volvo',model:'XC90',year:2005}).some(x=>x.asset.referencePhoto));
+});
