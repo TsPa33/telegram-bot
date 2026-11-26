@@ -387,7 +387,7 @@ def global_dismantling(id: str, db: DB, who: Auth):
 
 
 @router.get('/{id}/global-dismantling')
-def global_saved(id: str, db: DB, who: Auth):
+def global_saved(id: str, db: DB, who: Auth, include_master: bool = False):
     require_permission(who,'vehicles.view','catalog.view')
     v=owned(db,Vehicle,id,who.workspace_account_id)
     state=service.saved_state(v)
@@ -424,7 +424,19 @@ def global_saved(id: str, db: DB, who: Auth):
                 oems[product_id] = dict(item_id=row.id, part_id=None, oem_number=ref['oem_number'],
                     oem_options=options(ref), oem_status='catalogue_applicable')
     from app.services.dismantling_plan_v3 import generator_basis
-    return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),
+    master_projection = {}
+    if include_master:
+        require_permission(who, 'inventory.view')
+        from app.services.master_parts_reconciliation import preview_for_vehicle
+        try:
+            master_projection["master_preview"] = preview_for_vehicle(db, v)
+        except HTTPException as exc:
+            if exc.status_code != 503:
+                raise
+            master_projection["master_preview"] = {"status": "source_unavailable", "persisted": False}
+        except (ValueError, KeyError, TypeError):
+            master_projection["master_preview"] = {"status": "invalid_source_contract", "persisted": False}
+    return dict(**master_projection, selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),
         saved={k: value for k, value in state.items() if k != "article_graph"} if state else None,
         keys=keys,oems=oems,catalogue_oems=catalogue_oems,
         selection_revision=(v.dismantling_v3 or {}).get('catalogue_selection_revision', 0),

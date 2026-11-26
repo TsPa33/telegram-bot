@@ -92,7 +92,7 @@ def status_for(variant,assessment,config):
     if assessment['missing_or_unverified'] or 'E' in assessment['groups']:return 'unknown','Недостатньо підтверджених даних; позицію не виключено'
     return 'possible','Конструктивна функція/джерельна модель є кандидатом; точний fitment не підтверджено'
 
-def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_base=False):
+def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_base=False,master_enabled=False):
     config=configuration(db,vehicle,workspace,list(facts),selected or {})
     values=config['values'];query={k:values.get(k) or '' for k in ('manufacturer','model','generation','fuel_type','transmission','powertrain','drive','body_type','engine_code','options')}
     query['year']=values.get('year');query['engine']=values.get('engine_code') or values.get('engine_label') or ''
@@ -103,8 +103,14 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
         gaps.append('Опублікована нормалізація потребує оновлення; використано доступні довідкові типи.')
         page=dict(items=[],unmapped_total=0,published=False,snapshot_sha=None)
     rows=page['items'];unmapped=page['unmapped_total'];snapshot=page.get('snapshot_sha');published=page['published']
-    exact=[];baseline_added=0;reference_added=0
-    if universal_base:
+    exact=[];baseline_added=0;reference_added=0;master=None
+    if universal_base and master_enabled:
+        from app.services.master_parts_managed import managed_rows
+        master=managed_rows(db,vehicle,config)
+    if master is not None:
+        rows=master
+        gaps.append('Додаткові конструктивні позиції; джерельні рядки збережено, OEM не виводиться з геометрії.')
+    elif universal_base:
         from app.services.universal_generator import exact_modification_rows,published_reference_rows
         exact,source_gaps=exact_modification_rows(vehicle,config,db);gaps.extend(source_gaps)
         if exact:rows=exact
@@ -112,7 +118,7 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
             references=published_reference_rows(db,config);known={r['placement']['id'] for r in rows}
             for row in references:
                 if row['placement']['id'] not in known:rows.append(row);known.add(row['placement']['id']);reference_added+=1
-    if not exact and (not published or universal_base):
+    if master is None and not exact and (not published or universal_base):
         from app.services.canonical_catalogue import base_inputs,constructive_inputs
         from app.services.canonical_rules import classify,placement,TYPES
         baseline_excluded_types={r['canonical_type_id'] for r in rows}
@@ -128,7 +134,7 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
     # Distinct stable identities keep unknown names from being guessed as OEMs.
     from app.services.dismantling_catalog import scoped_types
     from app.services.canonical_rules import sid
-    for local,src in scoped_types(db,workspace,vehicle):
+    for local,src in (scoped_types(db,workspace,vehicle) if master is None else []):
         type_id=sid('local-scoped-type',src.id,local.catalog_key)
         placement_id=sid('local-scoped-placement',src.id,local.catalog_key)
         install=dict(id=placement_id,type_id=type_id,side='unknown',position='unknown',
@@ -170,7 +176,7 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
             explanation='Оцінка на рівні варіантів; непідтверджені варіанти залишено видимими'
         prices=[p for v in variants if v['applicability_status']!='incompatible' for p in prices_by_variant[v['id']]]
         for v in variants:v.pop('_sources',None)
-        items.append(dict(id=group['placement']['id'],canonical_part_type_id=group['canonical_type_id'],name=group['name'],installation_position=group['placement'],category=group['category'],subcategory=group['subcategory'],quantity=None,quantity_explanation='Конструктивно необхідна кількість не підтверджена; кількість оголошень не є кількістю деталей',variants=variants,source=sorted(group['source_refs'],key=lambda r:(r['kind'],r['key'])),source_confirmed=bool(group.get('source_confirmed')) and not config['conflicts'],source_ref_count=group['source_ref_count'],source_truncated=group.get('source_refs_truncated',False),rule_evidence={'version':VERSION,'source':'canonical_rules_v1_5.json','criteria':a,'vehicle_provenance':config['provenance']},applicability_status=status,explanation=explanation,applicability=a,compatible_evidence=sorted({e for v in variants for e in v.get('compatibility',{}).get('evidence_ids',[])}),evidence_details=[evidence_details[e] for e in sorted({e for v in variants for e in v.get('compatibility',{}).get('evidence_ids',[])}) if e in evidence_details],relevant_offer_count=group['offer_count'],reference_prices=prices,price_label='Ринковий орієнтир' if prices else 'Ціну не визначено',selling_price=None))
+        items.append(dict(id=group['placement']['id'],canonical_part_type_id=group['canonical_type_id'],name=group['name'],installation_position=group['placement'],category=group['category'],subcategory=group['subcategory'],quantity=None,quantity_explanation='Одна потенційна фізична позиція; наявність потребує перевірки' if any(r['kind']=='master_construction' for r in group['source_refs']) else 'Конструктивно необхідна кількість не підтверджена; кількість оголошень не є кількістю деталей',variants=variants,source=sorted(group['source_refs'],key=lambda r:(r['kind'],r['key'])),source_confirmed=bool(group.get('source_confirmed')) and not config['conflicts'],source_ref_count=group['source_ref_count'],source_truncated=group.get('source_refs_truncated',False),rule_evidence={'version':VERSION,'source':'canonical_rules_v1_5.json','criteria':a,'vehicle_provenance':config['provenance']},applicability_status=status,explanation=explanation,applicability=a,compatible_evidence=sorted({e for v in variants for e in v.get('compatibility',{}).get('evidence_ids',[])}),evidence_details=[evidence_details[e] for e in sorted({e for v in variants for e in v.get('compatibility',{}).get('evidence_ids',[])}) if e in evidence_details],relevant_offer_count=group['offer_count'],reference_prices=prices,price_label='Ринковий орієнтир' if prices else 'Ціну не визначено',selling_price=None))
     items.sort(key=lambda i:(i['category'],i['subcategory'],i['name'],i['id']))
     counts=Counter(i['applicability_status'] for i in items)
     by_type=defaultdict(set)
@@ -178,5 +184,5 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
     type_counts=Counter(next(s for s in ('confirmed','possible','unknown','incompatible') if s in states) for states in by_type.values())
     unclassified={i['canonical_part_type_id'] for i in items if 'Потребує уточнення' in (i['category'],i['subcategory'])}
     if universal_base and unclassified:gaps.append(f'Категорія або підкатегорія потребує узгодження для {len(unclassified)} типів; записи не приховані.')
-    generator=dict(uncategorized_types=len(unclassified),mode='universal',baseline_positions=baseline_added,published_reference_positions=reference_added,exact_source_positions=len(exact),gaps=gaps,categories=len({r['category'] for r in items if r['category']!='Потребує уточнення'}),types=len(by_type),positions=len(items),sources=sorted({r['kind'] for i in items for r in i['source']}),complete=False) if universal_base else None
+    generator=dict(master_positions=len(master) if master is not None else 0,uncategorized_types=len(unclassified),mode='universal',baseline_positions=baseline_added,published_reference_positions=reference_added,exact_source_positions=len(exact),gaps=gaps,categories=len({r['category'] for r in items if r['category']!='Потребує уточнення'}),types=len(by_type),positions=len(items),sources=sorted({r['kind'] for i in items for r in i['source']}),complete=False) if universal_base else None
     return dict(generator=generator,version=VERSION,read_only=True,persisted=False,configuration=config,items=items,total=len(items),unique_type_count=len(by_type),type_status_counts={s:type_counts[s] for s in ('confirmed','possible','unknown','incompatible')},status_counts={s:counts[s] for s in ('confirmed','possible','unknown','incompatible')},snapshot_sha=snapshot,published=published,fallback_used=not published,catalogue_status='published' if published else 'unpublished',unmapped_paths=unmapped,coverage_note='Нерозпізнані джерела збережені; відсутність зіставлення не означає непридатність',rules=RULES)

@@ -126,7 +126,7 @@ def test_live_candidate_public_route_preserves_stock(platform,vehicle,monkeypatc
     monkeypatch.setattr(live,'enabled',lambda:True)
     monkeypatch.setattr(live,'lookup',lambda ctx:('live',[dict(currency='UAH',condition='used',
         availability='available',assembly='complete',match='similar',offer_count=3,
-        minimum='1000',maximum='2000',average='1500.00',observed_at=stamp,examples=[])],stamp))
+        minimum='1000',maximum='2000',average='1500.00',observed_at=stamp,source='aleto',url='https://aleto.ua/',examples=[dict(amount='1000',currency='UAH',observed_at=stamp,article='hidden',url='https://aleto.ua/')])],stamp))
     with Session(engine()) as db:before=all_tables(db)
     r=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
     assert r.status_code==200,r.text

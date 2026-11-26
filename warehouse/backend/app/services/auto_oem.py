@@ -141,6 +141,10 @@ def canonical_prd_bindings(db,rows):
 
 
 def matches(row,products,bindings=None,*,source_modification_id=None,source_snapshot_sha=None,item_bindings=None):
+    from app.services.master_parts_managed import master_ref
+    if master_ref(row):
+        # A constructive position is not a verified PRD/article/placement link.
+        return None
     product_id=catalogue.row_product_id(row)
     if product_id is not None:
         product=products.get(product_id)

@@ -520,6 +520,9 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         if stage13_plan:
             vin_resolution.persist_graph(db, row, stage13_plan, readiness=oracle_identity["catalogue_readiness"])
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
+    if stage13_plan and oracle_identity is not None:
+        from app.services.master_parts_managed import auto_supplement_new_donor
+        auto_supplement_new_donor(db, row, who)
     if accept_base and "dismantling.manage" in who.permissions:
         from app.services import dismantling
         dismantling.start(db, row.id, who.workspace_account_id)
