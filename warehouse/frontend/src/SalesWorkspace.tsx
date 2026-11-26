@@ -203,7 +203,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
 }
 function MobileSearchResult({part,vehicle,revision,onPreview,onOrder,actions}:{part:Row;vehicle?:Row;revision:number;onPreview:()=>void;onOrder:()=>void;actions:React.ReactNode}){
  const can=useCan(),available=Number(part.available_quantity||0),sellable=available>0&&part.assortment_enabled!==false&&!part.archived&&!part.catalogue_only;
- return <article className="mobile-search-result" aria-label={part.name} onPointerDown={e=>{if((e.target as Element).closest('button')&&document.activeElement?.matches('[role=combobox]'))e.preventDefault();}}>
+ return <article className="mobile-search-result" aria-label={part.name} onPointerDown={e=>{const target=e.target as Element;if(target.closest('button')&&!target.closest('[data-part-actions],.r1-action-menu')&&document.activeElement?.matches('[role=combobox]'))e.preventDefault();}}>
   <div className="mobile-result-identity"><SearchPartPhoto id={part.id} name={part.name} revision={revision}/><div><button type="button" className="mobile-result-name" onClick={onPreview}>{part.name}<ChevronRight size={16}/></button><small>{vehicle?[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · '):'Автомобіль не вказано'}</small>
   {(part.oem_number||part.article_number)&&<small>{part.oem_number?'OEM: '+part.oem_number:''}{part.oem_number&&part.article_number?' · ':''}{part.article_number?'Арт.: '+part.article_number:''}</small>}
   <span className={sellable?'mobile-result-available':'mobile-result-unavailable'}>{sellable?'В наявності · '+available+' шт.':part.catalogue_only?'У плані розбору':part.assortment_enabled===false?'Виключена з продажу':'Немає вільного залишку'}</span></div></div>

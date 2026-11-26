@@ -20,7 +20,25 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const row=name=>page.locator('.ui11-result-wrap,.mobile-search-result,.stock-row-wrap').filter({has:page.getByRole('button',{name,exact:true})});
  const search=page.getByRole('combobox',{name:'Пошук запчастин',exact:true});
  async function searchPage(){await page.goto(origin+'/search');await search.fill('ка');await search.press('Escape');await expect(row('Капот')).toBeVisible();}
- async function action(label,stock=false,scope=row('Капот')){await scope.getByRole('button',{name:'Дії Капот',exact:true}).click();if(stock)await page.getByRole('menuitem',{name:'Складські операції',exact:true}).click();await page.getByRole('menuitem',{name:label,exact:true}).click();return page.getByRole('dialog').last();}
+ async function action(label,stock=false,scope=row('Капот')){
+  const trigger=scope.getByRole('button',{name:'Дії Капот',exact:true});
+  const menu=page.getByRole('menu',{name:'Дії запчастини Капот',exact:true});
+  await trigger.click();
+  await expect(menu).toBeVisible();
+  if(stock){
+   if(viewport.width<601){
+    // A mobile result can shift as focus/viewport/background data changes.
+    // Reproduce a scroll without relying on a timing delay or forced click.
+    await page.evaluate(()=>window.dispatchEvent(new Event('scroll')));
+    await expect(menu).toBeVisible();
+   }
+   await menu.getByRole('menuitem',{name:'Складські операції',exact:true}).click();
+   await expect(menu.getByRole('menuitem',{name:label,exact:true})).toBeVisible();
+  }
+  await menu.getByRole('menuitem',{name:label,exact:true}).click();
+  await expect(menu).not.toBeVisible();
+  return page.getByRole('dialog').last();
+ }
  await page.goto(origin+'/search');await expect(page.getByRole('heading',{name:'Пошук запчастин',exact:true})).toBeVisible();
  if(viewport.width<601)await page.getByRole('button',{name:'Фільтри',exact:true}).click();
  await page.getByLabel('Марка пошуку',{exact:true}).selectOption('Volvo');await page.getByLabel('Модель пошуку',{exact:true}).selectOption('XC90');await page.getByLabel('Автомобіль пошуку',{exact:true}).selectOption(volvo.id);
@@ -44,7 +62,19 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   assert.equal((await get('/parts/'+hood.id)).quantity,quantity);
   await page.reload();await page.goto(origin+'/orders');const replay=page.waitForRequest(r=>r.method()==='POST'&&r.url().endsWith('/orders/checkout'));await page.getByRole('button',{name:'Перевірити результат запиту',exact:true}).click();const request=await replay;assert.equal(request.postDataJSON().request_key,saleKeys.at(-1));await expect(page.getByRole('heading',{name:'Замовлення №'+committed.number,exact:true})).toBeVisible();assert.equal((await get('/parts/'+hood.id)).quantity,quantity);
   if(quantity===2){
-   await searchPage();modal=await action('Перемістити',true);await modal.getByLabel('Нове місце',{exact:true}).fill('Полиця B');await expect(modal.getByLabel('Примітка (необов’язково)',{exact:true})).not.toHaveAttribute('required');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();
+   await searchPage();
+   if(viewport.width<601){
+    // Keep the search field focused after dismissing suggestions, then use
+    // the native action popover. The menu must survive a layout/scroll shift.
+    const trigger=row('Капот').getByRole('button',{name:'Дії Капот',exact:true});
+    await search.focus();await search.press('Escape');await trigger.click();
+    const menu=page.getByRole('menu',{name:'Дії запчастини Капот',exact:true});
+    await expect(menu).toBeVisible();
+    await page.evaluate(()=>{window.scrollTo(0,document.documentElement.scrollHeight);window.dispatchEvent(new Event('scroll'));});
+    await expect(menu.getByRole('menuitem',{name:'Складські операції',exact:true})).toBeInViewport();
+    await page.keyboard.press('Escape');await expect(menu).not.toBeVisible();
+   }
+   modal=await action('Перемістити',true);await modal.getByLabel('Нове місце',{exact:true}).fill('Полиця B');await expect(modal.getByLabel('Примітка (необов’язково)',{exact:true})).not.toHaveAttribute('required');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();
    modal=await action('Списати',true);await modal.getByLabel('Причина списання',{exact:true}).fill('Пошкоджено при огляді');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();const state=await get('/parts/'+hood.id);assert.equal(state.quantity,1);assert.equal(state.location,'Полиця B');assert.equal(state.selling_price,'777.89');assert.equal(state.currency,'UAH');
    const audit=await get(`/audit?part_id=${hood.id}&limit=100`);for(const type of ['sale','write_off','transfer'])assert.equal(audit.items.filter(r=>r.type===type).length,1);
   }

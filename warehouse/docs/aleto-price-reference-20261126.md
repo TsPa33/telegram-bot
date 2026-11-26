@@ -27,3 +27,7 @@ Base: 810a767a69c4633983f0a51412ee92abf3f4daa6, Warehouse universal intake branc
 ## Integration base
 
 Master Parts Catalogue integration base: 761573af6b6b698d65c28dca6ebaa370ce6d8814. Compared both descendants of 810a767a69c4633983f0a51412ee92abf3f4daa6; zero changed-path overlap before integration. Merged the master branch snapshot into the draft feature branch only; master branch, live deployments and all databases unchanged by this action. Both stored and live customer responses use an explicit anonymous DTO. Final combined CI must pass before staging acceptance; the live provider remains disabled until access approval is documented.
+
+## Mobile integrated-browser stabilization
+
+Release Gate 45855399582 attempts 1 and 2: desktop 1440 PASS, mobile 390 failed at sales-browser.mjs:48 opening stock submenu after checkout/reload. The log showed the button resolved but became unstable then invisible. Code inspection identified native popover auto-close on captured window scroll and search-field focus retention as plausible contributors; exact runtime event ordering was not instrumented. Fix: stable mobile bottom-anchored viewport-constrained popover, no dismissal on incidental background scroll, visualViewport resize tracking, focus restoration without scroll, exclude action buttons from search focus suppression. Native light dismissal and keyboard Escape remain. Regression covers search focus, scrolling and all original real stock/checkout assertions; no timeout increase, no forced click, no test skip. Final CI required.
