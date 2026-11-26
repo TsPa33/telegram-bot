@@ -96,6 +96,9 @@ def receipt(db, row, data, account_id, *, confirmed=False):
     # Durable workflow marker, independent of current stock, sale, archive or reload.
     if row.received_at is not None:
         return False
+    from app.services.master_parts_managed import master_ref, receipt_allowed
+    if master_ref(row) and not receipt_allowed(db.get(Vehicle,row.vehicle_id),row,data.quantity):
+        raise HTTPException(409,'Позиція Master потребує актуальної модифікації та однієї фізичної одиниці')
     from app.services.assemblies import assert_uncontained_item
     assert_uncontained_item(db,row,account_id)
     if row.plan_v3 and (row.plan_v3.get('inspection')!='present' or row.status!='dismantled'):
