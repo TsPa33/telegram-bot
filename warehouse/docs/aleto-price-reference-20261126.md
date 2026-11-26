@@ -15,3 +15,11 @@ Base: 810a767a69c4633983f0a51412ee92abf3f4daa6, Warehouse universal intake branc
 - Stock/search/donor and part-card action share the same neutral UI. No source URLs or third-party articles are rendered in the new dialog. Existing market-price card links removed; legacy reference display relabelled.
 - Existing internal/legacy APIs and administrator integration tooling remain; this is not a global data-loss or API access redesign.
 - Imported price tables do not establish current availability. Treat results as historical observations, not confirmed in-stock offers; live access and redistribution rights remain release gates.
+
+## Live provider candidate — bounded package
+
+- Default OFF; requires WAREHOUSE_MARKET_LIVE_ENABLED=true and nonempty WAREHOUSE_MARKET_ACCESS_APPROVAL after documented source authorization. No variable changes in Railway. HTTP accessibility is not permission.
+- Exact OEM route only; Toyota formatting verified. Missing OEM/unsupported page/failure/robots restriction falls back to saved observations; no arbitrary search endpoints, pagination, or crawling. No compatibility guarantee and no coverage claim for all makes.
+- Fixed host, public-IP pinning, verified TLS, no redirects/proxies, bounded response and timeout. System DNS resolver timeout remains OS-managed. Unknown availability is kept separate; unavailable/expected excluded. Match by OEM, model, functional prefix, position, assembly, technical signature, condition and currency; at least three distinct cards per group for mean.
+- Bounded in-process 24h cache (128 public pages); no tenant identifiers or VIN sent, no new DB/schema. Cache resets on process restart and is not shared across replicas. One concurrent fetch per process and 3s cooldown. No background calls.
+- New customer response carries only anonymous numerical data and status. The older local API remains for compatibility; administrator provenance stays internal. Separate merge review required against the currently deployed Master Parts Catalogue branch. CI and end-to-end live acceptance required before activation.

@@ -29,14 +29,14 @@ export default function AletoPriceButton({part,vehicle}:{part:Row;vehicle?:Row|n
   {open&&<Modal title={'Орієнтир цін · '+part.name} onClose={close}>
    <div className="aleto-reference-panel">
     {vehicle&&<p>{[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · ')}</p>}
-    <p>Орієнтовні ціни за збереженими даними. Наявність не перевірено. Власна ціна не змінюється.</p>
+    <p>{data?.price_mode==='live'?'Оновлені ринкові ціни.':data?.price_mode==='cached'?'Ринкові ціни з останньої перевірки.':'Орієнтовні ціни за збереженими даними. Наявність не перевірено.'} Власна ціна не змінюється.</p>
     {busy&&<p role="status">Шукаємо схожі пропозиції…</p>}
     {error&&<p role="alert">{error} <button type="button" onClick={lookup}>Повторити</button></p>}
     {data&&<div aria-live="polite">
      {data.truncated&&<p>Вибірку обмежено. Середня ціна не обчислюється.</p>}
      {!references.length&&!data.truncated&&<p>Немає достатніх актуальних імпортованих даних для орієнтира.</p>}
-     {references.map(r=><section className="aleto-reference-group" key={[r.currency,r.condition,r.match].join(':')}>
-      <small>{r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}</small>
+     {references.map((r,index)=><section className="aleto-reference-group" key={index}>
+      <small>{r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
       {r.average!=null?<><small>Середня ціна</small><strong className="aleto-reference-average">{money(r.average,r.currency)}</strong></>:<strong>Мало пропозицій для середньої ціни</strong>}
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
       <small>Останнє спостереження: {date(r.observed_at)}. Показано {r.examples.length} із {r.offer_count}.</small>

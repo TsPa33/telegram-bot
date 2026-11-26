@@ -87,4 +87,26 @@ def market_refresh(id:str,data:Input,db:DB,who:Auth):
 def market_reference(id:str,data:Input,db:DB,who:Auth):
     """Customer projection: no provider names, links, articles or raw descriptions."""
     from app.services.market_reference_public import public_reference
-    return public_reference(market_refresh(id,data,db,who))
+    result=public_reference(market_refresh(id,data,db,who))
+    result["price_mode"]="stored"
+    from app.services import live_market_reference as live
+    if not live.enabled():
+        return result
+    from app.services.market_reference_context import lookup_context
+    account=who.workspace_account_id
+    context=lookup_context(db,account,id)
+    if not live.lookup_path(context):
+        return result
+    # The auth dependency takes a workspace lock for POST. Release the
+    # read-only transaction before bounded external I/O.
+    db.rollback()
+    current=live.lookup(context)
+    if not current:
+        return result
+    if lookup_context(db,account,id)!=context:
+        raise HTTPException(409,'Дані деталі змінилися. Повторіть пошук цін.')
+    mode,groups,stamp=current
+    if groups:
+        result.update(price_mode=mode,references=groups,historical=[],status="completed",
+                      observed_at=stamp,fresh_data_fetched=mode=="live",truncated=False)
+    return result
