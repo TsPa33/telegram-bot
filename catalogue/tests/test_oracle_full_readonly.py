@@ -34,6 +34,8 @@ def test_source_pages_namespace_and_pagination(monkeypatch):
     assert data["kind"] == "commercial" and data["next_offset"] == 5
     assert data["fitment_verified"] is False and data["source_association_only"] is True
     assert "commercial_vehicle_pds" in queries[0][0]
+    assert "WHERE commertialvehicleid=%s" in queries[0][0]
+    assert "commercialvehicleid" not in queries[0][0]
     assert queries[0][1] == (18248, 4, 2)
     assert api.get(path, params={"kind": "unknown"}, headers=auth).status_code == 422
 
@@ -56,3 +58,34 @@ def test_named_pages_gateway_scope(monkeypatch):
     assert api.get(base + "part-articles", params={"kind": "passenger", "product_id": 402}).status_code == 200
     assert calls[-1][1]["product_id"] == 402
     assert api.get(base + "part-articles", params={"kind": "passenger", "product_id": 403}).status_code == 503
+
+
+
+def test_commercial_audit_and_graph_share_the_verified_pds_column(monkeypatch):
+    monkeypatch.setenv("ORACLE_COMMERCIAL_LINKAGE_TYPE", "23")
+    assert oracle.pds_source("commercial") == ("commercial_vehicle_pds", "commertialvehicleid")
+    assert oracle.audit_source("commercial") == (*oracle.pds_source("commercial"), 23)
+    assert oracle.audit_source("passenger") == ("passanger_car_pds", "passangercarid", 2)
+
+
+def test_commercial_linkage_uses_separate_models_and_safely_checks_overlapping_ids(monkeypatch):
+    from oracle_adapter import check_source_graph as probe
+
+    def synthetic_query(_conn, label, sql, args=()):
+        if label == "commercial_witness_models":
+            return [{"first_model": 200, "last_model": 200}]
+        if label == "commercial_witnesses_5539_0":
+            return [{"id": 10}]
+        if label == "commercial_witnesses_200_0":
+            return []
+        if label == "commercial_witnesses_200_1":
+            return [{"id": 11}]
+        if label.startswith("commercial_pds_linkage_"):
+            assert "p.commertialvehicleid=a.linkageid" in sql
+            if args == (11,):
+                assert "pp.passangercarid=a.linkageid" in sql
+            return [{"linkage_type": 23, "pairs": 2}]
+        raise AssertionError(label)
+
+    monkeypatch.setattr(probe, "query", synthetic_query)
+    assert probe.commercial_linkage(None) == (23, [(5539, 10, 23), (200, 11, 23)], False)

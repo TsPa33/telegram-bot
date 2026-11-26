@@ -76,7 +76,7 @@ existing read-only session and 3-second statement limit. Before installing the
 adapter update on Oracle, verify that the link import is complete, SELECT
 access is present, and the live query plans use the expected indexes. The
 commercial audit requires confirming the source table
-`commercial_vehicle_pds(commercialvehicleid, nodeid, productid, supplierid)`,
+`commercial_vehicle_pds(commertialvehicleid, nodeid, productid, supplierid)`,
 its leading primary key, and the commercial link discriminator. Set
 `ORACLE_COMMERCIAL_LINKAGE_TYPE` on the adapter to the verified value.
 The gateway can be deployed separately and returns 503 while the upstream

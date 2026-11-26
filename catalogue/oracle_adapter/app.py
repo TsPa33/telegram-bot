@@ -8,7 +8,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
-app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.1", docs_url=None, redoc_url=None)
 
 logger = logging.getLogger("carpot.oracle_adapter")
 ROW_LIMIT = 50
@@ -266,7 +266,7 @@ def audit_identity(conn, car_id, kind):
 
 def audit_source(kind):
     if kind == "passenger":
-        return "passanger_car_pds", "passangercarid", 2
+        return (*pds_source(kind), 2)
     # The Oracle schema's commercial linkage type must be confirmed on the
     # source before it can be enabled. Passenger linkage type is reserved.
     value = os.getenv("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
@@ -277,7 +277,7 @@ def audit_source(kind):
     if not 1 <= linkage_type <= 65535 or linkage_type == 2:
         logger.warning("oracle_commercial_linkage_invalid")
         raise HTTPException(503, "Invalid commercial linkage type")
-    return "commercial_vehicle_pds", "commercialvehicleid", linkage_type
+    return (*pds_source(kind), linkage_type)
 
 
 AUDIT_CTES = """
@@ -411,7 +411,7 @@ def audit_oem(kind: CatalogueKind, car_id: int = Path(ge=1),
 # or treated as approved CarPot taxonomy. All pages have deterministic ordering.
 def pds_source(kind):
     return (("passanger_car_pds", "passangercarid") if kind == "passenger"
-            else ("commercial_vehicle_pds", "commercialvehicleid"))
+            else ("commercial_vehicle_pds", "commertialvehicleid"))
 
 
 def source_page(car_id, kind, offset, limit, sql):

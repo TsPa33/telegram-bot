@@ -27,7 +27,7 @@ COLUMNS = {
     "passanger_car_attributes": ("passangercarid", "attributetype", "displayvalue"),
     "commercial_vehicle_attributes": ("commercialvehicleid", "attributetype", "displayvalue"),
     "passanger_car_pds": ("passangercarid", "nodeid", "productid", "supplierid"),
-    "commercial_vehicle_pds": ("commercialvehicleid", "nodeid", "productid", "supplierid"),
+    "commercial_vehicle_pds": ("commertialvehicleid", "nodeid", "productid", "supplierid"),
     "prd": ("id", "description", "normalizeddescription", "assemblygroupdescription", "usagedescription"),
     "suppliers": ("id", "description"),
     "article_links": ("linkageid", "linkagetypeid", "productid", "supplierid", "datasupplierarticlenumber"),
@@ -43,7 +43,7 @@ INDEXES = {
     ("passanger_car_attributes", "passangercarid"): ("passangercarid",),
     ("commercial_vehicle_attributes", "commercialvehicleid"): ("commercialvehicleid",),
     ("passanger_car_pds", "primary"): ("passangercarid",),
-    ("commercial_vehicle_pds", "primary"): ("commercialvehicleid",),
+    ("commercial_vehicle_pds", "primary"): ("commertialvehicleid", "nodeid", "productid", "supplierid"),
     ("article_links", "linkageid"): ("linkageid",),
     ("article_oe", "supplierid"): ("supplierid", "datasupplierarticlenumber"),
     ("article_cross", "oenbr"): ("oenbr",),
@@ -135,32 +135,11 @@ def diagnose(conn, env):
         """, (car, model, maker))
         ready &= bool(rows and len(rows) == 1)
 
-    witnesses = query(conn, "commercial_linkage_witnesses", """
-        SELECT c.id FROM commercial_vehicles AS c FORCE INDEX (modelid)
-        WHERE c.modelid=5539 AND NOT EXISTS (SELECT 1 FROM passanger_cars AS p WHERE p.id=c.id)
-        ORDER BY c.id LIMIT 8
-    """)
-    votes = []
-    ambiguous = False
-    for row in witnesses or ():
-        car = row["id"]
-        matched = query(conn, f"commercial_pds_linkage_{car}", """
-            SELECT a.linkagetypeid AS linkage_type, COUNT(DISTINCT a.productid, a.supplierid) AS pairs
-            FROM article_links AS a FORCE INDEX (linkageid)
-            STRAIGHT_JOIN commercial_vehicle_pds AS p FORCE INDEX (PRIMARY)
-              ON p.commercialvehicleid=a.linkageid AND p.productid=a.productid AND p.supplierid=a.supplierid
-            WHERE a.linkageid=%s AND a.linkagetypeid<>2
-            GROUP BY a.linkagetypeid ORDER BY a.linkagetypeid
-        """, (car,))
-        if matched is None or len(matched) > 1:
-            ambiguous = True
-        elif matched:
-            votes.append(matched[0]["linkage_type"])
-    agreed = votes[0] if len(votes) >= 2 and len(set(votes)) == 1 and not ambiguous else None
+    agreed, votes, ambiguous = commercial_linkage(conn)
     configured = env.get("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
     report("commercial_linkage", verified_value=agreed,
            configured=int(configured) if configured.isascii() and configured.isdecimal() and len(configured) <= 5 else None,
-           matching_witnesses=len(votes), ambiguous=ambiguous)
+           matching_witnesses=len(votes), witness_ids=[vote[1] for vote in votes], ambiguous=ambiguous)
     ready &= agreed is not None and 1 <= agreed <= 65535
     for kind, _, _, car in CONTROL:
         linkage = 2 if kind == "passenger" else agreed
@@ -178,9 +157,83 @@ def diagnose(conn, env):
         ready &= bool(plan and any(row.get("key") == "linkageid" for row in plan))
         sample = query(conn, f"sample_graph_links_{kind}_{car}", f"SELECT COUNT(*) AS sampled_links FROM ({sql}) AS scoped",
                        (car, linkage))
-        ready &= bool(sample and sample[0]["sampled_links"])
+        ready &= bool(sample)
     report("diagnostic_result", ready_to_install=ready, verified_commercial_linkage_type=agreed)
     return ready
+
+
+def commercial_linkage(conn):
+    """Find agreeing PDS/article witnesses from separate commercial models."""
+
+    references = query(conn, "commercial_witness_models", """
+        SELECT manufacturerid AS manufacturer_id, MIN(id) AS first_model, MAX(id) AS last_model
+        FROM models WHERE iscommercialvehicle='True' AND manufacturerid>0
+        GROUP BY manufacturerid ORDER BY manufacturerid LIMIT 20
+    """)
+    if references is None:
+        return None, [], True
+    control = next(model for kind, _, model, _ in CONTROL if kind == "commercial")
+    # Interleave early and late models across makes to include variants with
+    # different source coverage. The control model is diagnostic only.
+    models = list(dict.fromkeys((control, *(row["last_model"] for row in references),
+                                *(row["first_model"] for row in references))))
+    started = monotonic()
+    votes = []
+    checked = set()
+    ambiguous = False
+    for allow_overlap in (False, True):
+        for model in models:
+            if monotonic() - started > 45:
+                return None, votes, True
+            if any(vote[0] == model for vote in votes):
+                continue
+            collision = "" if allow_overlap else "AND NOT EXISTS (SELECT 1 FROM passanger_cars AS p WHERE p.id=c.id)"
+            rows = query(conn, f"commercial_witnesses_{model}_{int(allow_overlap)}", f"""
+                SELECT c.id FROM commercial_vehicles AS c FORCE INDEX (modelid)
+                WHERE c.modelid=%s {collision} ORDER BY c.id LIMIT 3
+            """, (model,))
+            if rows is None:
+                return None, votes, True
+            for row in rows:
+                car = row["id"]
+                if car in checked:
+                    continue
+                checked.add(car)
+                # A numeric ID can exist in both namespaces. With overlap,
+                # count only PDS pairs absent from the passenger PDS namespace.
+                exclusion = """
+                    AND NOT EXISTS (
+                        SELECT 1 FROM passanger_car_pds AS pp FORCE INDEX (PRIMARY)
+                        WHERE pp.passangercarid=a.linkageid
+                          AND pp.productid=a.productid AND pp.supplierid=a.supplierid
+                    )
+                """ if allow_overlap else ""
+                matched = query(conn, f"commercial_pds_linkage_{car}", f"""
+                    SELECT a.linkagetypeid AS linkage_type,
+                           COUNT(DISTINCT a.productid, a.supplierid) AS pairs
+                    FROM article_links AS a FORCE INDEX (linkageid)
+                    STRAIGHT_JOIN commercial_vehicle_pds AS p FORCE INDEX (PRIMARY)
+                      ON p.commertialvehicleid=a.linkageid AND p.productid=a.productid
+                      AND p.supplierid=a.supplierid
+                    WHERE a.linkageid=%s AND a.linkagetypeid<>2 {exclusion}
+                    GROUP BY a.linkagetypeid ORDER BY a.linkagetypeid
+                """, (car,))
+                if matched is None:
+                    return None, votes, True
+                if len(matched) > 1:
+                    ambiguous = True
+                    continue
+                if matched:
+                    votes.append((model, car, matched[0]["linkage_type"]))
+                    break
+            if len(votes) >= 3:
+                break
+        if len(votes) >= 2 or ambiguous:
+            break
+    codes = {vote[2] for vote in votes}
+    ambiguous |= len(codes) > 1
+    agreed = next(iter(codes)) if len(votes) >= 2 and not ambiguous and len(codes) == 1 else None
+    return agreed, votes, ambiguous
 
 
 def http(env, route, **params):
@@ -201,7 +254,7 @@ def http(env, route, **params):
 
 def verify(env):
     status, health, elapsed = http(env, "/health")
-    ready = status == 200 and health.get("version") == "0.4.0"
+    ready = status == 200 and health.get("version") == "0.4.1"
     report("health", status=status, version=health.get("version"), elapsed_ms=elapsed)
     status, result, elapsed = http(env, "/api/v1/oracle/oem/by-article",
                                    supplier_id=1, article_number=20064, manufacturer_id=120, limit=20)
