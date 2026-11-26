@@ -55,7 +55,8 @@ def listing(db,v):
     canonical=db.get(CanonicalState,1);catalogue=db.get(CatalogueState,1);configuration_source=latest(db,v,v.account_id)
     from app.services.dismantling_catalog import scoped_catalogue_digest
     local_sha=scoped_catalogue_digest(db,v.account_id,v)
-    return dict(generator_stale=generator_stale,generator=v.dismantling_v3.get('generator_status'),configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None) or v.dismantling_v3.get('local_catalogue_sha')!=local_sha),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),review_drafts=v.dismantling_v3.get('review_drafts',{}),pending_review=v.dismantling_v3.get('pending_review',[]),pending_count=len(v.dismantling_v3.get('pending_review',[])),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
+    from app.services.master_parts_managed import enabled as master_enabled
+    return dict(master_catalogue_enabled=master_enabled(),generator_stale=generator_stale,generator=v.dismantling_v3.get('generator_status'),configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None) or v.dismantling_v3.get('local_catalogue_sha')!=local_sha),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),review_drafts=v.dismantling_v3.get('review_drafts',{}),pending_review=v.dismantling_v3.get('pending_review',[]),pending_count=len(v.dismantling_v3.get('pending_review',[])),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
 
 def axes_match(a,b):
     if a['details'].get('ordinal') and b['details'].get('ordinal') and a['details']['ordinal']!=b['details']['ordinal']:return False
@@ -74,6 +75,7 @@ def make_preview(db,v,who,data,*,virtual_base=False):
     trial_input=dict(facts=facts,selected=selected)
     canonical=db.get(CanonicalState,1)
     options={'universal_base':True} if data.universal or virtual_base and not (canonical and canonical.snapshot_sha) else {}
+    if data.universal and not virtual_base:options['master_enabled']=True
     generated=jsonable_encoder(preview(db,v,v.account_id,facts,selected,**options));existing=rows_for(db,v)
     legacy={};unclassified=[]
     for r in existing:
@@ -124,9 +126,13 @@ def make_preview(db,v,who,data,*,virtual_base=False):
             else:action='link';target=candidate.id
         saved_skip=v.dismantling_v3.get('skipped',{}).get(pid)
         if saved_skip and not exact:action='skip';target=None
+        is_master=any(ref.get('kind')=='master_construction' for ref in item['source'])
+        if is_master and not exact and possible:
+            action='review';target=None
         resolution=data.resolutions.get(pid)
         if resolution:
             action=resolution.action;target=resolution.item_id
+            if is_master and action=='link' and target not in {r.id for r in exact}:raise HTTPException(409,'Фізичну позицію Master не можна переприв’язати до іншого рядка')
             if action=='link' and target not in {r.id for r in candidates}:raise HTTPException(422,'Неприпустима legacy-позиція для зіставлення')
             if action=='link' and protected(by_id[target]) and by_id[target].plan_v3.get('placement_id') not in (None,pid):raise HTTPException(409,'Складську ідентичність не можна переприв’язати до іншого типу')
             if action=='new' and exact:raise HTTPException(409,'Канонічна позиція вже існує; не можна створити дублікат')
@@ -272,6 +278,8 @@ def persist_plan(db,v,who,data,plan,sha,*,partial=False,pending=None):
         item=proposal['item'];target=proposal['target_id'];r=existing.get(target)
         if r is None:
             pos=item['installation_position'];position=' '.join({'front':'передня','rear':'задня','left':'ліва','right':'права'}.get(pos[k],'') for k in ('position','side')).strip()
+            master_ref=next((ref for ref in item['source'] if ref.get('kind')=='master_construction'),None)
+            if master_ref:position=master_ref['position_label']
             r=DismantlingItem(id=sid('donor-plan',v.account_id,v.id,item['id'],str(data.request_key)),account_id=v.account_id,vehicle_id=v.id,source='carpot.v3',catalog_key=sid('plan-source',v.id,item['id'],str(data.request_key)),name=item['name'],position=position,category_key=sid('category',item['category']),category_name=item['category'],subcategory_key=sid('subcategory',item['category'],item['subcategory']),subcategory_name=item['subcategory'],included=True,status='unchecked',quantity=1,plan_v3={})
             db.add(r);counts['created']+=1;before={}
         else:before=snapshot(r);counts['linked' if not r.plan_v3 else 'updated']+=1
