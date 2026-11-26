@@ -6,7 +6,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
-app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.2.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.3.0", docs_url=None, redoc_url=None)
 
 ROW_LIMIT = 50
 CATEGORY_LIMIT = 256
@@ -388,3 +388,105 @@ def audit_oem(kind: CatalogueKind, car_id: int = Path(ge=1),
         SELECT CONVERT(oem_key USING utf8mb4) AS oem_number, COUNT(*) AS article_count
         FROM oems GROUP BY oem_key ORDER BY oem_key LIMIT %s, %s
     """)
+
+
+# Full-read-only catalogue inspection. Source names are preserved, not translated
+# or treated as approved CarPot taxonomy. All pages have deterministic ordering.
+def pds_source(kind):
+    return (("passanger_car_pds", "passangercarid") if kind == "passenger"
+            else ("commercial_vehicle_pds", "commercialvehicleid"))
+
+
+def source_page(car_id, kind, offset, limit, sql):
+    with database() as conn:
+        manufacturer_id = audit_identity(conn, car_id, kind)
+        result = bounded_lookup(conn, sql, (car_id, offset), limit)
+    return {**audit_response(car_id, kind, manufacturer_id), **result,
+            "next_offset": offset + limit if result["truncated"] else None}
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/prd-page", dependencies=[Depends(authorize)])
+def vehicle_prd_page(kind: CatalogueKind, car_id: int = Path(ge=1),
+                     offset: int = Query(default=0, ge=0, le=2147483647),
+                     limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
+    table, column = pds_source(kind)
+    return source_page(car_id, kind, offset, limit, f"""
+        SELECT DISTINCT nodeid AS node_id, productid AS product_id, supplierid AS supplier_id
+        FROM {table} FORCE INDEX (PRIMARY) WHERE {column}=%s
+        ORDER BY node_id, product_id, supplier_id LIMIT %s, %s
+    """)
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/products", dependencies=[Depends(authorize)])
+def vehicle_products(kind: CatalogueKind, car_id: int = Path(ge=1),
+                     offset: int = Query(default=0, ge=0, le=2147483647),
+                     limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
+    table, column = pds_source(kind)
+    return source_page(car_id, kind, offset, limit, f"""
+        SELECT DISTINCT p.nodeid AS node_id, p.productid AS product_id,
+               r.description AS source_name, r.normalizeddescription AS normalized_name,
+               r.assemblygroupdescription AS assembly_group, r.usagedescription AS usage_description
+        FROM {table} AS p FORCE INDEX (PRIMARY)
+        LEFT JOIN prd AS r ON r.id=p.productid
+        WHERE p.{column}=%s
+        ORDER BY node_id, product_id, source_name, normalized_name, assembly_group,
+                 usage_description LIMIT %s, %s
+    """)
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/categories", dependencies=[Depends(authorize)])
+def vehicle_categories(kind: CatalogueKind, car_id: int = Path(ge=1),
+                       offset: int = Query(default=0, ge=0, le=2147483647),
+                       limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
+    table, column = pds_source(kind)
+    result = source_page(car_id, kind, offset, limit, f"""
+        SELECT p.nodeid AS node_id, r.assemblygroupdescription AS assembly_group,
+               COUNT(DISTINCT p.productid) AS product_count
+        FROM {table} AS p FORCE INDEX (PRIMARY)
+        LEFT JOIN prd AS r ON r.id=p.productid
+        WHERE p.{column}=%s
+        GROUP BY p.nodeid, r.assemblygroupdescription
+        ORDER BY node_id, assembly_group LIMIT %s, %s
+    """)
+    return {**result, "category_basis": "prd_assembly_group", "tree_verified": False}
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/part-articles", dependencies=[Depends(authorize)])
+def vehicle_part_articles(kind: CatalogueKind, car_id: int = Path(ge=1),
+                          product_id: int = Query(ge=1, le=2147483647),
+                          offset: int = Query(default=0, ge=0, le=2147483647),
+                          limit: int = Query(default=20, ge=1, le=ROW_LIMIT)):
+    _, _, linkage_type = audit_source(kind)
+    # Restrict the expensive article/OEM join to one source part type. A null
+    # OEM is an observed lack of a cross-reference, not proof no OE part exists.
+    sql = """
+        WITH links AS (
+            SELECT DISTINCT supplierid, CAST(datasupplierarticlenumber AS BINARY) AS article_key,
+                   datasupplierarticlenumber AS article_number
+            FROM article_links FORCE INDEX (linkageid)
+            WHERE linkageid=%s AND linkagetypeid=%s AND productid=%s
+              AND supplierid>0 AND datasupplierarticlenumber<>''
+        )
+        SELECT DISTINCT l.supplierid AS supplier_id,
+               CONVERT(l.article_key USING utf8mb4) AS article_number,
+               s.description AS supplier_name,
+               CONVERT(CAST(o.OENbr AS BINARY) USING utf8mb4) AS oem_number,
+               l.article_key AS sort_article,
+               CAST(o.OENbr AS BINARY) AS sort_oem
+        FROM links AS l
+        LEFT JOIN suppliers AS s ON s.id=l.supplierid
+        LEFT JOIN article_oe AS o FORCE INDEX (supplierid)
+          ON o.supplierid=l.supplierid
+          AND o.datasupplierarticlenumber=l.article_number
+          AND CAST(o.datasupplierarticlenumber AS BINARY)=l.article_key
+          AND o.manufacturerId=%s AND o.OENbr<>''
+        ORDER BY supplier_id, sort_article, sort_oem, supplier_name LIMIT %s, %s
+    """
+    with database() as conn:
+        manufacturer_id = audit_identity(conn, car_id, kind)
+        result = bounded_lookup(conn, sql, (car_id, linkage_type, product_id, manufacturer_id, offset), limit)
+    for item in result["items"]:
+        item.pop("sort_article", None)
+        item.pop("sort_oem", None)
+    return {**audit_response(car_id, kind, manufacturer_id), **result, "product_id": product_id,
+            "next_offset": offset + limit if result["truncated"] else None}

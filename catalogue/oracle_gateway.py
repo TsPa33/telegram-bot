@@ -59,6 +59,7 @@ def _request(path, params, *, audit_summary=False, modification_lookup=False):
         if missing:
             if value == {"detail": "Modification absent from requested catalogue"}:
                 raise HTTPException(404, value["detail"])
+            logger.warning("oracle_gateway_audit_route_missing upstream_status=404")
             raise ValueError("Audit endpoint unavailable")
         if audit_summary:
             if not isinstance(value, dict) or not isinstance(value.get("categories"), list):
@@ -261,5 +262,38 @@ def build_router(catalogue_auth):
                     offset: int = Query(default=0, ge=0, le=2147483647),
                     limit: int = Query(default=20, ge=1, le=50)):
         return vehicle_audit_request(car_id, kind, "oem", offset=offset, limit=limit)
+
+    def named_source_page(car_id, kind, endpoint, offset, limit, **extra):
+        data = vehicle_audit_request(car_id, kind, endpoint, offset=offset, limit=limit, **extra)
+        if any(not isinstance(item, dict) for item in data["items"]):
+            raise HTTPException(503, "Invalid Oracle source page")
+        if endpoint == "part-articles" and data.get("product_id") != extra.get("product_id"):
+            raise HTTPException(503, "Invalid Oracle product scope")
+        return data
+
+    @router.get("/vehicles/{car_id}/prd-page")
+    def vehicle_prd_page(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                         offset: int = Query(default=0, ge=0, le=2147483647),
+                         limit: int = Query(default=20, ge=1, le=50)):
+        return named_source_page(car_id, kind, "prd-page", offset, limit)
+
+    @router.get("/vehicles/{car_id}/products")
+    def vehicle_products(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                         offset: int = Query(default=0, ge=0, le=2147483647),
+                         limit: int = Query(default=20, ge=1, le=50)):
+        return named_source_page(car_id, kind, "products", offset, limit)
+
+    @router.get("/vehicles/{car_id}/categories")
+    def vehicle_categories(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                           offset: int = Query(default=0, ge=0, le=2147483647),
+                           limit: int = Query(default=20, ge=1, le=50)):
+        return named_source_page(car_id, kind, "categories", offset, limit)
+
+    @router.get("/vehicles/{car_id}/part-articles")
+    def vehicle_part_articles(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                              product_id: int = Query(ge=1, le=2147483647),
+                              offset: int = Query(default=0, ge=0, le=2147483647),
+                              limit: int = Query(default=20, ge=1, le=50)):
+        return named_source_page(car_id, kind, "part-articles", offset, limit, product_id=product_id)
 
     return router
