@@ -103,3 +103,18 @@ def test_missing_compact_graph_is_not_oem_proof():
     r = reconcile(s, profile(), seed=[entry("dashboard", [11])])
     assert r["source_types_with_oem"] == 0
     assert not r["positions"][0]["source_article_candidates"]
+
+
+def test_reference_profile_requires_exact_namespace_year_and_no_conflict():
+    from app.services.master_parts_reconciliation import pinned_identity, reference_profile
+    identity = pinned_identity(saved())
+    base = {"kind": "passenger", "fuel": "petrol", "counts": {"cylinders": 4}}
+    result = reference_profile(identity, 2014, base)
+    assert result["profile"]["side_doors"] == ["FL", "FR", "RL", "RR"]
+    assert result["profile"]["counts"]["cylinders"] == 4
+    assert result["physical_fitment_verified"] is False
+    assert reference_profile(identity, 2013, base) is None
+    assert reference_profile({**identity, "car_id": 999}, 2014, base) is None
+    assert reference_profile(identity, 2014, {**base, "fuel": "diesel"}) is None
+    assert reference_profile(identity, 2014, {**base, "counts": {"cylinders": 6}}) is None
+    assert base == {"kind": "passenger", "fuel": "petrol", "counts": {"cylinders": 4}}
