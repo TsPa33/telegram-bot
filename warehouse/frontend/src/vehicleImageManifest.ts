@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import type {VehicleImageManifest} from './vehicleImageTypes';
+import {modelReferenceAssets} from './vehicleModelReferenceAssets';
 
 // Import URL metadata, not image bytes. Vite emits content-hashed /assets/ files;
 // <img loading="lazy"> decides when to fetch them. No hotlinks or runtime API.
@@ -10,6 +11,7 @@ const usage={status:'approved' as const,license:'OpenAI-generated output: use su
 export const vehicleImageManifest:VehicleImageManifest={
  version:'carpot.vehicle-images.v1',
  assets:[
+  ...modelReferenceAssets,
   {id:'generic-suv-v1',kind:'body',bodyType:'suv',file:'generic-suv.webp',width:960,height:386,variants:[{file:'generic-suv-480.webp',width:480}],verified:true,source,usage},
   {id:'generic-unknown-v1',kind:'unknown',bodyType:'unknown',file:'generic-unknown.webp',width:960,height:431,variants:[{file:'generic-unknown-480.webp',width:480}],verified:true,source,usage},
  ],

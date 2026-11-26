@@ -27,6 +27,7 @@ export function createVehicleImageResolver(manifest:VehicleImageManifest,urls:Re
   const generationOptions=new Set(compatible.map(a=>normalizeVehicleName(a.generation)));
   // A year at a generation boundary cannot disambiguate conflicting drawings.
   const yearImages=(!generation&&generationOptions.size>1)?[]:compatible.filter(a=>!exact.includes(a)).sort(rank);
+  const referenceImages=(!validYear(vehicle.year)&&vehicle.year==null&&!generation)?(models.get(key)||[]).filter(a=>a.kind==='model'&&a.referencePhoto===true&&a.allowUnknownYear===true&&!a.generation&&a.source.type!=='generated').sort(rank):[];
   const matchingRules=(rules.get(key)||[]).filter(r=>(!r.generation||!!generation&&normalizeVehicleName(r.generation)===generation)
    &&(r.yearFrom===undefined&&r.yearTo===undefined||boundedYear(r,vehicle.year)));
   const knownBodies=new Set(matchingRules.map(r=>r.bodyType));
@@ -41,6 +42,8 @@ export function createVehicleImageResolver(manifest:VehicleImageManifest,urls:Re
    result.push({asset,src:urls[asset.file],srcSet,tier,bodyType:body});
   }
   exact.slice(0,1).forEach(a=>add(a,'generation'));yearImages.slice(0,1).forEach(a=>add(a,'model-year'));
+  // Unknown-year reference is deliberately not an exact year/generation match.
+  referenceImages.slice(0,1).forEach(a=>add(a,'model-reference'));
   const fallback=byId.get(manifest.fallbacks[body]||'');
   if(fallback&&fallback.kind==='body'&&fallback.bodyType===body)add(fallback,'body');
   const universal=byId.get(manifest.fallbacks.unknown||'');

@@ -23,7 +23,7 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved,on
    <div className="corporate-donor-top"><div className="r1146-card-heading">
      <div><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><p>{v.year??'Рік не визначено'} · Донор №{v.number??'—'}</p></div>
      <span className="r1141-status">{v.archived?'Архів':v.status==='completed'?'Завершено':v.status==='planned'?'Заплановано':'На розборі'}</span>
-    </div><div className="r1146-card-photo"><VehicleImage vehicle={v}/><small className="donor-image-caption">Довідкова ілюстрація</small></div></div>
+    </div><div className="r1146-card-photo"><VehicleImage vehicle={v} referenceOnly/></div></div>
    <div className="r1146-card-summary">
     {v.dismantling_v3?.global_selection&&<p><strong>Модифікація:</strong> {v.dismantling_v3.global_selection.modification_description||"Немає даних"}</p>}
     {!v.dismantling_v3?.global_selection&&v.dismantling_v3?.oracle_vehicle_identity&&<p><strong>Модифікація з довідника</strong> · {v.dismantling_v3.oracle_vehicle_identity.modification}</p>}

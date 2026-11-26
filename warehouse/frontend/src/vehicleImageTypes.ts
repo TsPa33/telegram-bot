@@ -4,12 +4,14 @@ export type VehicleImageIdentity={manufacturer?:string;model?:string;generation?
 export type ImageAsset={
  id:string;kind:'generation'|'model'|'body'|'unknown';file:string;width:number;height:number;
  manufacturer?:string;model?:string;generation?:string;yearFrom?:number;yearTo?:number;
+ // Explicitly reviewed model reference photo; unknown year is not a generation match.
+ referencePhoto?:boolean;allowUnknownYear?:boolean;
  bodyType:BodyType;verified:boolean;priority?:number;
  variants?:{file:string;width:number}[];
  source:{type:'generated'|'owned'|'licensed';description:string;reference:string};
- usage:{status:'approved'|'pending';license:string;commercialUse:boolean;attribution?:string};
+ usage:{status:'approved'|'pending';license:string;commercialUse:boolean;attribution?:string;licenseUrl?:string};
 };
 export type BodyRule={manufacturer:string;model:string;generation?:string;yearFrom?:number;yearTo?:number;bodyType:BodyType;evidence:string};
 export type VehicleImageManifest={version:string;assets:readonly ImageAsset[];bodyRules:readonly BodyRule[];fallbacks:Record<BodyType,string|null>};
-export type ImageTier='generation'|'model-year'|'body'|'unknown';
+export type ImageTier='generation'|'model-year'|'model-reference'|'body'|'unknown';
 export type ResolvedVehicleImage={asset:ImageAsset;src:string;srcSet?:string;tier:ImageTier;bodyType:BodyType};

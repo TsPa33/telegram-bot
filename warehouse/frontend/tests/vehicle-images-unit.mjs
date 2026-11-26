@@ -46,3 +46,7 @@ test('shipped WebP resources match provenance hashes/dimensions, alpha and size 
   assert.equal(bytes.readUIntLE(24,3)+1,asset.width);assert.equal(bytes.readUIntLE(27,3)+1,asset.height);
  }assert.equal(count,4);
 });
+
+
+test('reviewed reference photos allow unknown year without claiming generation',()=>{const a={...model('photo',undefined,2008,2017),referencePhoto:true,allowUnknownYear:true};const resolve=resolver([a]);assert.equal(resolve({...input,year:undefined})[0].tier,'model-reference');assert.equal(resolve({...input,year:null})[0].asset.id,'photo');assert.equal(resolve({...input,year:2024})[0].tier,'unknown');assert.equal(resolve({...input,year:undefined,generation:'II'})[0].tier,'unknown');assert.equal(resolve({...input,year:'unknown'})[0].tier,'unknown');assert.equal(resolve({...input,year:undefined,model:'Other'})[0].tier,'unknown');});
+test('generated or unapproved photos cannot supply unknown-year references',()=>{const a={...model('photo',undefined,2008,2017),referencePhoto:true,allowUnknownYear:true};for(const change of [{source:{...source,type:'generated'}},{verified:false},{allowUnknownYear:false}])assert.equal(resolver([{...a,...change}])({...input,year:undefined})[0].tier,'unknown');});
