@@ -8,3 +8,21 @@ Four candidate routes: prd-page, products, categories, part-articles. Source nam
 CI, real SELECT grants, index plans, import completeness and commercial namespace are mandatory before deployment.
 Remaining: native category hierarchy, technical article metadata, reverse vehicle compatibility, bounded catalogue statistics, MCP registration, ten-vehicle live audit and Warehouse comparison.
 Do not present source assembly group as verified node name; no fake counts or graph publication. 
+
+## 26 листопада 2026 · живий граф і довідник
+
+Реалізацію підготовлено поверх Draft PR №582. Авторизований Catalogue staging читає точну модифікацію через наявний приватний Oracle Adapter. Ідентичність охоплює `kind`, виробника, модель і модифікацію. Граф містить джерельні PRD, вузли PDS і точні пари постачальник–артикул. OEM шукається пакетами за виробником автомобіля й приєднується до підтверджених артикулів. Кеш має короткий строк дії. Коли живий Oracle недоступний, Catalogue може повернути чинну версію підтвердженого легкового графа з тією самою ідентичністю.
+
+Категорії підраховуються за назвами груп PRD. Ідентифікатори PDS зберігаються у джерельних даних. Для підкатегорій повертається `null` до підтвердження ієрархії у БД. Кількість позицій означає типи, запропоновані для фізичної перевірки під час розбору. Обсяг фізичного складу визначається фактичним надходженням.
+
+### Фактична перевірка чинного staging
+
+- Catalogue deployment `ceb3fea8-6005-4455-bb34-04f678ff8f67` працює на `b08ad15a1b28879e918fbe072a2c2e8c20b2cdc2`.
+- Oracle Read Only повернув характеристики DAF FT 8387 і Volvo 107555. Поточний граф повідомив `namespace_not_published` для DAF і `source_scope_unverified` для Volvo.
+- Вибірки PRD для Volvo 107555, Škoda 18248 та BMW 21 містили зв’язки. Вибірки були обрізаними, тому повні кількості залишаються невідомими.
+- У Railway зафіксовано сім відповідей HTTP 503 для `audit`, `articles` і `oem` за 330–567 мс. Поточний журнал Gateway містить тільки `ValueError`. Для цих відповідей SQL-ліміт 3 с не вичерпано. Новий код журналює маршрут, категорію помилки, клас і тривалість. Адаптер додає код MySQL без тексту SQL або секретів.
+- Сесія не має доступу до Oracle VM через приватний маршрут. Версію розгорнутого адаптера, права SELECT, живий EXPLAIN, готовність таблиць і комерційне значення `ORACLE_COMMERCIAL_LINKAGE_TYPE` треба підтвердити на вузлі. Повні показники, нативну ієрархію, характеристики артикулів і зворотну сумісність не верифіковано.
+
+### Відновлення роботи
+
+Під’єднайте сесію Codex до приватного staging Oracle Adapter на `carpot-oracle` через затверджений канал. Перша перевірка на вузлі використовує чинного SELECT-only користувача. Перевірити версію приватного процесу, `information_schema.COLUMNS` і `STATISTICS` для таблиць адаптера, доступ SELECT, плани `EXPLAIN` для точних ідентичностей і комерційний дискримінатор. Зафіксувати доведене значення у чинній конфігурації адаптера. Після приймання оновлення зберегти попередній файл адаптера та використовувати Railway deployment `ceb3fea8-6005-4455-bb34-04f678ff8f67` як точку відкату Catalogue. Спочатку перевірити приватний адаптер, потім Catalogue staging і тільки після цього Warehouse staging на окремій тестовій компанії.

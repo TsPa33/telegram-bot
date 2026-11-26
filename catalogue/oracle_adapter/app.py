@@ -1,13 +1,16 @@
 """Internal, read-only Oracle MySQL catalogue adapter."""
 from contextlib import contextmanager
+import logging
+from time import monotonic
 import os
 import secrets
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
-app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.3.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.0", docs_url=None, redoc_url=None)
 
+logger = logging.getLogger("carpot.oracle_adapter")
 ROW_LIMIT = 50
 CATEGORY_LIMIT = 256
 CatalogueKind = Literal["passenger", "commercial"]
@@ -45,14 +48,16 @@ def require_database_settings() -> dict:
 
 
 @contextmanager
-def database():
+def database(operation="catalogue"):
+    started = monotonic()
     settings = require_database_settings()
     try:
         import pymysql
         connection = pymysql.connect(**settings, charset="utf8mb4", autocommit=False,
                                      connect_timeout=3, read_timeout=5, write_timeout=3,
                                      cursorclass=pymysql.cursors.DictCursor)
-    except Exception:
+    except Exception as error:
+        log_database_error(operation, "connect", error, started)
         raise HTTPException(status_code=503, detail="Catalogue source unavailable") from None
     try:
         try:
@@ -65,14 +70,23 @@ def database():
             yield connection
         except HTTPException:
             raise
-        except Exception:
-            # Never disclose Oracle host, credentials, SQL or driver errors in API responses.
+        except Exception as error:
+            log_database_error(operation, "query", error, started)
             raise HTTPException(status_code=503, detail="Catalogue query unavailable") from None
     finally:
         try:
             connection.rollback()
+        except Exception as error:
+            log_database_error(operation, "rollback", error, started)
         finally:
             connection.close()
+
+
+def log_database_error(operation, stage, error, started):
+    code = error.args[0] if error.args and type(error.args[0]) is int else None
+    logger.warning("oracle_db_failure operation=%s stage=%s error=%s mysql_errno=%s elapsed_ms=%d",
+                   operation, stage, type(error).__name__, code, (monotonic() - started) * 1000)
+
 
 
 def valid_identifier(value: str) -> str:
@@ -92,7 +106,8 @@ def bounded_lookup(conn, sql: str, args: tuple, limit: int) -> dict:
 @app.get("/health")
 def health():
     # Process health only. No live database query and no misleading fitment claim.
-    return {"status": "ok", "service": "oracle-catalogue-adapter", "source_verified_live": False}
+    return {"status": "ok", "service": "oracle-catalogue-adapter",
+            "version": app.version, "source_verified_live": False}
 
 
 @app.get("/api/v1/oracle/oem/by-article", dependencies=[Depends(authorize)])
@@ -256,9 +271,11 @@ def audit_source(kind):
     # source before it can be enabled. Passenger linkage type is reserved.
     value = os.getenv("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
     if not value.isascii() or not value.isdecimal() or len(value) > 5:
+        logger.warning("oracle_commercial_linkage_missing")
         raise HTTPException(503, "Commercial linkage type not configured")
     linkage_type = int(value)
     if not 1 <= linkage_type <= 65535 or linkage_type == 2:
+        logger.warning("oracle_commercial_linkage_invalid")
         raise HTTPException(503, "Invalid commercial linkage type")
     return "commercial_vehicle_pds", "commercialvehicleid", linkage_type
 
@@ -490,3 +507,160 @@ def vehicle_part_articles(kind: CatalogueKind, car_id: int = Path(ge=1),
         item.pop("sort_oem", None)
     return {**audit_response(car_id, kind, manufacturer_id), **result, "product_id": product_id,
             "next_offset": offset + limit if result["truncated"] else None}
+
+
+@app.get("/api/v1/oracle/vehicles/manufacturer-directory", dependencies=[Depends(authorize)])
+def manufacturer_directory(kind: CatalogueKind, name: str = Query("", max_length=100),
+                           after: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=ROW_LIMIT)):
+    flag = "ispassengercar" if kind == "passenger" else "iscommercialvehicle"
+    # Escape LIKE metacharacters before applying the optional name search.
+    term = name.strip().replace("=", "==").replace("%", "=%").replace("_", "=_")
+    with database("manufacturer_directory") as conn:
+        result = bounded_lookup(conn, f"""
+            SELECT DISTINCT id, description AS name FROM manufacturers
+            WHERE {flag}='True' AND id>%s AND description IS NOT NULL AND description!=''
+              AND description LIKE CONCAT('%%', %s, '%%') ESCAPE '='
+            ORDER BY id LIMIT %s
+        """, (after, term), limit)
+    return dict(source="oracle", kind=kind, **result, vehicle_identity_only=True,
+                fitment_verified=False,
+                next_after=result["items"][-1]["id"] if result["truncated"] else None)
+
+
+def graph_identity(conn, kind, car_id):
+    table = "passanger_cars" if kind == "passenger" else "commercial_vehicles"
+    flag = "ispassengercar" if kind == "passenger" else "iscommercialvehicle"
+    with conn.cursor() as cur:
+        cur.execute(f"""
+            SELECT DISTINCT v.modelid AS model_id, m.manufacturerid AS manufacturer_id,
+                   v.description, v.constructioninterval AS construction_interval
+            FROM {table} AS v FORCE INDEX (PRIMARY)
+            LEFT JOIN models AS m ON m.id=v.modelid AND m.{flag}='True'
+            WHERE v.id=%s LIMIT 2
+        """, (car_id,))
+        rows = cur.fetchall()
+    if not rows:
+        return None
+    if len(rows) != 1 or not rows[0]["manufacturer_id"] or not rows[0]["model_id"]:
+        raise HTTPException(503, "Ambiguous catalogue modification")
+    return rows[0]
+
+
+def graph_rows(conn, sql, args, *, stage, started, size=500):
+    # Pages are read on the same read-only transaction. An interrupted read
+    # fails the graph instead of returning a successful truncated result.
+    offset = 0
+    while True:
+        if monotonic() - started > 18:
+            logger.warning("oracle_graph_deadline stage=%s", stage)
+            raise HTTPException(503, "Catalogue deadline exceeded")
+        page = bounded_lookup(conn, sql, (*args, offset), size)
+        yield from page["items"]
+        if not page["truncated"]:
+            return
+        offset += size
+
+
+def graph_links(conn, car_id, linkage_type, started):
+    sql = """
+        SELECT DISTINCT productid AS product_id, supplierid AS supplier_id,
+               CAST(datasupplierarticlenumber AS BINARY) AS article_key
+        FROM article_links FORCE INDEX (linkageid)
+        WHERE linkageid=%s AND linkagetypeid=%s AND productid>0 AND supplierid>0
+          AND datasupplierarticlenumber<>''
+        ORDER BY product_id, supplier_id, article_key LIMIT %s, %s
+    """
+    return graph_rows(conn, sql, (car_id, linkage_type), stage="article_links", started=started)
+
+
+def graph_enrichment(conn, article_keys, manufacturer_id, started):
+    for offset in range(0, len(article_keys), 100):
+        if monotonic() - started > 18:
+            logger.warning("oracle_graph_deadline stage=article_oe")
+            raise HTTPException(503, "Catalogue deadline exceeded")
+        batch = article_keys[offset:offset + 100]
+        pairs = ",".join(["(%s,%s)"] * len(batch))
+        supplier_ids = sorted({key[0] for key in batch})
+        suppliers = ",".join(["%s"] * len(supplier_ids))
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT DISTINCT id, description FROM suppliers WHERE id IN ({suppliers})", supplier_ids)
+            names = {}
+            ambiguous = set()
+            for row in cur.fetchall():
+                sid = row["id"]
+                if sid in names:
+                    ambiguous.add(sid)
+                names[sid] = row["description"]
+            cur.execute(f"""
+                SELECT DISTINCT supplierid AS supplier_id,
+                       CAST(datasupplierarticlenumber AS BINARY) AS article_key,
+                       CAST(OENbr AS BINARY) AS oem_key
+                FROM article_oe FORCE INDEX (supplierid)
+                WHERE (supplierid,datasupplierarticlenumber) IN ({pairs})
+                  AND manufacturerId=%s AND OENbr<>''
+            """, (*(value for key in batch for value in key), manufacturer_id))
+            refs = {}
+            for row in cur.fetchall():
+                key = (row["supplier_id"], row["article_key"].decode("utf-8"))
+                refs.setdefault(key, set()).add(row["oem_key"].decode("utf-8"))
+        for sid, number in batch:
+            yield [sid, number, names.get(sid) if sid not in ambiguous else None,
+                   sorted(refs.get((sid, number), ()))]
+
+
+def graph_products(conn, kind, car_id, products, started):
+    table, column = pds_source(kind)
+    sql = f"""
+        SELECT DISTINCT nodeid AS node_id, productid AS product_id FROM {table}
+        FORCE INDEX (PRIMARY) WHERE {column}=%s AND productid>0
+        ORDER BY product_id, node_id LIMIT %s, %s
+    """
+    nodes = {}
+    for row in graph_rows(conn, sql, (car_id,), stage="prd_nodes", started=started):
+        linked_nodes = nodes.setdefault(row["product_id"], [])
+        if row["node_id"] is not None:
+            linked_nodes.append(row["node_id"])
+    ids = sorted(nodes.keys() | products)
+    for offset in range(0, len(ids), 250):
+        batch = ids[offset:offset + 250]
+        placeholders = ",".join(["%s"] * len(batch))
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT DISTINCT id, description, normalizeddescription,
+                       assemblygroupdescription, usagedescription
+                FROM prd WHERE id IN ({placeholders})
+                ORDER BY id, description, normalizeddescription, assemblygroupdescription, usagedescription
+            """, batch)
+            labels = {}
+            for row in cur.fetchall():
+                labels.setdefault(row["id"], []).append(row)
+        for pid in batch:
+            yield dict(product_id=pid, node_ids=nodes.get(pid, []), descriptions=labels.get(pid, []))
+
+
+@app.get("/api/v1/oracle/vehicles/{car_id}/source-graph", dependencies=[Depends(authorize)])
+def source_graph(kind: CatalogueKind, car_id: int = Path(ge=1),
+                 manufacturer_id: int = Query(gt=0), model_id: int = Query(gt=0)):
+    requested = dict(kind=kind, car_id=car_id, manufacturer_id=manufacturer_id, model_id=model_id)
+    started = monotonic()
+    with database("source_graph_" + kind) as conn:
+        identity = graph_identity(conn, kind, car_id)
+        if identity is None:
+            return dict(identity=requested, status="absent", reason="modification_absent")
+        if (identity["manufacturer_id"], identity["model_id"]) != (manufacturer_id, model_id):
+            return dict(identity=requested, status="identity_mismatch", reason="source_identity_mismatch")
+        _, _, linkage_type = audit_source(kind)
+        links = {}
+        articles = set()
+        for row in graph_links(conn, car_id, linkage_type, started):
+            key = (row["supplier_id"], row["article_key"].decode("utf-8"))
+            links.setdefault(row["product_id"], []).append(key)
+            articles.add(key)
+        products = list(graph_products(conn, kind, car_id, set(links), started))
+        if not products:
+            return dict(identity=requested, status="absent", reason="no_source_parts")
+        keys = sorted(articles)
+        article_ids = {key: i for i, key in enumerate(keys)}
+        return dict(identity=requested, status="available", modification=identity,
+                    products=products, articles=list(graph_enrichment(conn, keys, manufacturer_id, started)),
+                    links={pid: [article_ids[key] for key in linked] for pid, linked in links.items()})

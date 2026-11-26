@@ -366,7 +366,26 @@ def vehicle_source_graph(
 ):
     """One exact Oracle identity, with explicit availability and provenance."""
     identity = dict(kind=kind, manufacturer_id=manufacturer_id, model_id=model_id, car_id=car_id)
-    # The current graph store is populated from the passenger PRD pipeline.
+    live_enabled = (os.getenv("RAILWAY_ENVIRONMENT_NAME") == "catalogue-staging"
+                    and os.getenv("ORACLE_CATALOGUE_ENABLED", "false").lower() == "true")
+    if live_enabled:
+        from oracle_source_graph import live_graph
+        try:
+            return live_graph(identity)
+        except HTTPException as error:
+            if error.status_code != 503 or kind != "passenger":
+                raise
+            cached = published_source_graph(identity)
+            if cached["status"] == "available":
+                return cached
+            raise error
+    return published_source_graph(identity)
+
+
+def published_source_graph(identity):
+    kind, manufacturer_id, model_id, car_id = (identity[field] for field in
+                                                ("kind", "manufacturer_id", "model_id", "car_id"))
+    # Older Catalogue deployments can still serve a published passenger graph.
     if kind != "passenger":
         return dict(identity=identity, status="unsupported", reason="namespace_not_published")
     try:

@@ -5,6 +5,7 @@ No direct MySQL connection and no automatic Warehouse OEM mutations.
 import json
 import logging
 import os
+from time import monotonic
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -34,33 +35,43 @@ def _settings():
     return raw.rstrip("/"), secret, (proxy or None)
 
 
-def _request(path, params, *, audit_summary=False, modification_lookup=False):
+def _request(path, params, *, audit_summary=False, modification_lookup=False, source_graph=False):
     base, secret, proxy = _settings()
+    started = monotonic()
+    operation = path.rsplit("/", 1)[-1]
+    failure = "timeout_or_transport"
     try:
         with httpx.Client(follow_redirects=False, trust_env=False, proxy=proxy,
-                          timeout=httpx.Timeout(10.0, connect=8.0)) as client:
+                          timeout=httpx.Timeout(24.0 if source_graph else 10.0, connect=8.0)) as client:
             with client.stream("GET", base + path, params=params,
                                headers={"X-Oracle-Adapter-Key": secret,
                                         "Accept": "application/json"}) as response:
                 missing = modification_lookup and response.status_code == 404
                 if response.status_code != 200 and not missing:
-                    logger.warning("oracle_gateway_upstream_status status=%d", response.status_code)
+                    failure = f"upstream_http_{response.status_code}"
                     raise ValueError("Remote adapter is unavailable")
                 if "application/json" not in response.headers.get("content-type", ""):
+                    failure = "non_json"
                     raise ValueError("Adapter returned non-JSON")
                 chunks = []
                 size = 0
                 for chunk in response.iter_bytes():
                     size += len(chunk)
-                    if size > MAX_BODY:
+                    if size > (8 * 1024 * 1024 if source_graph else MAX_BODY):
+                        failure = "response_too_large"
                         raise ValueError("Adapter response too large")
                     chunks.append(chunk)
+        failure = "invalid_contract"
         value = json.loads(b"".join(chunks))
         if missing:
             if value == {"detail": "Modification absent from requested catalogue"}:
                 raise HTTPException(404, value["detail"])
             logger.warning("oracle_gateway_audit_route_missing upstream_status=404")
             raise ValueError("Audit endpoint unavailable")
+        if source_graph:
+            if not isinstance(value, dict):
+                raise ValueError("Unexpected source graph")
+            return value
         if audit_summary:
             if not isinstance(value, dict) or not isinstance(value.get("categories"), list):
                 raise ValueError("Unexpected audit summary")
@@ -73,7 +84,8 @@ def _request(path, params, *, audit_summary=False, modification_lookup=False):
         return value
     except (httpx.HTTPError, ValueError, json.JSONDecodeError) as exc:
         # Log the exception CLASS only: errors can embed URLs, credentials or proxy internals.
-        logger.warning("oracle_gateway_upstream_error kind=%s", type(exc).__name__)
+        logger.warning("oracle_gateway_upstream_error operation=%s reason=%s kind=%s elapsed_ms=%d",
+                       operation, failure, type(exc).__name__, (monotonic() - started) * 1000)
         raise HTTPException(503, "Oracle catalogue unavailable") from None
 
 
@@ -176,6 +188,23 @@ def build_router(catalogue_auth):
         return dict(source="oracle", kind=kind, items=items,
                     truncated=data["truncated"], vehicle_identity_only=True,
                     fitment_verified=False)
+
+    @router.get("/vehicles/manufacturer-directory")
+    def manufacturer_directory(kind: Literal["passenger", "commercial"],
+                               name: str = Query("", max_length=100), after: int = Query(0, ge=0),
+                               limit: int = Query(50, ge=1, le=50)):
+        data = _request("/api/v1/oracle/vehicles/manufacturer-directory",
+                        {"kind": kind, "name": name, "after": after, "limit": limit})
+        items = _vehicle_items(data, {"id": "id", "name": "name"})
+        ids = [item["id"] for item in items]
+        next_after = data.get("next_after")
+        if (data.get("source") != "oracle" or data.get("kind") != kind
+                or len(ids) > limit or ids != sorted(set(ids)) or any(i <= after for i in ids)
+                or (data["truncated"] and (len(ids) != limit or next_after != ids[-1]))
+                or (not data["truncated"] and next_after is not None)):
+            raise HTTPException(503, "Invalid Oracle manufacturer page")
+        return dict(source="oracle", kind=kind, items=items, truncated=data["truncated"],
+                    next_after=next_after, vehicle_identity_only=True, fitment_verified=False)
 
     @router.get("/vehicles/models")
     def models(manufacturer_id: int = Query(ge=1),
@@ -297,3 +326,11 @@ def build_router(catalogue_auth):
         return named_source_page(car_id, kind, "part-articles", offset, limit, product_id=product_id)
 
     return router
+
+
+
+def source_graph(identity):
+    car_id = identity["car_id"]
+    return _request(f"/api/v1/oracle/vehicles/{car_id}/source-graph",
+                    {key: value for key, value in identity.items() if key != "car_id"},
+                    source_graph=True)
