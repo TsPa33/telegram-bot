@@ -6,13 +6,15 @@ import json
 import logging
 import os
 from time import monotonic
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 MAX_BODY = 96 * 1024
+MAX_CATALOGUE_BODY = 8 * 1024 * 1024
+AUDIT_PAGE_SIZE = 100
 logger = logging.getLogger("carpot.oracle_gateway")
 
 
@@ -57,7 +59,7 @@ def _request(path, params, *, audit_summary=False, modification_lookup=False, so
                 size = 0
                 for chunk in response.iter_bytes():
                     size += len(chunk)
-                    if size > (8 * 1024 * 1024 if source_graph else MAX_BODY):
+                    if size > (MAX_CATALOGUE_BODY if source_graph or audit_summary else MAX_BODY):
                         failure = "response_too_large"
                         raise ValueError("Adapter response too large")
                     chunks.append(chunk)
@@ -268,7 +270,18 @@ def build_router(catalogue_auth):
                 or data.get("source_association_only") is not True
                 or type(data.get("manufacturer_id")) is not int or data["manufacturer_id"] < 1):
             raise HTTPException(503, "Invalid Oracle audit identity")
-        if pagination:
+        if pagination and endpoint == "audit":
+            start, limit = pagination["offset"], pagination["limit"]
+            total = data.get("category_total")
+            if type(total) is not int or total < 0:
+                raise HTTPException(503, "Invalid Oracle audit category total")
+            remaining = max(0, total - start)
+            truncated = remaining > limit
+            if (len(data["categories"]) != min(remaining, limit)
+                    or data.get("truncated") is not truncated
+                    or data.get("next_offset") != (start + limit if truncated else None)):
+                raise HTTPException(503, "Invalid Oracle audit category page")
+        elif pagination:
             limit = pagination["limit"]
             expected = pagination["offset"] + limit if data["truncated"] else None
             if (len(data["items"]) > limit or (data["truncated"] and len(data["items"]) != limit)
@@ -277,8 +290,13 @@ def build_router(catalogue_auth):
         return data
 
     @router.get("/vehicles/{car_id}/audit")
-    def vehicle_audit(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1)):
-        return vehicle_audit_request(car_id, kind, "audit")
+    def vehicle_audit(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),
+                      offset: Annotated[int | None, Query(ge=0, le=2147483647)] = None,
+                      limit: Annotated[int | None, Query(ge=1, le=AUDIT_PAGE_SIZE)] = None):
+        if offset is None and limit is None:
+            return vehicle_audit_request(car_id, kind, "audit")
+        return vehicle_audit_request(car_id, kind, "audit", offset=offset or 0,
+                                     limit=limit or AUDIT_PAGE_SIZE)
 
     @router.get("/vehicles/{car_id}/articles")
     def vehicle_articles(kind: Literal["passenger", "commercial"], car_id: int = Path(ge=1),

@@ -223,3 +223,59 @@ def test_vehicle_articles_limits_oem_reads_to_the_page_and_matches_binary_ids(mo
         {"supplier_id": 7, "article_number": "A", "oem_count": 1},
         {"supplier_id": 7, "article_number": "a", "oem_count": 0},
     ]
+
+
+def test_audit_returns_more_than_256_nodes_and_keeps_full_totals_on_pages(monkeypatch):
+    @contextmanager
+    def db(_operation):
+        yield None
+
+    def pds_rows(*args, **kwargs):
+        return (dict(category_id=i, product_id=i, supplier_id=7) for i in range(640))
+
+    monkeypatch.setenv("ORACLE_ADAPTER_KEY", "test-key")
+    monkeypatch.setattr(oracle, "database", db)
+    monkeypatch.setattr(oracle, "audit_identity", lambda *args: 16)
+    monkeypatch.setattr(oracle, "graph_rows", pds_rows)
+    monkeypatch.setattr(oracle, "graph_links", lambda *args, **kwargs: ())
+    client = TestClient(oracle.app, headers={"X-Oracle-Adapter-Key": "test-key"})
+    path = "/api/v1/oracle/vehicles/21/audit?kind=passenger"
+
+    unpaged = client.get(path)
+    assert unpaged.status_code == 200
+    full = unpaged.json()
+    assert len(full["categories"]) == full["prd_links"] == full["unique_part_types"] == 640
+    assert "next_offset" not in full
+    results = [client.get(path + f"&offset={offset}&limit=100").json() for offset in range(0, 640, 100)]
+    assert [category for page in results for category in page["categories"]] == full["categories"]
+    assert all(page["category_total"] == page["prd_links"] == 640 for page in results)
+    assert [page["next_offset"] for page in results] == [100, 200, 300, 400, 500, 600, None]
+    assert client.get(path + "&limit=101").status_code == 422
+
+
+def test_gateway_accepts_audit_category_pages_and_legacy_summary(monkeypatch):
+    categories = [{"category_id": node} for node in range(257)]
+    received = []
+
+    def request(path, params, **kwargs):
+        assert path == "/api/v1/oracle/vehicles/21/audit"
+        assert kwargs == {"audit_summary": True, "modification_lookup": True}
+        received.append(params)
+        body = oracle.audit_response(21, "passenger", 16)
+        body["categories"] = categories
+        if "offset" in params:
+            start, limit = params["offset"], params["limit"]
+            more = start + limit < len(categories)
+            body.update(categories=categories[start:start + limit], category_total=len(categories),
+                        truncated=more, next_offset=start + limit if more else None)
+        return body
+
+    monkeypatch.setattr(gateway, "_request", request)
+    app = FastAPI()
+    app.include_router(gateway.build_router(lambda: None))
+    client = TestClient(app)
+    path = "/api/v1/oracle/vehicles/21/audit?kind=passenger"
+    assert len(client.get(path).json()["categories"]) == 257
+    tail = client.get(path + "&offset=250&limit=10")
+    assert tail.status_code == 200 and tail.json()["categories"] == categories[250:]
+    assert received == [{"kind": "passenger"}, {"kind": "passenger", "offset": 250, "limit": 10}]

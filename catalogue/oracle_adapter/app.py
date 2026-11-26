@@ -5,15 +5,15 @@ import logging
 from time import monotonic
 import os
 import secrets
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
-app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.3", docs_url=None, redoc_url=None)
+app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.4", docs_url=None, redoc_url=None)
 
 logger = logging.getLogger("carpot.oracle_adapter")
 ROW_LIMIT = 50
-CATEGORY_LIMIT = 256
+AUDIT_PAGE_SIZE = 100
 CatalogueKind = Literal["passenger", "commercial"]
 
 
@@ -325,7 +325,9 @@ def audit_counts(prd_links, part_types, article_keys, oem_codes):
 
 
 @app.get("/api/v1/oracle/vehicles/{car_id}/audit", dependencies=[Depends(authorize)])
-def vehicle_audit(kind: CatalogueKind, car_id: int = Path(ge=1)):
+def vehicle_audit(kind: CatalogueKind, car_id: int = Path(ge=1),
+                  offset: Annotated[int | None, Query(ge=0, le=2147483647)] = None,
+                  limit: Annotated[int | None, Query(ge=1, le=AUDIT_PAGE_SIZE)] = None):
     table, column, linkage_type = audit_source(kind)
     started = monotonic()
     prd_counts = Counter()
@@ -357,20 +359,27 @@ def vehicle_audit(kind: CatalogueKind, car_id: int = Path(ge=1)):
                 articles_by_category[node].add(key)
 
         categories = set(prd_counts) | set(articles_by_category)
-        if len(categories) > CATEGORY_LIMIT:
-            raise HTTPException(503, "Oracle audit category limit exceeded")
         oem_codes = {}
         for _, batch_codes in graph_oem_batches(conn, sorted(article_keys), manufacturer_id, started):
             oem_codes.update(batch_codes)
 
     all_products = set().union(*product_ids.values())
     summary = audit_counts(sum(prd_counts.values()), len(all_products), article_keys, oem_codes)
+    nodes = sorted(categories, key=lambda node: (node is not None, node))
+    pagination = {}
+    if offset is not None or limit is not None:
+        start = offset or 0
+        end = start + (limit or AUDIT_PAGE_SIZE)
+        truncated = end < len(nodes)
+        pagination = dict(category_total=len(nodes), truncated=truncated,
+                          next_offset=end if truncated else None)
+        nodes = nodes[start:end]
     counts = [
         dict(category_id=node, **audit_counts(prd_counts[node], len(product_ids[node]),
                                              articles_by_category[node], oem_codes))
-        for node in sorted(categories, key=lambda node: (node is not None, node))
+        for node in nodes
     ]
-    return {**audit_response(car_id, kind, manufacturer_id), **summary, "categories": counts}
+    return {**audit_response(car_id, kind, manufacturer_id), **summary, "categories": counts, **pagination}
 
 
 @app.get("/api/v1/oracle/vehicles/{car_id}/articles", dependencies=[Depends(authorize)])

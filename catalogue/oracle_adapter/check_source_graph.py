@@ -270,14 +270,26 @@ def http(env, route, **params):
                 raise ValueError("response size")
             return response.status, json.loads(raw), round((monotonic() - started) * 1000)
     except HTTPError as error:
-        return error.code, {}, round((monotonic() - started) * 1000)
+        data = {}
+        try:
+            with error:
+                detail = json.loads(error.read(2048)).get("detail")
+            if detail in ("Oracle audit category limit exceeded", "Catalogue source unavailable",
+                          "Catalogue query unavailable", "Catalogue deadline exceeded",
+                          "Modification absent from requested catalogue", "Ambiguous catalogue manufacturer",
+                          "Ambiguous catalogue modification", "Commercial linkage type not configured",
+                          "Invalid commercial linkage type", "Unauthorized"):
+                data["detail"] = detail
+        except (OSError, ValueError, AttributeError):
+            pass
+        return error.code, data, round((monotonic() - started) * 1000)
     except (KeyError, ValueError, URLError, TimeoutError):
         return None, {}, round((monotonic() - started) * 1000)
 
 
 def verify(env):
     status, health, elapsed = http(env, "/health")
-    ready = status == 200 and health.get("version") == "0.4.3"
+    ready = status == 200 and health.get("version") == "0.4.4"
     report("health", status=status, version=health.get("version"), elapsed_ms=elapsed)
     status, result, elapsed = http(env, "/api/v1/oracle/oem/by-article",
                                    supplier_id=1, article_number=20064, manufacturer_id=120, limit=20)
@@ -288,8 +300,25 @@ def verify(env):
         for endpoint in ("audit", "articles", "oem"):
             params = dict(kind=kind, limit=1) if endpoint != "audit" else dict(kind=kind)
             status, data, elapsed = http(env, prefix + endpoint, **params)
-            report("route", kind=kind, car_id=car, route=endpoint, status=status, elapsed_ms=elapsed)
+            info = {"detail": data["detail"]} if "detail" in data else {}
+            categories = data.get("categories") if endpoint == "audit" else None
+            if isinstance(categories, list):
+                info["category_nodes_count"] = len(categories)
+            report("route", kind=kind, car_id=car, route=endpoint, status=status, elapsed_ms=elapsed, **info)
             ready &= status == 200 and data.get("source_modification_id") == car and data.get("kind") == kind
+            if endpoint == "audit":
+                ready &= isinstance(categories, list)
+                if isinstance(categories, list) and len(categories) > 100:
+                    offset = (len(categories) - 1) // 100 * 100
+                    page_status, page, page_elapsed = http(env, prefix + "audit", kind=kind,
+                                                           offset=offset, limit=100)
+                    complete = (page_status == 200 and page.get("source_modification_id") == car
+                                and page.get("kind") == kind and page.get("category_total") == len(categories)
+                                and page.get("categories") == categories[offset:]
+                                and page.get("truncated") is False and page.get("next_offset") is None)
+                    ready &= complete
+                    report("audit_last_page", kind=kind, car_id=car, status=page_status, ok=complete,
+                           elapsed_ms=page_elapsed, offset=offset)
         identity = dict(kind=kind, manufacturer_id=maker, model_id=model, car_id=car)
         status, data, elapsed = http(env, prefix + "source-graph", kind=kind, manufacturer_id=maker, model_id=model)
         matched = status == 200 and data.get("identity") == identity and data.get("status") == "available"
