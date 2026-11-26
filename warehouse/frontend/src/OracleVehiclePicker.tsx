@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import {api, type Row} from './api';
+import {DonorSummary, IntakeDisclosure, IntakeFeedback, PlanReady, displacement, measurement, modificationName} from './DonorIntakePresentation';
 
 type Kind = 'passenger' | 'commercial';
 type Entry = {id: number; name: string; construction_interval?: string};
@@ -68,30 +69,34 @@ function productionYears(model: Entry | null, variant: Entry | null) {
   return Array.from({length: Math.max(0, last - first + 1)}, (_, index) => String(last - index));
 }
 
-function DirectorySelect({label, value, onChange, page, disabled, year, searchable}: {
+function DirectorySelect({label, value, onChange, page, disabled, year, searchable, searchTerm, modelName, hint, wide, compact}: {
   label: string; value: Entry | null; onChange: (value: Entry | null) => void;
   page: ReturnType<typeof useDirectory>; disabled: boolean; year?: string; searchable?: boolean;
+  searchTerm?: string; modelName?: string; hint?: string; wide?: boolean; compact?: boolean;
 }) {
   const [filter, setFilter] = useState('');
   const items = page.items.filter(entry => (!year || inProductionYear(entry, year)) &&
-    entry.name.toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase()));
+    entry.name.toLocaleLowerCase().includes((searchTerm ?? filter).trim().toLocaleLowerCase()));
   if (value && !items.some(item => item.id === value.id)) items.unshift(value);
-  return <div className="vin-directory-field">
+  const options = items.map(entry => ({entry, name: modelName ? modificationName(entry.name, modelName) : entry.name}));
+  return <div className={'vin-directory-field'+(wide?' vin-field-wide':'')}>
     {searchable && page.items.length > 12 && <label>Пошук · {label.toLocaleLowerCase()}
       <input value={filter} disabled={disabled} onChange={e => setFilter(e.target.value)}/>
     </label>}
     <label>{label}
       <select value={value?.id ?? ''} disabled={disabled || !items.length}
         onChange={e => onChange(items.find(entry => entry.id === Number(e.target.value)) || null)}>
-        <option value="">{page.loading ? 'Завантажуємо…' : 'Оберіть зі списку'}</option>
-        {items.map(entry => <option key={entry.id} value={entry.id}>
-          {entry.name}{year && entry.construction_interval ? ' · ' + entry.construction_interval : ''}
+        <option value="">{page.loading ? 'Завантажуємо…' : hint || 'Оберіть зі списку'}</option>
+        {options.map(({entry, name}) => <option key={entry.id} value={entry.id} title={entry.name}>
+          {name}{entry.construction_interval && (compact
+            ? options.some(other => other.entry !== entry && other.name === name) : !!year)
+            ? ' · ' + entry.construction_interval.trim() : ''}
         </option>)}
       </select>
     </label>
-    {page.error ? <p role="alert">Довідник тимчасово недоступний.{' '}
+    {page.error ? <IntakeFeedback kind="error"><p>Довідник тимчасово недоступний.</p>
       <button type="button" disabled={disabled} onClick={() => void page.load(page.next ?? 0)}>Повторити</button>
-    </p> : !disabled && !page.loading && !items.length && <p role="status">За цими умовами варіантів немає.</p>}
+    </IntakeFeedback> : !disabled && !page.loading && !items.length && <p role="status">За цими умовами варіантів немає.</p>}
     {!page.error && page.next !== null && <button type="button" disabled={disabled || page.loading}
       onClick={() => void page.load(page.next!)}>{page.loading ? 'Завантажуємо…' : 'Показати ще'}</button>}
   </div>;
@@ -104,11 +109,6 @@ const graphMessage: Record<string, string> = {
   identity_mismatch: 'Модифікація змінилася в каталозі. Повторіть вибір.',
   unverified: 'Не вдалося підтвердити запчастини для цієї модифікації.',
 };
-const characteristicLabels: Record<string, string> = {
-  fuel_type: 'Паливо', engine_displacement_l: 'Об’єм двигуна', engine_code: 'Двигун',
-  engine_power_kw: 'Потужність', drive_type: 'Привід',
-};
-
 export default function OracleVehiclePicker({year, onYearChange, initialManufacturer = '', onChange, disabled}: {
   year: string; initialManufacturer?: string; onChange: (value: OracleVehicle | null) => void; disabled: boolean;
   onYearChange?: (year: string) => void;
@@ -116,6 +116,9 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
   const [kind, setKind] = useState<Kind>('passenger');
   const [query, setQuery] = useState(initialManufacturer);
   const [search, setSearch] = useState(initialManufacturer);
+  const [scope, setScope] = useState<'maker'|'model'|'variant'>('maker');
+  const [modelFilter, setModelFilter] = useState('');
+  const [variantFilter, setVariantFilter] = useState('');
   const [maker, setMaker] = useState<Entry | null>(null);
   const [model, setModel] = useState<Entry | null>(null);
   const [variant, setVariant] = useState<Entry | null>(null);
@@ -161,6 +164,9 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
     setMaker(value);
     setModel(null);
     setVariant(null);
+    setModelFilter('');
+    setVariantFilter('');
+    setScope('maker');
   }
 
   function chooseModel(value: Entry | null) {
@@ -168,6 +174,8 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
     onYearChange?.('');
     setModel(value);
     setVariant(null);
+    setVariantFilter('');
+    if (scope === 'variant') setScope('model');
   }
 
   function chooseVariant(value: Entry | null) {
@@ -177,18 +185,40 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
   }
 
   return <>
-    <div className="vin-fields">
+    {onYearChange && <div className="vin-catalogue-heading">
+      <h3>Підбір із каталогу</h3>
+      <IntakeDisclosure label="Пошук у каталозі" variant="link">
+        <div className="vin-directory-search">
+          <label>Шукати серед
+            <select value={scope} disabled={disabled} onChange={e => setScope(e.target.value as typeof scope)}>
+              <option value="maker">Марки</option>
+              <option value="model" disabled={!maker}>Моделі</option>
+              <option value="variant" disabled={!model}>Модифікації</option>
+            </select>
+          </label>
+          {scope === 'maker' ? <label>Пошук марки
+            <input value={query} maxLength={100} disabled={disabled} onChange={e => setQuery(e.target.value)}/>
+          </label> : scope === 'model' ? <label>Пошук моделі
+            <input value={modelFilter} maxLength={100} disabled={disabled} onChange={e => setModelFilter(e.target.value)}/>
+          </label> : <label>Пошук модифікації
+            <input value={variantFilter} maxLength={100} disabled={disabled} onChange={e => setVariantFilter(e.target.value)}/>
+          </label>}
+        </div>
+      </IntakeDisclosure>
+    </div>}
+    <div className={'vin-fields'+(onYearChange?' vin-catalogue-fields':'')}>
       <label>Тип автомобіля
         <select value={kind} disabled={disabled} onChange={e => {chooseMaker(null); setKind(e.target.value as Kind);}}>
           <option value="passenger">Легковий</option><option value="commercial">Комерційний</option>
         </select>
       </label>
-      <label>Пошук марки<input value={query} maxLength={100} disabled={disabled} onChange={e => {
+      {!onYearChange && <label>Пошук марки<input value={query} maxLength={100} disabled={disabled} onChange={e => {
         setQuery(e.target.value);
-      }}/></label>
+      }}/></label>}
       <DirectorySelect label="Марка" value={maker} onChange={chooseMaker} page={makers} disabled={disabled}/>
-      {maker && <DirectorySelect key={kind + maker.id} label="Модель" value={model} onChange={chooseModel}
-        page={models} disabled={disabled} year={year} searchable/>}
+      {(maker || onYearChange) && <DirectorySelect key={kind + ':' + maker?.id} label="Модель" value={model} onChange={chooseModel}
+        page={models} disabled={disabled || !maker} hint={maker?undefined:'Спочатку оберіть марку'}
+        year={year} searchable={!onYearChange} searchTerm={onYearChange ? modelFilter : undefined} compact={!!onYearChange}/>}
       {onYearChange && <label className="vin-year">Рік автомобіля
         <select required value={year} disabled={disabled || !yearOptions.length} onChange={e => {
           onChange(null);
@@ -198,30 +228,34 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
           {yearOptions.map(option => <option key={option} value={option}>{option}</option>)}
         </select>
       </label>}
-      {model && <DirectorySelect key={kind + ':' + model.id} label="Модифікація" value={variant}
-        onChange={chooseVariant} page={variants} disabled={disabled} year={year} searchable/>}
+      {(model || onYearChange) && <DirectorySelect key={kind + ':variant:' + model?.id} label="Модифікація" value={variant}
+        onChange={chooseVariant} page={variants} disabled={disabled || !model} hint={model?undefined:'Спочатку оберіть модель'}
+        year={year} searchable={!onYearChange} searchTerm={onYearChange ? variantFilter : undefined}
+        modelName={model?.name} wide={!!onYearChange} compact={!!onYearChange}/>}
     </div>
     {onYearChange && variant && !yearOptions.length && <p role="status">
       У каталозі відсутні роки виробництва. Цей автомобіль можна додати вручну.
     </p>}
-    {variant && <div className="vin-summary">
-      <strong>{[maker?.name, model?.name, validYear ? year : null].filter(Boolean).join(' · ')}</strong>
-      <p>{graph?.modification || variant.name}</p>
-      {!!Object.keys(graph?.characteristics || {}).length && <dl>
-        {Object.entries(characteristicLabels).flatMap(([field, label]) => graph?.characteristics?.[field] ?
-          [<div key={field}><dt>{label}</dt><dd>{graph.characteristics[field]}</dd></div>] : [])}
-      </dl>}
-      {!!graph?.attributes?.length && <details><summary>Усі характеристики</summary><dl>
-        {graph.attributes.map((item, i) => <div key={i}><dt>{item.attribute_type}</dt><dd>{item.display_value}</dd></div>)}
-      </dl></details>}
-      {!yearMatches ? <p role="status">Оберіть модифікацію, яку випускали в указаному році.</p> :
-        !graph ? <p role="status">Готуємо план розбору…</p> :
-        graph.source_snapshot_sha ? <p className="vin-ready" role="status">План розбору готовий
-          {graph.counts && <> · Категорії {graph.counts.categories} · Запчастини {graph.counts.positions}</>}</p> :
-        <p role={graph.status === 'absent' ? 'status' : 'alert'}>{graphMessage[graph.status] || graphMessage.unavailable}{' '}
+    {variant && <>
+      <DonorSummary title={[maker?.name, model?.name, validYear ? year : null].filter(Boolean).join(' · ')} facts={[
+        ['Паливо', graph?.characteristics?.fuel_type],
+        ['Привід', graph?.characteristics?.drive_type],
+        ['Модифікація', modificationName(graph?.modification || variant.name, model?.name)],
+        ['Об’єм', displacement(graph?.characteristics?.engine_displacement_l)],
+        ['Потужність', measurement(graph?.characteristics?.engine_power_kw,'кВт')],
+        ['Тип', kind === 'commercial' ? 'Комерційний' : 'Легковий'],
+      ]}/>
+      {!yearMatches ? <IntakeFeedback>Оберіть модифікацію, яку випускали в указаному році.</IntakeFeedback> :
+        !graph ? <IntakeFeedback kind="loading">Готуємо план розбору…</IntakeFeedback> :
+        graph.source_snapshot_sha ? <PlanReady counts={graph.counts}/> :
+        <IntakeFeedback kind={graph.status === 'absent' ? 'note' : 'error'}>
+          <p>{graphMessage[graph.status] || graphMessage.unavailable}</p>
           {graph.status !== 'absent' && <button type="button" disabled={disabled} onClick={() => setAttempt(n => n + 1)}>Повторити</button>}
-        </p>}
-    </div>}
+        </IntakeFeedback>}
+      {!!graph?.attributes?.length && <IntakeDisclosure label="Усі характеристики"><dl>
+        {graph.attributes.map((item, i) => <div key={i}><dt>{item.attribute_type}</dt><dd>{item.display_value}</dd></div>)}
+      </dl></IntakeDisclosure>}
+    </>}
   </>;
 }
 
@@ -256,12 +290,14 @@ export function CatalogueVehicleIntake({onCreated, onBack, saving, onSavingChang
       onSavingChange(false);
     }
   }}>
-    <OracleVehiclePicker year={year} onYearChange={setYear} disabled={saving} onChange={setSelected}/>
-    {error && <p role="alert">{error}</p>}
-    {selected && !validYear && <p role="status">Вкажіть рік цього автомобіля.</p>}
+    <div className="vin-content">
+      <OracleVehiclePicker year={year} onYearChange={setYear} disabled={saving} onChange={setSelected}/>
+      {error && <IntakeFeedback kind="error">{error}</IntakeFeedback>}
+      {selected && !validYear && <IntakeFeedback>Вкажіть рік цього автомобіля.</IntakeFeedback>}
+    </div>
     <div className="vin-footer"><div className="vin-actions">
-      <button className="primary" disabled={!selected || !validYear || saving}>{saving ? 'Зберігаємо…' : 'Додати автомобіль'}</button>
       <button type="button" disabled={saving} onClick={onBack}>Скасувати</button>
+      <button className="vin-submit" disabled={!selected || !validYear || saving}>{saving ? 'Зберігаємо…' : 'Додати автомобіль'}</button>
     </div></div>
   </form>;
 }

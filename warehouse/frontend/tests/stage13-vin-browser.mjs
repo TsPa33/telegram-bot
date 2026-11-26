@@ -39,7 +39,18 @@ try{
     await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('Aster Mobility · 3 Series · 2015');
     await dialog.getByRole('combobox',{name:/^Доступні модифікації/}).selectOption({index:1});
     await expect(dialog.getByText(/Доступний частковий план/)).toBeVisible();
+    await expect(dialog.locator('.vin-ready')).toContainText('Категорії: 0');
+    await expect(dialog.locator('.vin-ready')).toContainText('Запчастини: 1');
     await expect(dialog.getByText(/50 грн|Перевірка API-балансу|Тест VINState/)).toHaveCount(0);
+  }
+  async function checkFooter(){
+    const content=await dialog.locator('.vin-content').boundingBox();
+    const footer=await dialog.locator('.vin-footer').boundingBox();
+    const shell=await dialog.boundingBox();
+    assert(content&&footer&&shell);
+    assert(content.y+content.height<=footer.y+1);
+    assert(footer.y+footer.height<=shell.y+shell.height+1);
+    assert.equal(await dialog.evaluate(element=>element.scrollWidth>element.clientWidth+1),false);
   }
   await page.goto('/vehicles');
   for(const theme of ['light','onyx','gold','forest']){
@@ -53,10 +64,16 @@ try{
     await open();
     await decode();
     await ready();
+    await dialog.getByText('Виправити характеристики',{exact:true}).click();
+    const modelYear=dialog.getByRole('combobox',{name:'Модельний рік',exact:true});
+    await expect(modelYear).toHaveValue('2015');
+    await modelYear.selectOption('2016');
+    await expect(modelYear).toHaveValue('2016');
+    await modelYear.selectOption('2015');
+    await dialog.getByText('Виправити характеристики',{exact:true}).click();
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:width===390?844:1000});
-      assert.equal(await dialog.evaluate(element=>element.scrollWidth>element.clientWidth+1),false);
-      assert.equal(await dialog.locator('.vin-footer').evaluate(element=>getComputedStyle(element).position),'sticky');
+      await checkFooter();
       await dialog.screenshot({path:`${output}/${theme}-${width}.png`,animations:'disabled'});
       console.log('PASS',theme,width);
     }
@@ -68,6 +85,13 @@ try{
   await open();
   await decode();
   await ready();
+  await dialog.getByText('Виправити характеристики',{exact:true}).click();
+  await dialog.getByRole('combobox',{name:'Модельний рік',exact:true}).selectOption('2016');
+  await dialog.getByRole('button',{name:'Застосувати зміни'}).click();
+  await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('2016');
+  await dialog.getByText('Виправити характеристики',{exact:true}).click();
+  await dialog.getByRole('combobox',{name:/^Доступні модифікації/}).selectOption({index:1});
+  await expect(dialog.locator('.vin-ready')).toBeVisible();
   const createVehiclePattern='**/api/v1/vehicles';
   let failedVinKey;
   await page.route(createVehiclePattern,route=>{
@@ -78,6 +102,10 @@ try{
   await expect(dialog.getByRole('alert')).toContainText('Тимчасова помилка збереження VIN');
   await dialog.getByRole('button',{name:'Із каталогу',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Автомобіль із каталогу'})).toBeVisible();
+  await expect(dialog.getByRole('heading',{name:'Підбір із каталогу'})).toBeVisible();
+  await dialog.getByText('Пошук у каталозі',{exact:true}).click();
+  await expect(dialog.getByRole('textbox',{name:'Пошук марки'})).toBeVisible();
+  await dialog.getByText('Пошук у каталозі',{exact:true}).click();
   await expect(dialog.getByRole('alert')).toHaveCount(0);
   const year=dialog.getByRole('combobox',{name:'Рік автомобіля',exact:true});
   await expect(year).toBeDisabled();
@@ -95,6 +123,14 @@ try{
   await expect(dialog.getByRole('button',{name:'Додати автомобіль',exact:true})).toBeDisabled();
   await dialog.getByRole('button',{name:'Повторити',exact:true}).click();
   await expect(dialog.getByText(/План розбору готовий/)).toBeVisible();
+  await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('Aster Mobility · 3 (F30) · 2015');
+  await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('1,995 л');
+  await expect(dialog.getByText('Усі характеристики',{exact:true})).toBeVisible();
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:width===390?844:1000});
+    await checkFooter();
+    await dialog.screenshot({path:`${output}/catalogue-${width}.png`,animations:'disabled'});
+  }
   const createCatalogue=page.waitForResponse(response=>response.url().endsWith('/api/v1/vehicles')&&response.request().method()==='POST');
   await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
   const catalogueCreated=await createCatalogue;

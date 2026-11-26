@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {api} from './api';
+import {IntakeFeedback, ModelYearOptions, modificationName} from './DonorIntakePresentation';
 
 export type Clarifications={answers:Record<string,string|null>;reviewed:boolean;model_correction?:string};
 type Candidate={
@@ -122,15 +123,20 @@ export default function VinCataloguePicker({
     onAnswer(field,value);
   }
   const items=page?.items||[];
+  const multipleModels=new Set(items.map(modelKey)).size>1;
+  const choices=items.map(item=>{
+    const name=modificationName(item.modification,item.model);
+    return {item,label:multipleModels?`${item.model} · ${name}`:name};
+  });
   return <fieldset className="vin-catalogue-select" aria-label="Модифікація та план">
     <legend>Модифікація та план</legend>
-    {busy&&<p role="status">Шукаємо сумісні модифікації…</p>}
-    {error&&<p role="alert">{error}</p>}
+    {busy&&<IntakeFeedback kind="loading">Шукаємо сумісні модифікації…</IntakeFeedback>}
+    {error&&<IntakeFeedback kind="error">{error}</IntakeFeedback>}
     {(error||page?.status==='unavailable')&&<button type="button" disabled={disabled||busy}
       onClick={()=>{resetChoice();setRetry(n=>n+1)}}>Повторити пошук</button>}
     {page?.status==='manufacturer_required'&&<p role="status">Вкажіть марку для пошуку модифікацій.</p>}
-    {page?.status==='unavailable'&&<p role="alert">Довідник модифікацій тимчасово недоступний.</p>}
-    {page?.status==='incomplete'&&!scope&&!choice&&<p role="status">Пошук неповний. Виберіть модель, щоб перевірити її окремо.</p>}
+    {page?.status==='unavailable'&&<IntakeFeedback kind="error">Довідник модифікацій тимчасово недоступний.</IntakeFeedback>}
+    {page?.status==='incomplete'&&!scope&&!choice&&<p role="status">За потреби виберіть модель, щоб звузити пошук.</p>}
     {page?.search_complete&&!items.length&&<p role="status">Сумісних модифікацій не знайдено.</p>}
     {models.length>1&&<label>Модель із довідника
       <select value={scope?modelKey(scope):''} disabled={disabled||busy} onChange={e=>{
@@ -148,19 +154,9 @@ export default function VinCataloguePicker({
       disabled={disabled||busy} onClick={()=>{resetChoice();setModelPage(cursor)}}>
       Наступні моделі · {cursor.kind==='passenger'?'легкові':'комерційні'}
     </button>)}
-    {page?.questions.map(question=>question.options.length===0?<form className="vin-actions" key={question.field}
-      onSubmit={e=>{
-        e.preventDefault();
-        const value=String(new FormData(e.currentTarget).get('answer')||'').trim();
-        if(value)answer(question.field,value);
-      }}>
-      <label>{fieldLabels[question.field]}<input name="answer" inputMode="numeric"
-        pattern="[0-9]{4}" maxLength={4} disabled={disabled} required/></label>
-      <button type="submit" disabled={disabled}>Уточнити</button>
-      <button type="button" disabled={disabled} onClick={()=>answer(question.field,null)}>Невідомо</button>
-    </form>:<label key={question.field}>{fieldLabels[question.field]||question.field}
+    {page?.questions.map(question=><label key={question.field}>{fieldLabels[question.field]||question.field}
       <select disabled={disabled||busy} value="" onChange={e=>answer(question.field,e.target.value||null)}>
-        <option value="" disabled>Уточніть характеристику</option>
+        {question.field==='year'&&!question.options.length?<ModelYearOptions/>:<option value="">Уточніть характеристику</option>}
         <option value="unknown">Невідомо</option>
         {question.options.map(value=><option key={value}>{value}</option>)}
       </select>
@@ -174,8 +170,9 @@ export default function VinCataloguePicker({
         setChoice(picked);
       }}>
         <option value="">Оберіть модифікацію автомобіля</option>
-        {items.map(item=><option key={item.choice} value={item.choice}>
-          {item.model} · {item.modification} {item.construction_interval||''}
+        {choices.map(({item,label})=><option key={item.choice} value={item.choice} title={item.modification}>
+          {label}{item.construction_interval && choices.some(other=>other.item!==item&&other.label===label)
+            ? ' · '+item.construction_interval.trim() : ''}
         </option>)}
       </select>
     </label>}
@@ -184,13 +181,13 @@ export default function VinCataloguePicker({
     }}>Наступні модифікації</button>}
     {!scope&&models.length===1&&page&&!page.search_complete&&<button type="button" disabled={disabled||busy}
       onClick={()=>{resetChoice();setScope(models[0]);setCursor(0)}}>Переглянути всі модифікації моделі</button>}
-    {choice&&!graph&&!graphError&&<p role="status">Перевіряємо доступність запчастин…</p>}
-    {graph&&<p role="status">{readinessLabels[graph.status]||readinessLabels.unavailable}</p>}
+    {choice&&!graph&&!graphError&&<IntakeFeedback kind="loading">Перевіряємо доступність запчастин…</IntakeFeedback>}
+    {graph&&graph.status!=='exact'&&<p role="status">{readinessLabels[graph.status]||readinessLabels.unavailable}</p>}
     {graph?.status==='unavailable'&&<button type="button" disabled={disabled}
       onClick={()=>{onSelect(null);onPending(true);setGraphRetry(n=>n+1)}}>Перевірити каталог ще раз</button>}
-    {graphError&&<><p role="alert">{graphError}</p><button type="button" disabled={disabled} onClick={()=>{
+    {graphError&&<><IntakeFeedback kind="error">{graphError}</IntakeFeedback><button type="button" disabled={disabled} onClick={()=>{
       onSelect(null);onPending(true);setGraphRetry(n=>n+1);
     }}>Повторити перевірку</button></>}
-    {!choice&&<p>Оберіть модифікацію для перевірки каталогу запчастин.</p>}
+    {!choice&&!busy&&items.length>0&&<p>Оберіть модифікацію, щоб підготувати план.</p>}
   </fieldset>;
 }

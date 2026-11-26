@@ -1,5 +1,5 @@
 import {Permit,useCan} from '../permissions';
-import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Cog, Info, Images, Coins } from "lucide-react";
+import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Cog, Info, Images, Coins, ScanLine, BookOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, all, labels, money, when, type Row } from "../api";
@@ -136,16 +136,17 @@ export default function Vehicles({notify}:{notify:Notify}) {
      </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
     </section>}
     {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
-    {edit&&<Modal className={edit.id?undefined:"vin-intake-dialog"} title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)} closeDisabled={intakeSaving}>
+    {edit&&<Modal className={edit.id?undefined:"vin-intake-dialog"} title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'}
+      titleIcon={!edit.id && <CarFront size={24}/>} onClose={()=>setEdit(null)} closeDisabled={intakeSaving}>
       {edit.id?<RecordForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} submit="Зберегти зміни" onSave={async values=>{
         const row=await api('/vehicles/'+edit.id,'PUT',values);
         saved(row);setEdit(null);notify('Дані автомобіля збережено');
       }}/>:<>
         <div className="vin-mode" role="group" aria-label="Спосіб додавання автомобіля">
-          {([['vin','За VIN'],['catalogue','Із каталогу'],['manual','Вручну']] as const)
+          {([['vin','За VIN',ScanLine],['catalogue','Із каталогу',BookOpen],['manual','Вручну',Pencil]] as const)
             .filter(([mode])=>mode!=='catalogue'||can('catalog.view'))
-            .map(([mode,label])=><button key={mode} type="button" aria-pressed={intakeMode===mode} disabled={intakeSaving}
-              onClick={()=>setIntakeMode(mode)}>{label}</button>)}
+            .map(([mode,label,Icon])=><button key={mode} type="button" aria-pressed={intakeMode===mode} disabled={intakeSaving}
+              onClick={()=>setIntakeMode(mode)}><Icon size={17} aria-hidden="true"/>{label}</button>)}
         </div>
         {intakeMode==='catalogue'?<CatalogueVehicleIntake saving={intakeSaving} onSavingChange={setIntakeSaving}
           onBack={()=>setEdit(null)} onCreated={finishIntake}/>:<VehicleVinQuickAdd key={intakeMode} mode={intakeMode}
