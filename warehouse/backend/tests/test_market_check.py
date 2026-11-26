@@ -139,3 +139,27 @@ def test_live_candidate_public_route_preserves_stock(platform,vehicle,monkeypatc
     r=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
     assert r.status_code==200 and r.json()['price_mode']=='stored'
     assert r.json()['fresh_data_fetched'] is False
+
+
+def test_reference_revision_and_price_context_no_stock_mutation(platform,vehicle):
+    from uuid import uuid4
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    ctx=platform.get('/api/v1/parts/'+p+'/price-context').json()
+    assert ctx['part_id']==p and ctx['eligible'] and ctx['name']
+    reference=platform.post('/api/v1/parts/'+p+'/market-reference',json={}).json()
+    assert reference['price_token']==ctx['price_token']
+    before=platform.get('/api/v1/parts/'+p).json()
+    body=dict(selling_price='1500.00',currency='UAH',expected_token=ctx['price_token'],request_key=str(uuid4()))
+    response=platform.patch('/api/v1/parts/'+p+'/price',json=body)
+    assert response.status_code==200,response.text
+    assert platform.patch('/api/v1/parts/'+p+'/price',json=body).status_code==200
+    stale={**body,'selling_price':'900.00','request_key':str(uuid4())}
+    assert platform.patch('/api/v1/parts/'+p+'/price',json=stale).status_code==409
+    after=platform.get('/api/v1/parts/'+p).json()
+    assert after['selling_price']=='1500.00'
+    for key in ('quantity','reserved_quantity','oem_number','location','availability'):
+        assert after[key]==before[key]
+    selection=platform.get('/api/v1/pricing/selection').json()
+    assert p in selection['ids']
+    later=platform.get('/api/v1/pricing/selection',params={'after_id':p}).json()
+    assert all(x>p for x in later['ids'])
