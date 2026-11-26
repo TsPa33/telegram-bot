@@ -153,7 +153,14 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal((await get('/parts/'+existing.id)).selling_price,'1100.00');
  assert.equal((await get('/parts/'+first.id)).selling_price,'1500.00');
  assert.equal((await get('/parts/'+existing.id)).quantity,1);
+ // Confirm the success panel remains mounted after the actual write and
+ // the new price is visible there before the user closes it.
+ await expect(reference).toBeVisible();
+ await expect(reference.getByText(/Поточна ціна/)).toBeVisible();
+ await expect(reference.locator('.reference-current strong')).toContainText(/1[\s\u00a0\u202f]*100/);
  await reference.getByRole('button',{name:'Закрити'}).click();
+ await expect(reference).not.toBeVisible();
+ await expect(row('Масова ціна C')).toContainText(/1100[.,]00|1[\s\u00a0\u202f]*100/);
  await page.unroute(pattern);
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  await toolbar.getByRole('button',{name:'Нова перевірка',exact:true}).click();
