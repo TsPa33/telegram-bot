@@ -4,7 +4,7 @@
 set -euo pipefail
 umask 077
 
-release=27df8ef526f2e728f04eb61f947dee846cc76977
+release=5858999e9a71a1730b8d0563c3073ca055c1e98c
 service=carpot-oracle-adapter.service
 directory=/opt/carpot/oracle-adapter
 backup_root=/var/backups/carpot-oracle-adapter
@@ -40,8 +40,8 @@ curl -fLsS --connect-timeout 10 --max-time 30 "$base/check_source_graph.py" -o "
 (
     cd "$temporary"
     sha256sum --check --strict <<'HASHES'
-c4d53bd5cd11ba6347b0e63f9036e4e2172b91910bcfde19f8fe8b564bf0b7a2  app.py
-1a686c1069623a3f82d391061fa8f5b6c28745401e6341823fd47109e0d04d61  check_source_graph.py
+c08e9eebc8df8489382b2b2aa075f8a71a9d29cf18e216dd10d5a0b01de0ea9b  app.py
+00d3c2ca60e34900bce382e75c4fb20085968edcae438b4e7b616d4113a0a7b9  check_source_graph.py
 HASHES
 )
 python="$directory/.venv/bin/python"
