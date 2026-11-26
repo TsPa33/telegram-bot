@@ -64,3 +64,17 @@ dialog.order-dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh -
 .ui3-inventory .stock-v2-layout .r115-part .ui3-own .seller-price-compact{max-width:100%}
 @media(max-width:450px){.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .r115-codes{grid-column:1/-1;grid-row:3}.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .ui3-own{grid-row:4}}
 :root[data-theme=dark] .app .sidebar{background:linear-gradient(160deg,var(--color-sidebar),var(--color-subtle));border-right-color:var(--color-sidebar-border)}
+
+/* Soft Gradient: artwork shares the card surface, no separate plate or caption. */
+.corporate-donor-card:has(.vehicle-image-shell--body){
+ background:radial-gradient(ellipse at 82% 22%,color-mix(in srgb,var(--color-secondary) 15%,var(--color-surface)) 0%,var(--color-surface) 64%)!important;
+}
+.corporate-donor-card:has(.vehicle-image-shell--body) .corporate-donor-top{grid-template-columns:minmax(0,1fr) minmax(150px,40%);align-items:center}
+.corporate-donor-card:has(.vehicle-image-shell--body) .r1146-card-photo,.corporate-donor-card .vehicle-image-shell--body{max-width:300px!important}
+.corporate-donor-card .vehicle-image-shell--body .vehicle-image{height:148px!important;background:transparent!important}
+.vehicle-image-shell--body .vehicle-image img{opacity:1!important;filter:none!important;mask-image:none!important;-webkit-mask-image:none!important;object-fit:contain}
+.vehicle-image-shell--body .vehicle-image-unavailable{background:transparent;color:var(--color-secondary);opacity:.55}
+@media(max-width:600px){
+ .corporate-donor-card:has(.vehicle-image-shell--body) .corporate-donor-top{grid-template-columns:minmax(0,1fr) minmax(110px,40%)}
+ .corporate-donor-card .vehicle-image-shell--body .vehicle-image{height:94px!important}
+}

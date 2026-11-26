@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 import type {VehicleImageManifest} from './vehicleImageTypes';
 import {modelReferenceAssets} from './vehicleModelReferenceAssets';
+import {vehicleBodyAssets} from './vehicleBodyAssets';
+import {BODY_TYPES} from './vehicleImageTypes';
 
 // Import URL metadata, not image bytes. Vite emits content-hashed /assets/ files;
 // <img loading="lazy"> decides when to fetch them. No hotlinks or runtime API.
@@ -22,5 +24,19 @@ export const vehicleImageManifest:VehicleImageManifest={
   {manufacturer:'BMW',model:'X3',bodyType:'suv',evidence:'Unambiguous generic SUV/crossover body classification; no generation claim.'},
  ],
  // Supported schema != supplied artwork. Missing body art uses quality unknown.
- fallbacks:{sedan:null,hatchback:null,wagon:null,suv:'generic-suv-v1',coupe:null,convertible:null,minivan:null,pickup:null,van:null,unknown:'generic-unknown-v1'},
+ fallbacks:{sedan:null,hatchback:null,wagon:null,suv:'generic-suv-v1',coupe:null,convertible:null,minivan:null,pickup:null,van:null,tractor:null,truck:null,bus:null,unknown:'generic-unknown-v1'},
 };
+
+ // Enable only when every unique type is present and all files are bundled.
+ // Partial import must never alter the deployed card artwork.
+ const required=BODY_TYPES.filter(t=>t!=='unknown');
+ export const bodyLibraryReady=vehicleBodyAssets.length===required.length&&
+  new Set(vehicleBodyAssets.map(a=>a.id)).size===required.length&&
+  new Set(vehicleBodyAssets.map(a=>a.file)).size===required.length&&
+  required.every(type=>vehicleBodyAssets.filter(a=>a.kind==='body'&&a.bodyType===type&&a.transparentCutout===true&&a.verified===true&&a.usage.status==='approved'&&a.usage.commercialUse===true&&!!vehicleImageURLs[a.file]).length===1);
+ export const bodyOnlyManifest:VehicleImageManifest={
+  version:'carpot.vehicle-body-library.v2',
+  assets:vehicleBodyAssets,
+  bodyRules:[],
+  fallbacks:Object.fromEntries(BODY_TYPES.map(type=>[type,type==='unknown'?null:vehicleBodyAssets.find(a=>a.bodyType===type)?.id||null])) as VehicleImageManifest['fallbacks'],
+ };
