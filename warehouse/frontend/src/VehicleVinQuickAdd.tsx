@@ -16,12 +16,13 @@ const summaryFields=['engine','engine_code','engine_displacement_l','fuel_type',
 const reviewable=new Set(Object.keys(fieldLabels).filter(field=>field!=='trim'));
 const manualFields=['manufacturer','model','year','generation','engine','engine_code','engine_displacement_l','fuel_type','transmission','drive_type'];
 
-export default function VehicleVinQuickAdd({mode,onBack,onCreated,initialVin,onVinChange}:{
-  initialVin?:string;onVinChange?:(vin:string)=>void;mode:'vin'|'manual';onBack:()=>void;onCreated:(row:Row)=>void;
+export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting,saving,onSavingChange}:{
+  mode:'vin'|'manual';onBack:()=>void;onCreated:(row:Row)=>void;onOpenExisting:(row:Row)=>void;
+  saving:boolean;onSavingChange:(saving:boolean)=>void;
 }){
   const identity=useContext(TeamIdentity);
   const can=useCan();
-  const [vin,setVin]=useState(initialVin||'');
+  const [vin,setVin]=useState('');
   const [result,setResult]=useState<VinDecode|null>(null);
   const [draft,setDraft]=useState<Row>({});
   const [clarifications,setClarifications]=useState<Clarifications>(emptyClarifications);
@@ -34,7 +35,6 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,initialVin,onV
   const [error,setError]=useState('');
   const [existing,setExisting]=useState<Row|null>(null);
   const [loading,setLoading]=useState(false);
-  const [saving,setSaving]=useState(false);
   const decodeRequest=useRef<AbortController|null>(null);
   const writing=useRef(false);
   const valid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
@@ -128,8 +128,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,initialVin,onV
         ...(choice?{choice:choice.candidate.choice,graph_sha:choice.graph.source_snapshot_sha}:{})};
     }
     writing.current=true;
-    setSaving(true);
+    onSavingChange(true);
     setError('');
+    setExisting(null);
     try{
       onCreated(await api('/vehicles','POST',values));
     }catch(e){
@@ -138,12 +139,12 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,initialVin,onV
       if(e instanceof ApiError&&e.status===409&&typeof detail?.vehicle_id==='string'){
         try{
           const found=await api<Row>('/vehicles/'+encodeURIComponent(detail.vehicle_id));
-          if(found.vin?.trim().toUpperCase()===vin)setExisting(found);
+          if(found.id===detail.vehicle_id&&found.vin?.trim().toUpperCase()===vin)setExisting(found);
         }catch{/* Keep the duplicate message if the donor is no longer visible. */}
       }
     }finally{
       writing.current=false;
-      setSaving(false);
+      onSavingChange(false);
     }
   }
 
@@ -153,7 +154,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,initialVin,onV
         value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{
           const value=e.target.value.trim().toUpperCase();
           setVin(value);
-          onVinChange?.(value);
+          requestKey.current=null;
           if(!manual)clearResult();
           else {setError('');setExisting(null)}
         }}/></label>
@@ -240,7 +241,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,initialVin,onV
       {identity?.catalogue_platform_admin===true&&result.provider_status&&<VinDiagnostics key={vin} vin={vin} result={result}/>}
     </>}
     {error&&<p role="alert">{error}</p>}
-    {existing&&<button type="button" className="primary" onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
+    {existing&&<button type="button" className="primary" disabled={saving} onClick={()=>onOpenExisting(existing)}>Відкрити наявний автомобіль</button>}
     {!manual&&result&&!ready&&!saving&&<p role="status">{checkingChoice?'Перевіряємо каталог запчастин…':!choice?'Оберіть сумісну модифікацію або уточніть характеристики VIN.':!hasGraph&&!acceptBase?'Додавання заблоковано: для обраної модифікації каталог запчастин не підтверджено. Повторіть перевірку каталогу.':'Заповніть марку та модель автомобіля.'}</p>}
     <div className="vin-footer">
       <div className="vin-actions">

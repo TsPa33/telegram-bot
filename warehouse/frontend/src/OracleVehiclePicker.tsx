@@ -43,10 +43,29 @@ function useDirectory(path: string) {
     {items: [], next: null, loading: !!path, error: false, load};
 }
 
+function productionPeriod(entry: Entry | null) {
+  const dates = entry?.construction_interval?.trim().match(
+    /^((?:(?:0?[1-9]|1[0-2])[./-])?\d{4}(?:[./]?(?:0[1-9]|1[0-2]))?)?\s*[-–—]\s*((?:(?:0?[1-9]|1[0-2])[./-])?\d{4}(?:[./]?(?:0[1-9]|1[0-2]))?)?$/,
+  );
+  const year = (date?: string) => Number(date?.match(/(?<!\d)(18\d{2}|19\d{2}|20\d{2}|2100)(?:[./]?[01]\d)?$/)?.[1]) || undefined;
+  const start = year(dates?.[1]), end = year(dates?.[2]);
+  return start && end && start > end ? {} : {start, end};
+}
+
 function inProductionYear(entry: Entry, year: string) {
-  const years = entry.construction_interval?.match(/(?:19|20)\d{2}/g)?.map(Number) || [];
-  return !/^\d{4}$/.test(year) || !years.length ||
-    (Number(year) >= years[0] && (years.length < 2 || Number(year) <= years[1]));
+  const {start, end} = productionPeriod(entry);
+  return !/^\d{4}$/.test(year) || ((!start || Number(year) >= start) && (!end || Number(year) <= end));
+}
+
+function productionYears(model: Entry | null, variant: Entry | null) {
+  const modelPeriod = productionPeriod(model);
+  const variantPeriod = productionPeriod(variant);
+  const start = variantPeriod.start ?? modelPeriod.start;
+  const end = variantPeriod.end ?? modelPeriod.end;
+  if (!(start || end)) return [];
+  const first = Math.max(1886, start ?? 1886);
+  const last = Math.min(2100, end ?? Math.max(first, new Date().getFullYear()));
+  return Array.from({length: Math.max(0, last - first + 1)}, (_, index) => String(last - index));
 }
 
 function DirectorySelect({label, value, onChange, page, disabled, year, searchable}: {
@@ -90,8 +109,9 @@ const characteristicLabels: Record<string, string> = {
   engine_power_kw: 'Потужність', drive_type: 'Привід',
 };
 
-export default function OracleVehiclePicker({year, initialManufacturer = '', onChange, disabled}: {
+export default function OracleVehiclePicker({year, onYearChange, initialManufacturer = '', onChange, disabled}: {
   year: string; initialManufacturer?: string; onChange: (value: OracleVehicle | null) => void; disabled: boolean;
+  onYearChange?: (year: string) => void;
 }) {
   const [kind, setKind] = useState<Kind>('passenger');
   const [query, setQuery] = useState(initialManufacturer);
@@ -105,6 +125,7 @@ export default function OracleVehiclePicker({year, initialManufacturer = '', onC
   const makers = useDirectory(directory + 'manufacturer-directory?kind=' + kind + '&name=' + encodeURIComponent(search));
   const models = useDirectory(maker ? directory + 'models?kind=' + kind + '&manufacturer_id=' + maker.id : '');
   const variants = useDirectory(model ? directory + 'modifications?kind=' + kind + '&model_id=' + model.id : '');
+  const yearOptions = onYearChange ? productionYears(model, variant) : [];
   const validYear = /^\d{4}$/.test(year) && Number(year) >= 1886 && Number(year) <= 2100;
   const yearMatches = !variant || inProductionYear(variant, year);
 
@@ -136,6 +157,7 @@ export default function OracleVehiclePicker({year, initialManufacturer = '', onC
 
   function chooseMaker(value: Entry | null) {
     onChange(null);
+    onYearChange?.('');
     setMaker(value);
     setModel(null);
     setVariant(null);
@@ -143,8 +165,15 @@ export default function OracleVehiclePicker({year, initialManufacturer = '', onC
 
   function chooseModel(value: Entry | null) {
     onChange(null);
+    onYearChange?.('');
     setModel(value);
     setVariant(null);
+  }
+
+  function chooseVariant(value: Entry | null) {
+    onChange(null);
+    if (year && onYearChange && !productionYears(model, value).includes(year)) onYearChange('');
+    setVariant(value);
   }
 
   return <>
@@ -160,9 +189,21 @@ export default function OracleVehiclePicker({year, initialManufacturer = '', onC
       <DirectorySelect label="Марка" value={maker} onChange={chooseMaker} page={makers} disabled={disabled}/>
       {maker && <DirectorySelect key={kind + maker.id} label="Модель" value={model} onChange={chooseModel}
         page={models} disabled={disabled} year={year} searchable/>}
+      {onYearChange && <label className="vin-year">Рік автомобіля
+        <select required value={year} disabled={disabled || !yearOptions.length} onChange={e => {
+          onChange(null);
+          onYearChange(e.target.value);
+        }}>
+          <option value="">{yearOptions.length ? 'Оберіть рік' : model ? 'Оберіть модифікацію' : 'Спочатку оберіть модель'}</option>
+          {yearOptions.map(option => <option key={option} value={option}>{option}</option>)}
+        </select>
+      </label>}
       {model && <DirectorySelect key={kind + ':' + model.id} label="Модифікація" value={variant}
-        onChange={value => {onChange(null); setVariant(value);}} page={variants} disabled={disabled} year={year} searchable/>}
+        onChange={chooseVariant} page={variants} disabled={disabled} year={year} searchable/>}
     </div>
+    {onYearChange && variant && !yearOptions.length && <p role="status">
+      У каталозі відсутні роки виробництва. Цей автомобіль можна додати вручну.
+    </p>}
     {variant && <div className="vin-summary">
       <strong>{[maker?.name, model?.name, validYear ? year : null].filter(Boolean).join(' · ')}</strong>
       <p>{graph?.modification || variant.name}</p>
@@ -184,13 +225,13 @@ export default function OracleVehiclePicker({year, initialManufacturer = '', onC
   </>;
 }
 
-export function CatalogueVehicleIntake({vin, onCreated, onBack}: {
-  vin?: string; onCreated: (row: Row) => void; onBack: () => void;
+export function CatalogueVehicleIntake({onCreated, onBack, saving, onSavingChange}: {
+  onCreated: (row: Row) => void; onBack: () => void;
+  saving: boolean; onSavingChange: (saving: boolean) => void;
 }) {
   const [year, setYear] = useState('');
   const [selected, setSelected] = useState<OracleVehicle | null>(null);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const request = useRef<string | null>(null);
   const writing = useRef(false);
   const validYear = /^\d{4}$/.test(year) && Number(year) >= 1886 && Number(year) <= 2100;
@@ -198,13 +239,12 @@ export function CatalogueVehicleIntake({vin, onCreated, onBack}: {
     e.preventDefault();
     if (!selected || !validYear || writing.current) return;
     writing.current = true;
-    setBusy(true);
+    onSavingChange(true);
     setError('');
     request.current ||= crypto.randomUUID();
     try {
       const row = await api('/vehicles', 'POST', {
         intake_request_key: request.current, vin_intake_mode: 'catalogue',
-        vin: vin && /^[A-HJ-NPR-Z0-9]{17}$/.test(vin) ? vin : undefined,
         manufacturer: selected.manufacturer, model: selected.model, year: Number(year),
         source_identity: selected.identity, catalogue_graph_sha: selected.graph.source_snapshot_sha, status: 'planned',
       });
@@ -213,17 +253,15 @@ export function CatalogueVehicleIntake({vin, onCreated, onBack}: {
       setError((e as Error).message);
     } finally {
       writing.current = false;
-      setBusy(false);
+      onSavingChange(false);
     }
   }}>
-    <label className="vin-year">Рік автомобіля<input required inputMode="numeric" maxLength={4}
-      value={year} disabled={busy} onChange={e => {setSelected(null); setYear(e.target.value);}}/></label>
-    <OracleVehiclePicker year={year} disabled={busy} onChange={setSelected}/>
+    <OracleVehiclePicker year={year} onYearChange={setYear} disabled={saving} onChange={setSelected}/>
     {error && <p role="alert">{error}</p>}
     {selected && !validYear && <p role="status">Вкажіть рік цього автомобіля.</p>}
     <div className="vin-footer"><div className="vin-actions">
-      <button className="primary" disabled={!selected || !validYear || busy}>{busy ? 'Зберігаємо…' : 'Додати автомобіль'}</button>
-      <button type="button" disabled={busy} onClick={onBack}>Скасувати</button>
+      <button className="primary" disabled={!selected || !validYear || saving}>{saving ? 'Зберігаємо…' : 'Додати автомобіль'}</button>
+      <button type="button" disabled={saving} onClick={onBack}>Скасувати</button>
     </div></div>
   </form>;
 }

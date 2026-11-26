@@ -21,11 +21,13 @@ export function Modal({
   onClose,
   children,
   className,
+  closeDisabled = false,
 }: {
   title: string;
   className?: string;
   onClose: () => void;
   children: ReactNode;
+  closeDisabled?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -41,14 +43,17 @@ export function Modal({
       className={className}
       aria-label={title}
       ref={ref}
-      onCancel={onClose}
+      onCancel={e => {
+        if (closeDisabled) e.preventDefault();
+        else onClose();
+      }}
       onClick={(e) => {
-        if (e.target === ref.current) onClose();
+        if (!closeDisabled && e.target === ref.current) onClose();
       }}
     >
       <div className="modal-head">
         <h2>{title}</h2>
-        <button aria-label="Закрити" className="icon-button" onClick={onClose}>
+        <button aria-label="Закрити" className="icon-button" disabled={closeDisabled} onClick={onClose}>
           <X size={20} />
         </button>
       </div>

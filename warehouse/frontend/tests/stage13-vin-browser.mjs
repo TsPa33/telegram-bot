@@ -66,18 +66,31 @@ try{
 
   await page.setViewportSize({width:390,height:844});
   await open();
-  await dialog.getByRole('button',{name:'Вручну',exact:true}).click();
-  await expect(dialog.getByRole('textbox',{name:'Марка',exact:true})).toBeVisible();
+  await decode();
+  await ready();
+  const createVehiclePattern='**/api/v1/vehicles';
+  let failedVinKey;
+  await page.route(createVehiclePattern,route=>{
+    failedVinKey=route.request().postDataJSON().intake_request_key;
+    return route.fulfill({status:503,json:{detail:'Тимчасова помилка збереження VIN'}});
+  },{times:1});
+  await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
+  await expect(dialog.getByRole('alert')).toContainText('Тимчасова помилка збереження VIN');
   await dialog.getByRole('button',{name:'Із каталогу',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Автомобіль із каталогу'})).toBeVisible();
-  await dialog.getByRole('textbox',{name:'Рік автомобіля',exact:true}).fill('2015');
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  const year=dialog.getByRole('combobox',{name:'Рік автомобіля',exact:true});
+  await expect(year).toBeDisabled();
   await dialog.getByRole('combobox',{name:'Марка',exact:true}).selectOption('840');
   await dialog.getByRole('combobox',{name:'Модель',exact:true}).selectOption('701');
+  await expect(year.locator('option[value="2010"]')).toHaveCount(0);
+  await year.selectOption('2015');
   const temporaryCatalogueFailure='**/api/v1/vehicles/vin/source-graph?*';
   await page.route(temporaryCatalogueFailure,route=>route.fulfill({status:503,json:{detail:'Service unavailable'}}),{times:1});
   await dialog.getByRole('combobox',{name:'Модифікація',exact:true}).selectOption('900');
   await expect(dialog.getByRole('alert')).toContainText('Каталог запчастин тимчасово недоступний');
-  await expect(dialog.getByRole('textbox',{name:'Рік автомобіля',exact:true})).toHaveValue('2015');
+  await expect(year).toHaveValue('2015');
+  await expect(year.locator('option[value="2013"]')).toHaveCount(0);
   await expect(dialog.getByRole('combobox',{name:'Модифікація',exact:true})).toHaveValue('900');
   await expect(dialog.getByRole('button',{name:'Додати автомобіль',exact:true})).toBeDisabled();
   await dialog.getByRole('button',{name:'Повторити',exact:true}).click();
@@ -86,6 +99,10 @@ try{
   await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
   const catalogueCreated=await createCatalogue;
   assert.equal(catalogueCreated.status(),201,await catalogueCreated.text());
+  const catalogueRequest=catalogueCreated.request().postDataJSON();
+  assert.equal(Object.hasOwn(catalogueRequest,'vin'),false);
+  assert(failedVinKey);
+  assert.notEqual(catalogueRequest.intake_request_key,failedVinKey);
   assert.equal((await catalogueCreated.json()).vin,null);
   await expect(dialog).not.toBeVisible();
 
@@ -180,9 +197,43 @@ try{
   const plan=await (await context.request.get('/api/v1/vehicles/'+donor.id+'/dismantling-v3')).json();
   assert.equal(plan.items.length,1);
   assert.equal(plan.items[0].name,'Synthetic engine');
+
+  await page.goto('/vehicles');
+  await open();
+  await decode();
+  await ready();
+  const conflict=page.waitForResponse(response=>response.url().endsWith('/api/v1/vehicles')&&response.request().method()==='POST');
+  await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
+  const duplicate=await conflict;
+  assert.equal(duplicate.status(),409);
+  assert.equal((await duplicate.json()).detail.vehicle_id,donor.id);
+  await expect(dialog.getByRole('alert')).toContainText('уже існує');
+  await dialog.getByRole('button',{name:'Відкрити наявний автомобіль'}).click();
+  await expect(page).toHaveURL(url=>url.searchParams.get('donor')===donor.id);
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole('button',{name:'Розбір і запчастини'}).click();
+  await expect(page.getByText('Synthetic engine',{exact:true}).first()).toBeVisible();
+
+  const historical=await context.request.post('/api/v1/vehicles',{
+    headers:{'X-CSRF-Token':(await registration.json()).csrf_token},
+    data:{manufacturer:'ASTER MOBILITY',model:'3 series',year:2017,status:'planned'},
+  });
+  assert.equal(historical.status(),201,await historical.text());
+  await page.goto('/vehicles');
+  const brandFilter=page.getByRole('combobox',{name:'Фільтр марки'});
+  const modelFilter=page.getByRole('combobox',{name:'Фільтр моделі'});
+  await brandFilter.selectOption('aster mobility');
+  await expect(brandFilter.getByRole('option',{name:/^aster mobility$/i})).toHaveCount(1);
+  await modelFilter.selectOption('3 series');
+  await expect(modelFilter.getByRole('option',{name:/^3 series$/i})).toHaveCount(1);
+  const yearFilter=page.getByRole('combobox',{name:'Фільтр року'});
+  await expect(yearFilter.locator('option[value="2015"]')).toHaveCount(1);
+  await expect(yearFilter.locator('option[value="2017"]')).toHaveCount(1);
+  await page.getByRole('button',{name:'Таблиця',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:/aster mobility 3 series/i})).toHaveCount(2);
   assert.deepEqual(errors,[]);
   assert.deepEqual(paid,[]);
-  console.log('PASS VIN, no-VIN catalogue and manual intake, stale response cancellation, pinned plan and zero automatic stock');
+  console.log('PASS VIN → catalogue reset, year bounds, duplicate card and plan, case-insensitive filters, manual intake and zero automatic stock');
 }finally{
   await context.close();
   await browser.close();
