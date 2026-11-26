@@ -188,9 +188,15 @@ def preview_for_vehicle(db, vehicle, *, adapter=None):
     rows = list(db.scalars(select(DismantlingItem).where(
         DismantlingItem.account_id == vehicle.account_id,
         DismantlingItem.vehicle_id == vehicle.id)))
-    existing = [{"product_id": unified_catalogue.row_product_id(r),
-                 "row_id": r.id, "protected": bool(r.part_id or r.received_at)}
-                for r in rows]
+    from app.services.master_parts_managed import master_ref
+    existing = []
+    for r in rows:
+        item = {"product_id": unified_catalogue.row_product_id(r),
+                "row_id": r.id, "protected": bool(r.part_id or r.received_at)}
+        ref = master_ref(r)
+        if ref and ref.get("identity") == identity and ref.get("vehicle_basis") == generator_basis(vehicle):
+            item.update(master_key=ref.get("master_key"), placement=ref.get("master_placement"))
+        existing.append(item)
     report = reconcile(saved, normalized["profile"], existing_rows=existing)
     reference = reference_profile(identity, vehicle.year, normalized["profile"])
     reference_report = None
