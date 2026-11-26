@@ -1,0 +1,62 @@
+[
+  {
+    "file": "reference-alfa-147.webp",
+    "sha256": "35aef1abde11e238a67b18adf06cd662beaeb613d25d5358954cc26588a95d06",
+    "bytes": 44504,
+    "width": 652,
+    "height": 401,
+    "source_title": "File:Alfa Romeo 147 front 20071007.jpg",
+    "source_sha1": "0870881a90dc0628b10f69dc78b9089328e723ed",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Alfa_Romeo_147_front_20071007.jpg",
+    "author": "Rudolf Stricker",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "changes": "background removed; cropped; scaled; WebP",
+    "pilot_run": 45877387835
+  },
+  {
+    "file": "reference-audi-q5.webp",
+    "sha256": "406bb985932d0ec429546138b2737b57540ab414c71334be8da04f0fc45da5c9",
+    "bytes": 49366,
+    "width": 556,
+    "height": 412,
+    "source_title": "File:Audi Q5 8R.jpg",
+    "source_sha1": "56e785a0dc6011d45662eb8fca63019c9a8c1f65",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Audi_Q5_8R.jpg",
+    "author": "Bene Riobó",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "changes": "background removed; cropped; scaled; WebP",
+    "pilot_run": 45877387835
+  },
+  {
+    "file": "reference-daf-xf.webp",
+    "sha256": "21992a92265cbf6d80ddda7bc529bc3189aa760b6729c42ee1ce0bec9c8e5552",
+    "bytes": 21520,
+    "width": 364,
+    "height": 412,
+    "source_title": "File:DAF XF front.jpg",
+    "source_sha1": "3e55e409c18753c56588bdfca23a06d28e5d25d2",
+    "source_url": "https://commons.wikimedia.org/wiki/File:DAF_XF_front.jpg",
+    "author": "User:MarkusHagenlocher",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "changes": "background removed; cropped; scaled; WebP",
+    "pilot_run": 45877387835
+  },
+  {
+    "file": "reference-volvo-xc90.webp",
+    "sha256": "03e188983e94ffbf8e09dab625a839f81278eb0dea720ed48ae8e74318b4fb57",
+    "bytes": 34494,
+    "width": 648,
+    "height": 412,
+    "source_title": "File:Volvo XC90 - 2016.jpg",
+    "source_sha1": "9be0b34794d667f3a2e521d0cbc46c0630aab1da",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Volvo_XC90_-_2016.jpg",
+    "author": "Staticvent",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "changes": "background removed; cropped; scaled; WebP",
+    "pilot_run": 45877387835
+  }
+]
