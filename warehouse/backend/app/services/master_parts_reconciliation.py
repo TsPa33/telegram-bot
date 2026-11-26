@@ -6,6 +6,8 @@ Never fabricate physical rows or transfer OEM from sibling modifications.
 """
 from collections import Counter
 from pathlib import Path
+from copy import deepcopy
+import json
 import re
 
 from app.services.catalogue_format import digest
@@ -13,6 +15,7 @@ from app.services.master_parts_preview import preview, read_seed
 
 SEED = Path(__file__).resolve().parents[1] / "data" / "master_parts_seed_v02.tsv"
 VERSION = "carpot.master.parts.reconciliation.v1"
+REFERENCE_PROFILES = SEED.with_name('master_parts_reference_profiles.json')
 
 
 def pinned_identity(saved):
@@ -120,6 +123,40 @@ def reconcile(saved, profile, *, existing_rows=(), seed=None):
             "persisted": False, "stock_changed": False, "fitment_verified": False}
 
 
+
+def reference_profile(identity, year, base, *, records=None):
+    """Model-year reference, separate from actual vehicle facts and fitment.
+
+    A missing exact key or any disagreement with known source facts disables
+    reference expansion. No reference values are used for OEM assignment.
+    """
+    records = json.loads(REFERENCE_PROFILES.read_text(encoding="utf-8")) if records is None else records
+    key = {k: identity.get(k) for k in ("kind", "manufacturer_id", "model_id", "car_id")}
+    matches = [r for r in records if r.get("identity") == key and r.get("year") == year]
+    if len(matches) != 1 or not matches[0].get("sources"):
+        return None
+    record = matches[0]
+
+    def merge(a, b):
+        if a is None:
+            return deepcopy(b)
+        if isinstance(a, dict) and isinstance(b, dict):
+            return {k: merge(a.get(k), b[k]) if k in b else deepcopy(a[k])
+                    for k in a.keys() | b.keys()}
+        if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+            return [merge(x, y) for x, y in zip(a, b)]
+        if a == b:
+            return deepcopy(a)
+        raise ValueError("conflicting reference facts")
+
+    try:
+        result = merge(base, record["profile"])
+    except ValueError:
+        return None
+    return {"profile": result, "reference_id": record["id"], "sources": record["sources"],
+            "scope": record["scope"], "physical_fitment_verified": False}
+
+
 def preview_for_vehicle(db, vehicle, *, adapter=None):
     """Use the real saved plan and current exact Oracle identity; read-only."""
     from sqlalchemy import select
@@ -155,6 +192,18 @@ def preview_for_vehicle(db, vehicle, *, adapter=None):
                  "row_id": r.id, "protected": bool(r.part_id or r.received_at)}
                 for r in rows]
     report = reconcile(saved, normalized["profile"], existing_rows=existing)
+    reference = reference_profile(identity, vehicle.year, normalized["profile"])
+    reference_report = None
+    if reference:
+        candidate_report = reconcile(saved, reference["profile"], existing_rows=existing)
+        # A reference is only a review projection. Do not promote its articles
+        # or OEMs even to source-cross-reference candidates for physical rows.
+        for item in candidate_report["positions"]:
+            item["source_article_candidates"] = []
+            item["oem_status"] = "reference_topology_only"
+        candidate_report["source_cross_reference_candidate_count"] = 0
+        reference_report = {**reference, **candidate_report, "reference_only": True}
     return {**report, "status": "preview", "profile": normalized,
+            "reference_projection": reference_report,
             "existing_plan_row_count": len(rows),
             "protected_row_count": sum(r["protected"] for r in existing)}
