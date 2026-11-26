@@ -121,7 +121,10 @@ class VinResolutionInput(Input):
 
 
 class VehicleInput(Input):
-    vin_intake_mode: Literal["manual"] | None = None
+    vin_intake_mode: Literal["manual", "catalogue"] | None = None
+    intake_request_key: Annotated[str, Field(pattern=r"^[a-f0-9-]{36}$")] | None = None
+    accept_base_catalogue: bool = False
+    catalogue_graph_sha: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")] | None = None
     vin_resolution: VinResolutionInput | None = None
     source_identity: VinSourceIdentity | None = None
     catalogue_selection: VinCatalogueSelection | None = None

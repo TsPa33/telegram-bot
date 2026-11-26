@@ -14,7 +14,7 @@ type ResolutionPage={
   model_cursors?:ModelCursor[];
   questions:{field:string;options:string[]}[]; review:string[]; status:string; automatic:string|null;
 };
-type Readiness={status:string;source_snapshot_sha:string|null};
+type Readiness={status:string;source_snapshot_sha:string|null;counts?:{categories:number;positions:number}};
 export type VinChoice={candidate:Candidate;graph:Readiness};
 export const fieldLabels:Record<string,string>={
   manufacturer:'Марка',model:'Модель',year:'Модельний рік',generation:'Покоління',

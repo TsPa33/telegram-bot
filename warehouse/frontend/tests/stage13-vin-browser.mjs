@@ -70,7 +70,34 @@ try{
   await expect(dialog.getByRole('textbox',{name:'Марка',exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:'Із каталогу',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Автомобіль із каталогу'})).toBeVisible();
-  await dialog.getByRole('button',{name:'За VIN',exact:true}).click();
+  await dialog.getByRole('textbox',{name:'Рік автомобіля',exact:true}).fill('2015');
+  await dialog.getByRole('combobox',{name:'Марка',exact:true}).selectOption('840');
+  await dialog.getByRole('combobox',{name:'Модель',exact:true}).selectOption('701');
+  await dialog.getByRole('combobox',{name:'Модифікація',exact:true}).selectOption('900');
+  await expect(dialog.getByText(/План розбору готовий/)).toBeVisible();
+  const createCatalogue=page.waitForResponse(response=>response.url().endsWith('/api/v1/vehicles')&&response.request().method()==='POST');
+  await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
+  const catalogueCreated=await createCatalogue;
+  assert.equal(catalogueCreated.status(),201,await catalogueCreated.text());
+  assert.equal((await catalogueCreated.json()).vin,null);
+  await expect(dialog).not.toBeVisible();
+
+  await page.goto('/vehicles');
+  await open();
+  await dialog.getByRole('button',{name:'Вручну',exact:true}).click();
+  await dialog.getByRole('textbox',{name:'Марка',exact:true}).fill('Unknown manufacturer');
+  await dialog.getByRole('textbox',{name:'Модель',exact:true}).fill('Manual vehicle');
+  await expect(dialog.getByRole('button',{name:'Додати автомобіль',exact:true})).toBeDisabled();
+  await dialog.getByRole('checkbox',{name:'Додати з базовим каталогом CarPot'}).check();
+  const createManual=page.waitForResponse(response=>response.url().endsWith('/api/v1/vehicles')&&response.request().method()==='POST');
+  await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
+  const manualCreated=await createManual;
+  assert.equal(manualCreated.status(),201,await manualCreated.text());
+  assert.equal((await manualCreated.json()).dismantling_v3.unified_base,true);
+  await expect(dialog).not.toBeVisible();
+
+  await page.goto('/vehicles');
+  await open();
 
   // Exercise independent maker cursors and a clarification from a later variant page.
   const resolutionPattern='**/api/v1/vehicles/vin/resolution?*';

@@ -28,7 +28,7 @@ class CatalogueAdapter:
         # Gateway may spend up to 8s connecting, so the old 5s Warehouse
         # deadline caused HTTP 499 even when the Gateway was healthy.
         is_oracle = path.startswith('global:oracle/')
-        timeout = 14 if is_oracle else 5
+        timeout = 28 if path == 'global:vehicles/source-graph' else 14 if is_oracle else 5
         connect_timeout = 11 if is_oracle else 2
         started=time.monotonic()
         try:
@@ -215,7 +215,7 @@ def saved_state(vehicle):
 
 
 def has_plan_state(vehicle):
-    return bool(set(vehicle.dismantling_v3 or {}) - {"vin_intake", "oracle_vehicle_identity"})
+    return bool(set(vehicle.dismantling_v3 or {}) - {"vin_intake", "oracle_vehicle_identity", "intake_request_key", "intake_request_sha"})
 
 
 def has_plan_history(db, vehicle):
@@ -246,7 +246,7 @@ def row_product_id(row):
     return next(iter(products)) if len(products)==1 else None
 
 
-def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=False):
+def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=False, retain_existing_plan=False):
     """Persist potential types only. Existing plan/manual data never overwritten."""
     from sqlalchemy import select
     from fastapi import HTTPException
@@ -257,7 +257,7 @@ def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=Fal
         if existing['payload'].get('source_snapshot_sha',existing['sha256']) != envelope['payload'].get('source_snapshot_sha',envelope['sha256']):
             raise HTTPException(409, 'Збережений план вже існує. Зміна модифікації потребує окремого узгодження.')
         return existing
-    if not existing and has_plan_history(db, vehicle):
+    if not existing and not retain_existing_plan and has_plan_history(db, vehicle):
         raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
     payload = envelope['payload']
     validate_plan(payload)
@@ -296,7 +296,10 @@ def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=Fal
                                existing['payload'] if existing else None, payload)
     projection=compact_payload(payload)
     local_sha=hashlib.sha256(json.dumps(projection,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+    original_envelope = envelope
     envelope={'payload':projection,'sha256':local_sha,'vehicle_basis':vehicle_basis(vehicle)}
+    if "article_graph" in original_envelope:
+        envelope["article_graph"] = original_envelope["article_graph"]
     vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), 'unified_catalogue': envelope, KEY: bindings}
     record(db, vehicle.account_id, vehicle, 'unified_catalogue_save',
            'Збережено потенційний план Catalogue; склад не змінено', before)
@@ -327,8 +330,8 @@ def workspace_entries(db, who, vehicle):
     return result
 
 
-PLAN_KEYS=('schema','manufacturer_id','car_id','model_id','modification','observed_at','source_snapshot_sha','coverage','coverage_verified','taxonomy_status','photos')
-TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256','source_fitment_linked')
+PLAN_KEYS=('schema','manufacturer_id','car_id','model_id','modification','observed_at','source_snapshot_sha','coverage','coverage_verified','taxonomy_status','photos','kind','article_graph_sha')
+TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256','source_fitment_linked','source_node_ids','source_product_descriptions')
 
 
 def compact_payload(payload):

@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, all, labels, money, when, type Row } from "../api";
 import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
 import VehicleVinQuickAdd from '../VehicleVinQuickAdd';
-import {GlobalVehicleForm} from '../GlobalCatalogueFlow';
+import {CatalogueVehicleIntake} from '../OracleVehiclePicker';
 
 
 import AletoCatalogue from "../AletoCatalogue";
@@ -68,6 +68,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
   const can=useCan();
   const [deleting,setDeleting]=useState<Row|null>(null);
   const [intakeMode,setIntakeMode]=useState<"vin"|"catalogue"|"manual">("vin");
+  const [intakeVin,setIntakeVin]=useState('');
   const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[yearFilter,setYearFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   // The workshop currently holds tens of donors. Fetch all account-scoped pages so every
   // filter works on the entire dataset (not merely one displayed page).
@@ -100,7 +101,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
 
   return <>
     {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
-      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>{setIntakeMode("vin");setEdit({status:'dismantling'});}}><Plus size={17}/>Додати автомобіль</button></div></Permit>
+      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>{setIntakeMode("vin");setIntakeVin('');setEdit({status:'dismantling'});}}><Plus size={17}/>Додати автомобіль</button></div></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year??'рік не визначено'}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <div className="r114-toolbar r1146-toolbar">
@@ -134,8 +135,10 @@ export default function Vehicles({notify}:{notify:Notify}) {
             .map(([mode,label])=><button key={mode} type="button" aria-pressed={intakeMode===mode}
               onClick={()=>setIntakeMode(mode)}>{label}</button>)}
         </div>
-        {intakeMode==='catalogue'?<GlobalVehicleForm onSaved={row=>{saved(row);setEdit(null);openDetail(row,true);}}/>:
-          <VehicleVinQuickAdd key={intakeMode} mode={intakeMode} onBack={()=>setEdit(null)} onCreated={row=>{
+        {intakeMode==='catalogue'?<CatalogueVehicleIntake vin={intakeVin} onBack={()=>setEdit(null)} onCreated={row=>{
+          setCreated(row);saved(row);setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');
+        }}/>:<VehicleVinQuickAdd key={intakeMode} mode={intakeMode} initialVin={intakeVin} onVinChange={setIntakeVin}
+          onBack={()=>setEdit(null)} onCreated={row=>{
             setCreated(row);saved(row);setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');
           }}/>}
       </>}

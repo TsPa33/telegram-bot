@@ -383,11 +383,21 @@ def graph_plan(adapter, identity):
         status = reply["status"]
         if status in ("absent", "unsupported", "unverified", "identity_mismatch"):
             return status, None
-        if status != "available" or requested["kind"] != "passenger" or reply["source_scope"] != "passenger_prd_article_oem":
+        live = reply.get("source_scope") == "oracle_vehicle_prd_article_oem"
+        if status != "available" or (not live and
+                (requested["kind"] != "passenger" or reply["source_scope"] != "passenger_prd_article_oem")):
             raise catalogue.CatalogueUnavailable("invalid_scope")
         payload = catalogue.checked_plan(reply["plan"])
         if any(payload[field] != requested[field] for field in ("car_id", "manufacturer_id", "model_id")):
             raise catalogue.CatalogueUnavailable("invalid_identity")
+        if live:
+            if payload.get("kind") != requested["kind"] or not payload["categories"]:
+                raise catalogue.CatalogueUnavailable("invalid_identity")
+            graph = reply["article_graph"]
+            if (not isinstance(graph.get("items"), list) or not isinstance(graph.get("product_links"), dict)
+                    or digest(graph) != payload.get("article_graph_sha")):
+                raise catalogue.CatalogueUnavailable("invalid_article_graph")
+            return "partial", {**reply["plan"], "article_graph": graph, "counts": reply["counts"]}
         linked = [row for row in payload["categories"]
                   if row.get("source_fitment_linked") is True and row.get("article_count", 0) > 0
                   and row.get("kind") != "equipment"]
@@ -406,7 +416,7 @@ def graph_preview(adapter, candidate):
     return graph_plan(adapter, candidate)
 
 
-def persist_graph(db, vehicle, envelope, *, readiness):
+def persist_graph(db, vehicle, envelope, *, readiness, retain_existing_plan=False):
     from app.services.dismantling_plan_v3 import generator_basis
 
     payload = envelope["payload"]
@@ -423,4 +433,45 @@ def persist_graph(db, vehicle, envelope, *, readiness):
             confirmation="oracle_source_identity", vin_verified=False,
         ),
     }
-    return catalogue.persist(db, vehicle, envelope, allow_partial=readiness != "exact")
+    saved = catalogue.persist(db, vehicle, envelope, allow_partial=readiness != "exact",
+                              retain_existing_plan=retain_existing_plan)
+    if "article_graph" in saved:
+        initialize_graph_oem(db, vehicle, saved)
+    return saved
+
+
+def graph_status(readiness, plan):
+    if not plan:
+        return {"status": readiness, "source_snapshot_sha": None}
+    payload = plan["payload"]
+    return dict(status=readiness, source_snapshot_sha=payload["source_snapshot_sha"],
+                counts=plan.get("counts") or dict(
+                    categories=len({row["category_path"][0] for row in payload["categories"] if row.get("category_path")}),
+                    positions=len(payload["categories"])))
+
+
+def initialize_graph_oem(db, vehicle, saved):
+    from sqlalchemy import select
+    from app.api.unified_catalogue import saved_articles
+    from app.models import DismantlingItem
+    from app.services import auto_oem, plan_item_binding
+
+    payload = saved["payload"]
+    state = vehicle.dismantling_v3
+    products = {p["product_id"]: p for p in payload["categories"]}
+    refs = dict(auto_oem.references(vehicle))
+    bindings = dict(state.get(plan_item_binding.KEY, {}))
+    for row in db.scalars(select(DismantlingItem).where(
+            DismantlingItem.account_id == vehicle.account_id,
+            DismantlingItem.vehicle_id == vehicle.id,
+            DismantlingItem.source == "carpot.catalogue.v1")):
+        product = products.get(catalogue.row_product_id(row))
+        if not product or row.id in refs or not auto_oem.eligible_row(row):
+            continue
+        offers = saved_articles(product, saved, oem_manufacturer_id=payload["manufacturer_id"])
+        alternatives = auto_oem.choices(offers, row=row, product=product)
+        reference = auto_oem.ref_for(vehicle, row, payload, product, alternatives) if alternatives else None
+        if reference:
+            refs[row.id] = reference
+        plan_item_binding.record_evidence(bindings, row.id, offers, reference)
+    vehicle.dismantling_v3 = {**state, auto_oem.REF_KEY: refs, plan_item_binding.KEY: bindings}

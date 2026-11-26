@@ -86,6 +86,8 @@ def route_permissions(method,path,body):
     if path.endswith('/aleto-catalog'):return ['vehicles.view','catalog.view']
     if path.endswith('/dismantling-v3/bulk'):return ['vehicles.view','catalog.view','dismantling.manage']+(['inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else [])
     if path.endswith('/dismantling-v3/bulk/preview'):return ['vehicles.view','catalog.view']
+    if path == '/vehicles/{id}/oracle-catalogue-selection':
+        return ['vehicles.view','vehicles.edit','catalog.view','dismantling.manage']
     if path.endswith('/dismantling-v3/preview'):return ['vehicles.view','catalog.view']
     if '/dismantling-v3/' in path and path.endswith('/decisions'):
         return ['dismantling.manage','inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else ['dismantling.manage']
@@ -97,8 +99,10 @@ def route_permissions(method,path,body):
     if '/dismantling-workspace' in path:return ['vehicles.view','catalog.view','inventory.view'] if read else ['vehicles.view','dismantling.manage']
     if path.startswith('/oem/admin/'):
         return ['vehicles.view']
-    if path in ('/vehicles/vin/source-manufacturers','/vehicles/vin/source-models','/vehicles/vin/source-modifications'):
+    if path in ('/vehicles/vin/source-manufacturers','/vehicles/vin/source-manufacturer-directory','/vehicles/vin/source-models','/vehicles/vin/source-modifications'):
         return ['vehicles.view','catalog.view']
+    if path == '/vehicles/vin/source-graph':
+        return ['vehicles.view','catalog.view','dismantling.manage']
     if path in ('/vehicles/vin/catalogue-candidates','/vehicles/vin/resolution','/vehicles/vin/resolution-graph'):
         return ['vehicles.view','catalog.view']
     if path.startswith('/vehicles/vin/vincario/'):

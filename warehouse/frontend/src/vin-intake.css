@@ -92,3 +92,13 @@
   .vin-intake .vin-footer .vin-actions { justify-content: stretch; }
   .vin-intake .vin-footer .vin-actions button { flex: 1 1 135px; }
 }
+.vin-intake .vin-directory-field { min-width: 0; }
+.vin-intake .vin-directory-field > button { margin-top: 5px; }
+.vin-intake .vin-year { max-width: 12rem; margin-bottom: 12px; }
+.vin-intake .vin-ready { color: var(--color-success); font-weight: 650; }
+.vin-intake .vin-summary > strong { font-size: 1.1rem; }
+.vin-intake .vin-summary details { margin-top: 10px; }
+.vin-intake .vin-confirm { flex-direction: row; align-items: start; }
+@media (max-width: 360px) {
+  .vin-intake .vin-fields { grid-template-columns: 1fr; }
+}

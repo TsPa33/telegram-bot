@@ -68,8 +68,8 @@ class Source:
             }
             return {"identity": params, "status": "available", "source_scope": "passenger_prd_article_oem",
                     "plan": {"payload": payload, "sha256": digest(payload)}}
-        if endpoint == "manufacturers":
-            rows = self.makers[kind] if params["name"].casefold() == MAKE.casefold() else []
+        if endpoint in ("manufacturers", "manufacturer-directory"):
+            rows = self.makers[kind] if MAKE.casefold().startswith(params["name"].casefold()) else []
         elif endpoint == "models":
             rows = self.models
         elif endpoint == "modifications":
@@ -80,10 +80,10 @@ class Source:
         else:
             pytest.fail(path)
         rows = [r for r in rows if r.get("id", 1) > params.get("after", 0)]
-        page = rows[:50]
+        page = rows[:params.get("limit", 50)]
         truncated = len(rows) > len(page) or endpoint in self.truncated
         return dict(source="oracle", kind=kind, vehicle_identity_only=True, fitment_verified=False,
-                    items=page, next_after=page[-1]["id"] if endpoint in ("models", "modifications") and truncated else None,
+                    items=page, next_after=page[-1]["id"] if endpoint in ("models", "modifications", "manufacturer-directory") and truncated else None,
                     truncated=truncated, source_modification_id=params.get("car_id"))
 
 
@@ -281,7 +281,8 @@ def test_post_rechecks_trust_snapshot_and_conflicting_client_values(logged, sour
     choice = search.json()["items"][0]["choice"]
     graph = logged.get("/api/v1/vehicles/vin/resolution-graph",
                        headers={**headers, "X-Vin-Choice": choice})
-    assert graph.json() == {"status": "partial", "source_snapshot_sha": SHA}
+    assert graph.json() == {"status": "partial", "source_snapshot_sha": SHA,
+                            "counts": {"categories": 0, "positions": 1}}
     body = dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015,
                 vin_resolution={"context": token, "choice": choice, "graph_sha": SHA},
                 vin_details={"decoded": {"fuel_type": "Petrol"}})
@@ -566,3 +567,70 @@ def test_oracle_real_attribute_names_and_fuel_conflict():
     assert list(specs["drive_type"]) == ["AWD"]
     assert "engine_power_kw" in specs
     assert compare({"fuel_type": {"value": "petrol"}}, {"specs": specs}) == {"fuel_type": "mismatch"}
+
+
+
+def test_oracle_catalogue_intake_without_vin_keeps_oem_and_receives_once(logged, source):
+    from uuid import uuid4
+
+    original_get = source.get
+
+    def live_graph(path, params):
+        reply = original_get(path, params)
+        if not path.endswith("source-graph"):
+            return reply
+        payload = reply["plan"]["payload"]
+        article_graph = {"items": [[13, "Offer-1", "Supplier One", ["OE-1", "OE-2"]],
+                                   [14, "Offer-2", "Supplier Two", ["OE-1"]]],
+                         "product_links": {"41": [0, 1]}}
+        payload.update(kind=params["kind"], article_graph_sha=digest(article_graph))
+        payload["categories"][0]["article_count"] = 2
+        return {**reply, "source_scope": "oracle_vehicle_prd_article_oem", "article_graph": article_graph,
+                "counts": {"categories": 0, "positions": 2}, "plan": {"payload": payload, "sha256": digest(payload)}}
+
+    source.makers["commercial"] = [{"id": 840, "name": MAKE}]
+    source.get = live_graph
+    request = {"intake_request_key": str(uuid4()), "vin_intake_mode": "catalogue",
+               "source_identity": {**ORACLE, "kind": "commercial", "confirmed": True},
+               "catalogue_graph_sha": SHA, "manufacturer": MAKE, "model": "3 (F30)", "year": 2015}
+    response = logged.post("/api/v1/vehicles", json=request)
+    assert response.status_code == 201, response.text
+    vid = response.json()["id"]
+    assert response.json()["vin"] is None
+    replay = logged.post("/api/v1/vehicles", json=request)
+    assert replay.status_code == 201 and replay.json()["id"] == vid
+    assert logged.post("/api/v1/vehicles", json={**request, "year": 2016}).status_code == 409
+    view = logged.get(f"/api/v1/vehicles/{vid}/global-dismantling").json()
+    assert "article_graph" not in view["saved"]
+    assert view["oems"]["41"]["oem_options"] == ["OE-1", "OE-2"]
+    assert "42" not in view["oems"]
+    key = view["keys"]["41"]
+    offers = logged.get(f"/api/v1/vehicles/{vid}/unified-catalogue/articles", params={"key": key})
+    assert [(offer["article_nr"], offer["oem_numbers"]) for offer in offers.json()["articles"]] == [
+        ("Offer-1", ["OE-1", "OE-2"]), ("Offer-2", ["OE-1"])]
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Part)) == 0
+    endpoint = f"/api/v1/vehicles/{vid}/unified-catalogue/stock"
+    receipt = {"keys": [key], "confirm_physical_receipt": True}
+    assert logged.post(endpoint, json=receipt).json() == {"added": 1, "skipped": 0}
+    assert logged.post(endpoint, json=receipt).json() == {"added": 0, "skipped": 1}
+    with Session(engine()) as db:
+        part = db.scalar(select(Part).where(Part.vehicle_id == vid))
+        assert (part.quantity, part.oem_number) == (1, "OE-1")
+        assert len(part.oem_provenance["alternatives"]) == 2
+
+
+def test_manual_intake_requires_explicit_base_and_replays_without_vin(logged):
+    from uuid import uuid4
+
+    request = {"intake_request_key": str(uuid4()), "vin_intake_mode": "manual",
+               "manufacturer": MAKE, "model": "Unknown model", "year": 2015}
+    assert logged.post("/api/v1/vehicles", json=request).status_code == 422
+    accepted = {**request, "accept_base_catalogue": True}
+    response = logged.post("/api/v1/vehicles", json=accepted)
+    assert response.status_code == 201, response.text
+    vid = response.json()["id"]
+    assert logged.post("/api/v1/vehicles", json=accepted).json()["id"] == vid
+    with Session(engine()) as db:
+        assert db.get(Vehicle, vid).dismantling_v3["unified_base"] is True
+        assert db.scalar(select(func.count()).select_from(Part)) == 0

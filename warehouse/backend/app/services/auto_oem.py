@@ -694,7 +694,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         can_copy=any(r.part_id in linked and eligible_part(linked[r.part_id])
                      and transferable_reference(old_refs.get(r.id)) for r in needs)
         saved_identity=automatic_identity(v)
-        has_selection=(v.dismantling_v3 or {}).get('global_selection') or catalogue.saved_state(v)
+        saved = catalogue.saved_state(v)
+        has_selection=(v.dismantling_v3 or {}).get('global_selection') or saved
         state = v.dismantling_v3 or {}
         oracle_identity = state.get("oracle_vehicle_identity") or {}
         source_only = bool(oracle_identity or state.get("vin_intake"))
@@ -724,7 +725,8 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
     payload=None;products={};data={};exact_data={};siblings={}
     if identity and (type_rows or publish_identity or create_plan):
         try:
-            payload = oracle_plan["payload"] if oracle_plan else cache.plan(identity)
+            live_state = next((state for state in (oracle_plan, saved) if state and "article_graph" in state), None)
+            payload = (live_state or oracle_plan)["payload"] if live_state or oracle_plan else cache.plan(identity)
             products = {p["product_id"]: p for p in payload["categories"]}
             needed = {
                 pid: product for pid, product in products.items()
@@ -734,33 +736,38 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 p=matches(row,products,bindings,source_modification_id=payload['car_id'],
                     source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings)
                 if p:needed[p['product_id']]=p
-            def offers_for(product):
-                try:return cache.get_offers(payload,product)
-                except Exception:return None
-            data=cache.get_offer_batch(payload,needed)
-            remaining={pid:p for pid,p in needed.items() if pid not in data}
-            with ThreadPoolExecutor(max_workers=4) as pool:
-                data.update({pid:offers for pid,offers in zip(remaining,pool.map(offers_for,remaining.values())) if offers is not None})
-            focus={}
-            for row in type_rows:
-                product=matches(row,products,bindings,source_modification_id=payload['car_id'],
-                    source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings)
-                part=linked.get(row.part_id)
-                if product and part and part.article_number and part.article_brand:
-                    focus[product['product_id']]=(normalized(part.article_brand),normalized(part.article_number))
-            cache.enrich_oracle_offers(payload,data,priority=focus)
-            try:
-                possible={pid for pid,offers in data.items() if not choices(offers,product=products[pid])}
-                possible.update(
-                    product['product_id'] for row in type_rows
-                    if (product:=matches(row,products,bindings,source_modification_id=payload['car_id'],
-                    source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings))
-                    and product['product_id'] in data
-                    and not choices(data[product['product_id']],linked.get(row.part_id),row,product)
-                )
-                siblings=cache.sibling_candidates(payload,possible)
-            except catalogue.CatalogueUnavailable:
-                pass
+            if live_state:
+                from app.api.unified_catalogue import saved_articles
+                data = {pid: saved_articles(product, live_state, oem_manufacturer_id=payload["manufacturer_id"])
+                        for pid, product in needed.items()}
+            else:
+                def offers_for(product):
+                    try:return cache.get_offers(payload,product)
+                    except Exception:return None
+                data=cache.get_offer_batch(payload,needed)
+                remaining={pid:p for pid,p in needed.items() if pid not in data}
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    data.update({pid:offers for pid,offers in zip(remaining,pool.map(offers_for,remaining.values())) if offers is not None})
+                focus={}
+                for row in type_rows:
+                    product=matches(row,products,bindings,source_modification_id=payload['car_id'],
+                        source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings)
+                    part=linked.get(row.part_id)
+                    if product and part and part.article_number and part.article_brand:
+                        focus[product['product_id']]=(normalized(part.article_brand),normalized(part.article_number))
+                cache.enrich_oracle_offers(payload,data,priority=focus)
+                try:
+                    possible={pid for pid,offers in data.items() if not choices(offers,product=products[pid])}
+                    possible.update(
+                        product['product_id'] for row in type_rows
+                        if (product:=matches(row,products,bindings,source_modification_id=payload['car_id'],
+                        source_snapshot_sha=payload['source_snapshot_sha'],item_bindings=item_bindings))
+                        and product['product_id'] in data
+                        and not choices(data[product['product_id']],linked.get(row.part_id),row,product)
+                    )
+                    siblings=cache.sibling_candidates(payload,possible)
+                except catalogue.CatalogueUnavailable:
+                    pass
         except Exception:
             # Exact-article lookup remains independent of snapshot availability.
             log.warning('OEM snapshot lookup deferred for donor %s',vehicle_id)
@@ -810,7 +817,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 projected = len(pilot_payload["categories"]) != len(payload["categories"])
                 if projected:
                     pilot_payload = {**pilot_payload, "coverage": "partial", "coverage_verified": False}
-                vin_resolution.persist_graph(db, v, {"payload": pilot_payload, "sha256": digest(pilot_payload)},
+                vin_resolution.persist_graph(db, v, {**oracle_plan, "payload": pilot_payload, "sha256": digest(pilot_payload)},
                                              readiness="partial" if projected else oracle_readiness)
             else:
                 catalogue.persist(db, v, {'payload':pilot_payload, 'sha256':digest(pilot_payload)}, allow_partial=True)
