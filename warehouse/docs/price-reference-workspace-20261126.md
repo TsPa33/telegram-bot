@@ -12,3 +12,7 @@ Base: 00830087a6b6406d9106c402951d7af0a2d80c21. Separate branch, no changes to a
 - Backend regression covers reference revision, actual idempotent price write, stale-token rejection and unchanged stock fields; cursor selection tested.
 - Existing sales-browser full release flow now includes real isolated API writes, synthetic anonymous reference observations, lost-response replay of one selected row, no unintended writes to other rows, explicit bulk apply and preservation of existing price at 1440 and 390 px.
 - Current full integration outcome pending. This is a follow-on PR #587; PR #586 remains untouched. No real stock writes.
+
+## Individual clarification UX
+- Row/search action opens anonymous price dialog. Quick preview uses inline expandable panel, no additional modal. Groups separate conditions/currency; average/min/max for 3+ observations; selectable individual offers, including 1–2 observations clearly labeled as individual not average. Default only unique matching condition/currency cohort, exact preferred. User can adjust amount before explicit PATCH. Existing optimistic token/idempotency and recovery preserved. Manual editing remains possible without reference. Truncated data never offered for reference-based apply.
+- Additional unit and browser regression tests cover individual selection, editable amount, unchanged price on lookup, explicit replacement and no changes to other stock/price rows. Pending CI. No live activation or Railway deployment.

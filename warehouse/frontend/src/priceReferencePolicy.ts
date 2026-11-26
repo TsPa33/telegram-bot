@@ -29,3 +29,24 @@ export function summary(rows:Row[]){
  const count=(...states:string[])=>rows.filter(r=>states.includes(r.state)).length;
  return {total:rows.length,checked:count('ready','attention','skipped','applied','error'),ready:count('ready'),applied:count('applied'),attention:count('attention','error'),skipped:count('skipped'),pending:count('pending'),uncertain:count('uncertain')};
 }
+
+export function singleOptions(groups:Row[],truncated=false){
+ if(truncated)return [];
+ return groups.flatMap((g,index)=>{
+  if(!['UAH','USD'].includes(g.currency)||!['exact','similar'].includes(g.match))return [];
+  const choices:{key:string;amount:string;label:string;group:number;currency:string}[]=[];
+  const add=(key:string,value:unknown,label:string)=>{
+   const n=cents(value);if(n!==null&&n>0n)choices.push({key:index+':'+key,amount:formatCents(n),label,group:index,currency:g.currency});
+  };
+  if(g.offer_count>=3&&cents(g.average)!==null){
+   add('average',g.average,'Середня');add('minimum',g.minimum,'Мінімальна');add('maximum',g.maximum,'Максимальна');
+  }
+  (g.examples||[]).forEach((e:Row,i:number)=>{if(e.currency===g.currency)add('offer-'+i,e.amount,'Пропозиція '+(i+1));});
+  return choices;
+ });
+}
+export function defaultSingleOption(groups:Row[],part:Row,options:ReturnType<typeof singleOptions>){
+ const matches=groups.map((g,i)=>({g,i})).filter(({g,i})=>g.currency===(part.currency||'UAH')&&g.condition===part.condition&&options.some(o=>o.group===i&&o.key===i+':average'));
+ const exact=matches.filter(({g})=>g.match==='exact');
+ return exact.length===1?exact[0].i+':average':exact.length===0&&matches.length===1?matches[0].i+':average':'';
+}

@@ -104,7 +104,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    const id=route.request().url().split('/').at(-2);
    const ctx=await get('/parts/'+id+'/price-context');
    lookups++;
-   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({price_token:ctx.price_token,price_mode:'stored',live_enabled:false,references:[{currency:'UAH',condition:'used',match:'exact',offer_count:3,minimum:'1000.00',maximum:'2000.00',average:'1500.00',observed_at:stamp,examples:[]}],truncated:false})});
+   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({price_token:ctx.price_token,price_mode:'stored',live_enabled:false,references:[{currency:'UAH',condition:'used',match:'exact',offer_count:3,minimum:'1000.00',maximum:'2000.00',average:'1500.00',observed_at:stamp,examples:[1000,1500,2000].map(amount=>({amount:String(amount)+'.00',currency:'UAH',observed_at:stamp}))}],truncated:false})});
  });
  await toolbar.getByRole('button',{name:'Отримати орієнтири',exact:true}).click();
  await expect(toolbar.getByText('Готово: 2',{exact:true})).toBeVisible();
@@ -140,6 +140,20 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal((await get('/parts/'+second.id)).selling_price,'1500.00');
  assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
  for(const part of [first,second,existing])assert.equal((await get('/parts/'+part.id)).quantity,1);
+ // Single-part workflow is independent of the bulk plan. No mutation on lookup.
+ await row('Масова ціна C').getByRole('button',{name:'Дізнатися ціни Масова ціна C',exact:true}).click();
+ const reference=page.getByRole('dialog',{name:'Орієнтир цін · Масова ціна C',exact:true});
+ await expect(reference.getByLabel('Вибрати ціновий орієнтир')).toHaveValue('0:average');
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
+ await reference.getByLabel('Вибрати ціновий орієнтир').selectOption('0:offer-0');
+ await expect(reference.getByLabel('Встановити власну ціну')).toHaveValue('1000.00');
+ await reference.getByLabel('Встановити власну ціну').fill('1100');
+ await reference.getByRole('button',{name:/^Замінити на/}).click();
+ await expect(reference.getByText('Ціну встановлено',{exact:true})).toBeVisible();
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'1100.00');
+ assert.equal((await get('/parts/'+first.id)).selling_price,'1500.00');
+ assert.equal((await get('/parts/'+existing.id)).quantity,1);
+ await reference.getByRole('button',{name:'Закрити'}).click();
  await page.unroute(pattern);
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  await toolbar.getByRole('button',{name:'Нова перевірка',exact:true}).click();

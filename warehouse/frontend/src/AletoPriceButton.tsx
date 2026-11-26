@@ -5,7 +5,7 @@ import {TeamIdentity,useCan} from './permissions';
 import {Modal} from './components';
 import './aleto-price-reference.css';
 
-export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicle?:Row|null;onSaved?:(row:Row)=>void}){
+export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{part:Row;vehicle?:Row|null;onSaved?:(row:Row)=>void;inline?:boolean}){
  const can=useCan(),identity=useContext(TeamIdentity);
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[data,setData]=useState<Row|null>(null);
  const sequence=useRef(0),guard=useRef(false);
@@ -21,14 +21,11 @@ export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicl
   catch(e){if(sequence.current===n)setError(e instanceof Error?e.message:'Не вдалося перевірити ціни');}
   finally{if(sequence.current===n){guard.current=false;setBusy(false);}}
  }
- if(!allowed||!part.id)return null;
+ if(!allowed||!part.id||part.catalogue_only)return null;
  const references:Row[]=data?.references||[];
  const historical:Row[]=data?.historical||[];
  const date=(value:string)=>new Date(value).toLocaleDateString('uk-UA',{timeZone:'Europe/Kyiv'});
- return <div className="aleto-reference-action" onClick={e=>e.stopPropagation()}>
-  <button type="button" className="secondary aleto-reference-button" aria-label={'Дізнатися ціни '+part.name} disabled={busy} onClick={lookup}>{busy?'Пошук цін…':'Дізнатися ціни'}</button>
-  {open&&<Modal title={'Орієнтир цін · '+part.name} onClose={close}>
-   <div className="aleto-reference-panel">
+ const panel=<div className="aleto-reference-panel">
     {vehicle&&<p>{[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · ')}</p>}
     <p>{data?.price_mode==='live'?'Оновлені ринкові ціни.':data?.price_mode==='cached'?'Ринкові ціни з останньої перевірки.':'Орієнтовні ціни за збереженими даними. Наявність не перевірено.'} Сам пошук не змінює власну ціну.</p>
     {busy&&<p role="status">Шукаємо схожі пропозиції…</p>}
@@ -37,6 +34,7 @@ export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicl
      {data.truncated&&<p>Вибірку обмежено. Середня ціна не обчислюється.</p>}
      {!references.length&&!data.truncated&&<p>Немає достатніх актуальних імпортованих даних для орієнтира.</p>}
      {references.map((r,index)=><section className="aleto-reference-group" key={index}>
+      <strong>Група {index+1} · {labels[r.condition]||'Стан невідомий'}</strong>
       <small>{r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
       {r.average!=null?<><small>Середня ціна</small><strong className="aleto-reference-average">{money(r.average,r.currency)}</strong></>:<strong>Мало пропозицій для середньої ціни</strong>}
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
@@ -45,8 +43,11 @@ export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicl
       </section>)}
      {historical.length>0&&<details><summary>Історичні пропозиції ({historical.length})</summary><p>Старі спостереження не враховано в середній ціні.</p>{historical.map((e,index)=><p key={index}>{money(e.amount,e.currency)} · {date(e.observed_at)}</p>)}</details>}
     </div>}
-    {can('parts.change_price')&&!part.archived&&<ReferenceQuickApply part={part} groups={references} token={data?.price_token} onSaved={onSaved}/>}
-   </div>
-  </Modal>}
+    {can('parts.change_price')&&!part.archived&&<ReferenceQuickApply key={scope} part={part} groups={references} token={data?.price_token} truncated={data?.truncated} onSaved={onSaved}/>}
+   </div>;
+ return <div className={'aleto-reference-action'+(inline?' reference-inline':'')} onClick={e=>e.stopPropagation()}>
+  {inline&&<strong>Уточнення цін</strong>}
+  <button type="button" className="secondary aleto-reference-button" aria-label={'Дізнатися ціни '+part.name} disabled={busy} onClick={lookup}>{busy?'Пошук цін…':open&&inline?'Оновити орієнтири':'Дізнатися ціни'}</button>
+  {open&&(inline?<><button type="button" className="secondary" onClick={close}>Згорнути орієнтири</button>{panel}</>:<Modal title={'Орієнтир цін · '+part.name} onClose={close}>{panel}</Modal>)}
  </div>;
 }
