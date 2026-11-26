@@ -41,7 +41,7 @@ def test_cc0_alias_and_deed_url():
 
 
 def test_mask_confident_foreground_and_background():
-    import numpy as np
+    np=pytest.importorskip("numpy")  # isolated photo pilot installs numpy explicitly
     mask=c.refine_mask(np.array([[0,.1,.4,.8,1.0]],dtype=np.float32))
     assert mask[0,0]==mask[0,1]==0
     assert 0<mask[0,2]<255

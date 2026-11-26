@@ -11,7 +11,7 @@ from PIL import Image
 from app.services import commons_model_photos as c, model_reference_photos as m
 
 MODELS=[
-    ("alfa-147","File:Alfa Romeo 147 front.JPG",m.model_identity("Alfa Romeo","147","",2008)),
+    ("alfa-147","File:Alfa Romeo 147 front 20071007.jpg",m.model_identity("Alfa Romeo","147","",2008)),
     ("audi-q5","File:Audi Q5 8R.jpg",m.model_identity("Audi","Q5","",None)),
     ("daf-xf","File:DAF XF front.jpg",m.model_identity("DAF","XF 105","",2007)),
     ("volvo-xc90","File:Volvo XC90 - 2016.jpg",m.model_identity("Volvo","XC90","",2016)),
