@@ -15,6 +15,7 @@ import {useSearchParams} from 'react-router-dom';
 import StockHistory from './StockHistory';
 import {NotesDialog,InspectionDialog,WorkshopGate} from './WorkshopDialogs';
 import {useMarketPrices,SellerPriceEditor} from './MarketPricing';
+import AletoPriceButton from './AletoPriceButton';
 import BulkPricing from './BulkPricing';
 import './workshop.css';
 import './smart-search.css';
@@ -206,6 +207,7 @@ function MobileSearchResult({part,vehicle,revision,onPreview,onOrder,actions}:{p
   <div className="mobile-result-identity"><SearchPartPhoto id={part.id} name={part.name} revision={revision}/><div><button type="button" className="mobile-result-name" onClick={onPreview}>{part.name}<ChevronRight size={16}/></button><small>{vehicle?[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · '):'Автомобіль не вказано'}</small>
   {(part.oem_number||part.article_number)&&<small>{part.oem_number?'OEM: '+part.oem_number:''}{part.oem_number&&part.article_number?' · ':''}{part.article_number?'Арт.: '+part.article_number:''}</small>}
   <span className={sellable?'mobile-result-available':'mobile-result-unavailable'}>{sellable?'В наявності · '+available+' шт.':part.catalogue_only?'У плані розбору':part.assortment_enabled===false?'Виключена з продажу':'Немає вільного залишку'}</span></div></div>
+  <AletoPriceButton part={part} vehicle={vehicle}/>
   <div className="mobile-result-bottom"><div><small>Ціна</small><strong>{part.selling_price!=null?money(part.selling_price,part.currency||'UAH'):'Не вказано'}</strong></div>{can('orders.create')&&<button type="button" className="primary mobile-result-order" disabled={!sellable} onClick={onOrder}><ShoppingCart size={17}/> Оформити</button>}{actions}</div>
 
  </article>;
