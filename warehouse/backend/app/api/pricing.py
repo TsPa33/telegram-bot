@@ -81,3 +81,10 @@ def market_refresh(id:str,data:Input,db:DB,who:Auth):
     except DBAPIError:
         db.rollback()
         raise HTTPException(503,'Локальна перевірка каталогу недоступна або перевищила час очікування. Спробуйте пізніше.') from None
+
+
+@router.post('/parts/{id}/market-reference')
+def market_reference(id:str,data:Input,db:DB,who:Auth):
+    """Customer projection: no provider names, links, articles or raw descriptions."""
+    from app.services.market_reference_public import public_reference
+    return public_reference(market_refresh(id,data,db,who))

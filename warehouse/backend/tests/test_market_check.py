@@ -98,3 +98,22 @@ def test_aleto_average_for_similar_matches_is_read_only(platform,vehicle):
     assert ref['offer_count']==3 and ref['average']=='1500.00'
     assert len(ref['examples'])==3
     with Session(engine()) as db:assert all_tables(db)==before
+
+
+def test_public_market_reference_has_no_provider_identifiers(platform,vehicle):
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    with Session(engine()) as db:
+        before=all_tables(db)
+    result=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    assert result.status_code==200,result.text
+    data=result.json()
+    ref=next(r for r in data['references'] if r['currency']=='UAH')
+    assert ref['average']=='1500.00'
+    assert not data['fresh_data_fetched']
+    assert all(set(e)=={'amount','currency','observed_at'} for e in ref['examples'])
+    assert 'aleto' not in result.text.lower() and 'https://' not in result.text
+    assert 'article' not in result.text and 'source' not in result.text
+    with Session(engine()) as db:assert all_tables(db)==before
+    with TestClient(app) as other:
+        signup(other,'r5-public-other@example.test')
+        assert other.post('/api/v1/parts/'+p+'/market-reference',json={}).status_code==404

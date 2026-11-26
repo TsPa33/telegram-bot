@@ -55,7 +55,7 @@ def route_permissions(method,path,body):
     if path in ('/parts','/inventory') and read:return ['inventory.view']
     if path=='/parts/bulk-actions':return ['inventory.transfer' if body.get('action')=='transfer' else 'inventory.archive']
     if path=='/parts' and method=='POST':return ['inventory.create']
-    if path.endswith('/market-refresh'):return ['inventory.view','catalog.view','market.check']
+    if path.endswith(('/market-refresh','/market-reference')):return ['inventory.view','catalog.view','market.check']
     if path.endswith('/price-guidance') or path=='/pricing/guidance':return ['inventory.view','catalog.view']
     if path.startswith('/pricing/'):return ['inventory.view','catalog.view','parts.change_price']
     if path.endswith('/parts-valuation'):return ['vehicles.view','inventory.view','catalog.view','analytics.view','analytics.financial']
