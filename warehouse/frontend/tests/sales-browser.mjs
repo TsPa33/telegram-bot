@@ -85,5 +85,63 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.goto(origin+`/inventory?vehicle_id=${volvo.id}`);await page.getByRole('checkbox',{name:'Тільки в наявності',exact:true}).uncheck();
  const receiptKeys=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/parts/'+hood.id+'/operations'))receiptKeys.push(r.postDataJSON().request_key);});
  for(const quantity of [1,2]){modal=await action('Додати кількість',true);await modal.getByLabel('Кількість',{exact:true}).fill('1');await modal.getByLabel('Примітка (необов’язково)',{exact:true}).fill('Нове надходження');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();assert.equal((await get('/parts/'+hood.id)).quantity,quantity);}
- assert.equal(new Set(receiptKeys).size,2);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:`test-results/sales-${viewport.width}.png`,fullPage:true});assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);await context.close();console.log(`PASS seller Unicode/OEM/article, prices, card/list, lost-response checkout and last-unit replay, writeoff/transfer/audit, fresh receipt keys ${viewport.width}`);
+ assert.equal(new Set(receiptKeys).size,2);
+ // Local-only reference fixture: all seller-price PATCHes use the real
+ // authenticated API, row revision, idempotency key and disposable DB.
+ const first=await stock(volvo,'Масова ціна A',1,{condition:'used'});
+ const second=await stock(volvo,'Масова ціна B',1,{condition:'used'});
+ const existing=await stock(volvo,'Масова ціна C',1,{condition:'used',selling_price:'123.45'});
+ await page.goto(origin+'/inventory?vehicle_id='+volvo.id);
+ const invSearch=page.getByRole('searchbox',{name:'Пошук запчастин',exact:true});
+ await invSearch.fill('Масова ціна');
+ await expect(row('Масова ціна A')).toBeVisible();
+ const toolbar=page.getByRole('region',{name:'Масове уточнення цін',exact:true});
+ await toolbar.getByRole('button',{name:'Налаштувати',exact:true}).click();
+ await toolbar.getByRole('combobox',{name:'Обсяг уточнення цін'}).selectOption('filtered');
+ const pattern='**/market-reference',stamp=new Date().toISOString();
+ let lookups=0;
+ await page.route(pattern,async route=>{
+   const id=route.request().url().split('/').at(-2);
+   const ctx=await get('/parts/'+id+'/price-context');
+   lookups++;
+   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({price_token:ctx.price_token,price_mode:'stored',live_enabled:false,references:[{currency:'UAH',condition:'used',match:'exact',offer_count:3,minimum:'1000.00',maximum:'2000.00',average:'1500.00',observed_at:stamp,examples:[]}],truncated:false})});
+ });
+ await toolbar.getByRole('button',{name:'Отримати орієнтири',exact:true}).click();
+ await expect(toolbar.getByText('Готово: 2',{exact:true})).toBeVisible();
+ await expect(toolbar.getByText('Пропущено: 1',{exact:true})).toBeVisible();
+ assert.equal(lookups,2);
+ assert.equal((await get('/parts/'+first.id)).selling_price,null);
+ assert.equal((await get('/parts/'+second.id)).selling_price,null);
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
+ await expect(toolbar.getByRole('button',{name:'Додати ціни масово',exact:true})).toBeDisabled();
+ // Single-row apply loses response after commit. Reload and resume must
+ // replay that exact row, never silently apply the second pending row.
+ const pricePattern='**/parts/'+first.id+'/price',keys=[];
+ await page.route(pricePattern,async route=>{
+  keys.push(route.request().postDataJSON().request_key);
+  if(keys.length===1){const r=await route.fetch();assert.equal(r.status(),200,await r.text());await route.abort('failed');}
+  else await route.continue();
+ });
+ await row('Масова ціна A').getByRole('button',{name:'Додати ціну',exact:true}).click();
+ await expect(toolbar.getByText('Не підтверджено: 1',{exact:true})).toBeVisible();
+ await expect(toolbar.getByRole('button',{name:'Продовжити',exact:true})).toBeEnabled();
+ await page.reload();
+ await expect(toolbar.getByRole('button',{name:'Продовжити',exact:true})).toBeVisible();
+ await toolbar.getByRole('button',{name:'Продовжити',exact:true}).click();
+ await expect(toolbar.getByText('Встановлено: 1',{exact:true})).toBeVisible();
+ await expect(toolbar.getByText('Готово: 1',{exact:true})).toBeVisible();
+ assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);
+ assert.equal((await get('/parts/'+first.id)).selling_price,'1500.00');
+ assert.equal((await get('/parts/'+second.id)).selling_price,null);
+ await page.unroute(pricePattern);
+ await toolbar.getByRole('checkbox',{name:'Підтверджую встановлення 1 цін'}).check();
+ await toolbar.getByRole('button',{name:'Додати ціни масово',exact:true}).click();
+ await expect(toolbar.getByText('Встановлено: 2',{exact:true})).toBeVisible();
+ assert.equal((await get('/parts/'+second.id)).selling_price,'1500.00');
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
+ for(const part of [first,second,existing])assert.equal((await get('/parts/'+part.id)).quantity,1);
+ await page.unroute(pattern);
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await toolbar.getByRole('button',{name:'Нова перевірка',exact:true}).click();
+ console.log('PASS anonymous bulk references, preserve existing, single replay, explicit apply and stock invariants '+viewport.width);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:`test-results/sales-${viewport.width}.png`,fullPage:true});assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);await context.close();console.log(`PASS seller Unicode/OEM/article, prices, card/list, lost-response checkout and last-unit replay, writeoff/transfer/audit, fresh receipt keys ${viewport.width}`);
 }}finally{await browser.close();}

@@ -6,3 +6,9 @@ Base: 00830087a6b6406d9106c402951d7af0a2d80c21. Separate branch, no changes to a
 - Progress counts actual completed items; pause stops after in-flight request. Session storage persists scope, preview token, pending exact request and results. Reload requires explicit resume. No background work, no durable server queue, no atomic cross-part transaction. 5000 upper bound, sessionStorage capacity may limit job; storage failure pauses before write.
 - Price updates use existing audit/idempotency path; no stock mutation. Source names and links absent from new UI.
 - Live access remains OFF until documented approval; cannot claim real provider coverage. No new deployment/production changes. CI acceptance pending.
+
+## Verification scope
+- Unit policy tests are wired into npm prebuild (decimal arithmetic, comparable groups, opt-in similar, progress, single-row retry isolation).
+- Backend regression covers reference revision, actual idempotent price write, stale-token rejection and unchanged stock fields; cursor selection tested.
+- Existing sales-browser full release flow now includes real isolated API writes, synthetic anonymous reference observations, lost-response replay of one selected row, no unintended writes to other rows, explicit bulk apply and preservation of existing price at 1440 and 390 px.
+- Current full integration outcome pending. This is a follow-on PR #587; PR #586 remains untouched. No real stock writes.

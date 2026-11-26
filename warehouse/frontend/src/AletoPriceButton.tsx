@@ -30,7 +30,7 @@ export default function AletoPriceButton({part,vehicle,onSaved}:{part:Row;vehicl
   {open&&<Modal title={'Орієнтир цін · '+part.name} onClose={close}>
    <div className="aleto-reference-panel">
     {vehicle&&<p>{[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · ')}</p>}
-    <p>{data?.price_mode==='live'?'Оновлені ринкові ціни.':data?.price_mode==='cached'?'Ринкові ціни з останньої перевірки.':'Орієнтовні ціни за збереженими даними. Наявність не перевірено.'} Власна ціна не змінюється.</p>
+    <p>{data?.price_mode==='live'?'Оновлені ринкові ціни.':data?.price_mode==='cached'?'Ринкові ціни з останньої перевірки.':'Орієнтовні ціни за збереженими даними. Наявність не перевірено.'} Сам пошук не змінює власну ціну.</p>
     {busy&&<p role="status">Шукаємо схожі пропозиції…</p>}
     {error&&<p role="alert">{error} <button type="button" onClick={lookup}>Повторити</button></p>}
     {data&&<div aria-live="polite">
