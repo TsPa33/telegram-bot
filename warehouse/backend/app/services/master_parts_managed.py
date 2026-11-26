@@ -76,6 +76,19 @@ def candidate_rows(report, *, basis):
     return result
 
 
+
+def profile_conflicts(profile, values):
+    from app.services.vin_resolution_policy import normalized
+    actual = {"body": normalized("body_class", values.get("body_type")),
+              "fuel": normalized("fuel_type", values.get("fuel_type")),
+              "transmission": normalized("transmission", values.get("transmission")),
+              "powertrain": {"petrol":"ICE","diesel":"ICE","HEV":"HEV","PHEV":"PHEV","BEV":"BEV"}.get(values.get("powertrain"))}
+    if actual["body"] == "hatchback":
+        actual["body"] = "hatch"
+    return any(value is not None and profile.get(field) is not None
+               and value != profile[field] for field, value in actual.items())
+
+
 def managed_rows(db, vehicle, config):
     if not enabled() or not (vehicle.dismantling_v3 or {}).get("unified_catalogue"):
         return None
@@ -90,6 +103,11 @@ def managed_rows(db, vehicle, config):
         report = preview_for_vehicle(db, vehicle)
         if report.get("status") != "preview":
             raise HTTPException(409, "Потрібна звірка джерельного каталогу перед доповненням")
+        if profile_conflicts(report["profile"]["profile"], config["values"]):
+            raise HTTPException(409, "Характеристики суперечать джерельному каталогу")
+        reference = report.get("reference_projection")
+        if reference and profile_conflicts(reference["profile"], config["values"]):
+            report = {**report, "reference_projection": None}
         return candidate_rows(report, basis=generator_basis(vehicle))
     except (ValueError, KeyError, TypeError):
         raise HTTPException(503, "Не вдалося перевірити конструктивний каталог; план збережено") from None
@@ -131,6 +149,7 @@ def auto_supplement_new_donor(db, vehicle, who):
     from app.schemas.dismantling_v3 import PlanPreview, PlanSave
     from app.services import dismantling_plan_v3 as plan
     from app.services.catalogue_import import LOCK
+    from sqlalchemy.exc import SQLAlchemyError
     import logging
 
     outcome = {"status": "deferred", "created": 0}
@@ -160,5 +179,7 @@ def auto_supplement_new_donor(db, vehicle, who):
         if exc.status_code not in (409, 503):
             raise
         logging.getLogger(__name__).info("Master intake deferred: %s", exc.status_code)
+    except SQLAlchemyError:
+        logging.getLogger(__name__).exception("Master intake savepoint rolled back")
     vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), "master_intake": outcome}
     return outcome
