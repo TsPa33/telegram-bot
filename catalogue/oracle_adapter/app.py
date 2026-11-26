@@ -8,7 +8,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 
-app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.1", docs_url=None, redoc_url=None)
+app = FastAPI(title="CarPot Oracle Catalogue Adapter", version="0.4.2", docs_url=None, redoc_url=None)
 
 logger = logging.getLogger("carpot.oracle_adapter")
 ROW_LIMIT = 50
@@ -267,17 +267,16 @@ def audit_identity(conn, car_id, kind):
 def audit_source(kind):
     if kind == "passenger":
         return (*pds_source(kind), 2)
-    # The Oracle schema's commercial linkage type must be confirmed on the
-    # source before it can be enabled. Passenger linkage type is reserved.
+    # TecDoc table 400 / key table 271: type 16 targets the commercial
+    # vehicle itself. Manufacturer-assigned and engine IDs have separate types.
     value = os.getenv("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
-    if not value.isascii() or not value.isdecimal() or len(value) > 5:
+    if not value:
         logger.warning("oracle_commercial_linkage_missing")
         raise HTTPException(503, "Commercial linkage type not configured")
-    linkage_type = int(value)
-    if not 1 <= linkage_type <= 65535 or linkage_type == 2:
+    if value != "16":
         logger.warning("oracle_commercial_linkage_invalid")
         raise HTTPException(503, "Invalid commercial linkage type")
-    return (*pds_source(kind), linkage_type)
+    return (*pds_source(kind), 16)
 
 
 AUDIT_CTES = """

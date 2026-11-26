@@ -3,7 +3,6 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 from time import monotonic
 from urllib.error import HTTPError, URLError
@@ -13,6 +12,9 @@ from urllib.request import ProxyHandler, Request, build_opener
 import pymysql
 
 HTTP = build_opener(ProxyHandler({}))
+# TecDoc table 400, key table 271. Types 7 and 14 have their own ID domains.
+COMMERCIAL_LINKAGE_TYPE = 16
+WITNESS_TIMEOUT = 3024
 
 CONTROL = (
     ("passenger", 120, 13084, 107555),
@@ -60,20 +62,23 @@ def read_env(pid):
                 if field.startswith(b"ORACLE_") and b"=" in field)
 
 
-def query(conn, label, sql, args=()):
+def query(conn, label, sql, args=(), *, skip_timeout=False):
     started = monotonic()
     try:
         with conn.cursor() as cursor:
             cursor.execute(sql, args)
             rows = cursor.fetchall()
     except pymysql.MySQLError as error:
-        report(label, ok=False, mysql_errno=error.args[0], elapsed_ms=round((monotonic() - started) * 1000))
-        return None
+        code = error.args[0] if error.args else None
+        timed_out = skip_timeout and code == WITNESS_TIMEOUT
+        report(label, ok=False, mysql_errno=code, skipped_timeout=timed_out,
+               elapsed_ms=round((monotonic() - started) * 1000))
+        return [] if timed_out else None
     report(label, ok=True, rows=rows, elapsed_ms=round((monotonic() - started) * 1000))
     return rows
 
 
-def check_db(env):
+def check_db(env, *, linkage_only=False, witness_ids=()):
     if (env.get("ORACLE_MYSQL_DATABASE") != "td1q2018"
             or env.get("ORACLE_MYSQL_HOST") not in ("127.0.0.1", "localhost")
             or env.get("ORACLE_MYSQL_USER", "").casefold() in ("", "root", "admin")):
@@ -85,20 +90,25 @@ def check_db(env):
                              database=env["ORACLE_MYSQL_DATABASE"], charset="utf8mb4",
                              cursorclass=pymysql.cursors.DictCursor, autocommit=False,
                              connect_timeout=3, read_timeout=5, write_timeout=3) as conn:
-            return diagnose(conn, env)
+            with conn.cursor() as cursor:
+                cursor.execute("SET SESSION TRANSACTION READ ONLY")
+                cursor.execute("SET SESSION max_execution_time=3000")
+            mode = query(conn, "session", "SELECT VERSION() AS mysql_version, @@transaction_read_only AS ro")
+            if not mode or int(mode[0]["ro"]) != 1:
+                return False
+            if linkage_only:
+                linkage = report_commercial_linkage(conn, env, witness_ids)
+                ready = linkage is not None
+                report("diagnostic_result", ready_to_install=ready, verified_commercial_linkage_type=linkage)
+                return ready
+            return diagnose(conn, env, witness_ids)
     except (KeyError, ValueError, pymysql.MySQLError) as error:
         code = error.args[0] if error.args and type(error.args[0]) is int else None
         report("db_connect_or_session", ok=False, error=type(error).__name__, mysql_errno=code)
         return False
 
 
-def diagnose(conn, env):
-    with conn.cursor() as cursor:
-        cursor.execute("SET SESSION TRANSACTION READ ONLY")
-        cursor.execute("SET SESSION max_execution_time=3000")
-    mode = query(conn, "session", "SELECT VERSION() AS mysql_version, @@transaction_read_only AS ro")
-    if not mode or int(mode[0]["ro"]) != 1:
-        return False
+def diagnose(conn, env, witness_ids=()):
     ready = True
     for table, columns in COLUMNS.items():
         selected = ", ".join(f"`{column}`" for column in columns)
@@ -135,12 +145,8 @@ def diagnose(conn, env):
         """, (car, model, maker))
         ready &= bool(rows and len(rows) == 1)
 
-    agreed, votes, ambiguous = commercial_linkage(conn)
-    configured = env.get("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
-    report("commercial_linkage", verified_value=agreed,
-           configured=int(configured) if configured.isascii() and configured.isdecimal() and len(configured) <= 5 else None,
-           matching_witnesses=len(votes), witness_ids=[vote[1] for vote in votes], ambiguous=ambiguous)
-    ready &= agreed is not None and 1 <= agreed <= 65535
+    agreed = report_commercial_linkage(conn, env, witness_ids)
+    ready &= agreed is not None
     for kind, _, _, car in CONTROL:
         linkage = 2 if kind == "passenger" else agreed
         if linkage is None:
@@ -162,78 +168,95 @@ def diagnose(conn, env):
     return ready
 
 
-def commercial_linkage(conn):
-    """Find agreeing PDS/article witnesses from separate commercial models."""
+def report_commercial_linkage(conn, env, witness_ids):
+    witnesses = commercial_linkage(conn, witness_ids)
+    verified = COMMERCIAL_LINKAGE_TYPE if witnesses is not None and len(witnesses) >= 2 else None
+    configured = env.get("ORACLE_COMMERCIAL_LINKAGE_TYPE", "")
+    report("commercial_linkage", verified_value=verified,
+           configured=int(configured) if configured.isascii() and configured.isdecimal() and len(configured) <= 5 else None,
+           matching_witnesses=len(witnesses or ()), witnesses=witnesses or [],
+           method="TecDoc table 400 / key table 271 and live commercial PDS")
+    return verified
+
+
+def commercial_linkage(conn, witness_ids=()):
+    """Require exact CV-type/PDS matches for at least two distinct models."""
+    control = next((model, car) for kind, _, model, car in CONTROL if kind == "commercial")
+    requested = tuple(dict.fromkeys((*witness_ids, control[1])))
+    placeholders = ",".join(["%s"] * len(requested))
+    rows = query(conn, "commercial_witness_identities", f"""
+        SELECT DISTINCT c.id AS car_id, c.modelid AS model_id
+        FROM commercial_vehicles AS c FORCE INDEX (PRIMARY)
+        JOIN models AS m ON m.id=c.modelid AND m.iscommercialvehicle='True'
+        WHERE c.id IN ({placeholders})
+    """, requested)
+    if rows is None:
+        return None
+
+    models_by_car = {row["car_id"]: row["model_id"] for row in rows}
+    checked = set()
+    witnesses = []
+    confirmed_models = set()
+    started = monotonic()
+
+    def check_car(model_id, car_id):
+        if model_id in confirmed_models or car_id in checked or monotonic() - started > 45:
+            return True
+        checked.add(car_id)
+        # Match one exact supplier/product pair within the documented target
+        # domain. DISTINCT materializes the bounded PDS pairs for this CV ID.
+        result = query(conn, f"commercial_pds_linkage_{car_id}", """
+            SELECT a.productid AS product_id, a.supplierid AS supplier_id
+            FROM article_links AS a FORCE INDEX (linkageid)
+            STRAIGHT_JOIN (
+                SELECT DISTINCT productid, supplierid
+                FROM commercial_vehicle_pds FORCE INDEX (PRIMARY)
+                WHERE commertialvehicleid=%s
+            ) AS p ON p.productid=a.productid AND p.supplierid=a.supplierid
+            WHERE a.linkageid=%s AND a.linkagetypeid=%s
+              AND a.productid>0 AND a.supplierid>0 AND a.datasupplierarticlenumber<>''
+            LIMIT 1
+        """, (car_id, car_id, COMMERCIAL_LINKAGE_TYPE), skip_timeout=True)
+        if result is None:
+            return False
+        if result:
+            witnesses.append(dict(model_id=model_id, car_id=car_id, linkage_type=COMMERCIAL_LINKAGE_TYPE,
+                                  **result[0]))
+            confirmed_models.add(model_id)
+        return True
+
+    for car_id in requested:
+        if car_id in models_by_car and not check_car(models_by_car[car_id], car_id):
+            return None
+        if len(witnesses) >= 2:
+            return witnesses
 
     references = query(conn, "commercial_witness_models", """
-        SELECT manufacturerid AS manufacturer_id, MIN(id) AS first_model, MAX(id) AS last_model
+        SELECT MIN(id) AS first_model, MAX(id) AS last_model
         FROM models WHERE iscommercialvehicle='True' AND manufacturerid>0
         GROUP BY manufacturerid ORDER BY manufacturerid LIMIT 20
     """)
     if references is None:
-        return None, [], True
-    control = next(model for kind, _, model, _ in CONTROL if kind == "commercial")
-    # Interleave early and late models across makes to include variants with
-    # different source coverage. The control model is diagnostic only.
-    models = list(dict.fromkeys((control, *(row["last_model"] for row in references),
-                                *(row["first_model"] for row in references))))
-    started = monotonic()
-    votes = []
-    checked = set()
-    ambiguous = False
-    for allow_overlap in (False, True):
-        for model in models:
-            if monotonic() - started > 45:
-                return None, votes, True
-            if any(vote[0] == model for vote in votes):
-                continue
-            collision = "" if allow_overlap else "AND NOT EXISTS (SELECT 1 FROM passanger_cars AS p WHERE p.id=c.id)"
-            rows = query(conn, f"commercial_witnesses_{model}_{int(allow_overlap)}", f"""
-                SELECT c.id FROM commercial_vehicles AS c FORCE INDEX (modelid)
-                WHERE c.modelid=%s {collision} ORDER BY c.id LIMIT 3
-            """, (model,))
-            if rows is None:
-                return None, votes, True
-            for row in rows:
-                car = row["id"]
-                if car in checked:
-                    continue
-                checked.add(car)
-                # A numeric ID can exist in both namespaces. With overlap,
-                # count only PDS pairs absent from the passenger PDS namespace.
-                exclusion = """
-                    AND NOT EXISTS (
-                        SELECT 1 FROM passanger_car_pds AS pp FORCE INDEX (PRIMARY)
-                        WHERE pp.passangercarid=a.linkageid
-                          AND pp.productid=a.productid AND pp.supplierid=a.supplierid
-                    )
-                """ if allow_overlap else ""
-                matched = query(conn, f"commercial_pds_linkage_{car}", f"""
-                    SELECT a.linkagetypeid AS linkage_type,
-                           COUNT(DISTINCT a.productid, a.supplierid) AS pairs
-                    FROM article_links AS a FORCE INDEX (linkageid)
-                    STRAIGHT_JOIN commercial_vehicle_pds AS p FORCE INDEX (PRIMARY)
-                      ON p.commertialvehicleid=a.linkageid AND p.productid=a.productid
-                      AND p.supplierid=a.supplierid
-                    WHERE a.linkageid=%s AND a.linkagetypeid<>2 {exclusion}
-                    GROUP BY a.linkagetypeid ORDER BY a.linkagetypeid
-                """, (car,))
-                if matched is None:
-                    return None, votes, True
-                if len(matched) > 1:
-                    ambiguous = True
-                    continue
-                if matched:
-                    votes.append((model, car, matched[0]["linkage_type"]))
-                    break
-            if len(votes) >= 3:
-                break
-        if len(votes) >= 2 or ambiguous:
+        return None
+    candidates = dict.fromkeys((control[0], *(row["last_model"] for row in references),
+                                *(row["first_model"] for row in references)))
+    for model_id in candidates:
+        if monotonic() - started > 45:
             break
-    codes = {vote[2] for vote in votes}
-    ambiguous |= len(codes) > 1
-    agreed = next(iter(codes)) if len(votes) >= 2 and not ambiguous and len(codes) == 1 else None
-    return agreed, votes, ambiguous
+        if model_id in confirmed_models:
+            continue
+        rows = query(conn, f"commercial_witnesses_{model_id}", """
+            SELECT c.id FROM commercial_vehicles AS c FORCE INDEX (modelid)
+            WHERE c.modelid=%s ORDER BY c.id LIMIT 3
+        """, (model_id,), skip_timeout=True)
+        if rows is None:
+            return None
+        for row in rows:
+            if not check_car(model_id, row["id"]):
+                return None
+        if len(witnesses) >= 2:
+            break
+    return witnesses
 
 
 def http(env, route, **params):
@@ -254,7 +277,7 @@ def http(env, route, **params):
 
 def verify(env):
     status, health, elapsed = http(env, "/health")
-    ready = status == 200 and health.get("version") == "0.4.1"
+    ready = status == 200 and health.get("version") == "0.4.2"
     report("health", status=status, version=health.get("version"), elapsed_ms=elapsed)
     status, result, elapsed = http(env, "/api/v1/oracle/oem/by-article",
                                    supplier_id=1, article_number=20064, manufacturer_id=120, limit=20)
@@ -294,9 +317,12 @@ def verify(env):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("diagnose", "verify"))
+    parser.add_argument("mode", choices=("diagnose", "linkage", "verify"))
     parser.add_argument("pid", type=int)
+    parser.add_argument("--witness-id", action="append", type=int, default=[])
     args = parser.parse_args()
+    if len(args.witness_id) > 12 or any(car_id < 1 for car_id in args.witness_id):
+        parser.error("Provide up to 12 positive commercial witness IDs")
     if args.pid < 2:
         parser.error("A running systemd MainPID is required")
     try:
@@ -304,7 +330,8 @@ def main():
         deployed = Path("/opt/carpot/oracle-adapter/app.py")
         report("deployed_file", sha256=hashlib.sha256(deployed.read_bytes()).hexdigest(),
                mtime_epoch=int(deployed.stat().st_mtime))
-        passed = check_db(env) if args.mode == "diagnose" else verify(env)
+        passed = (verify(env) if args.mode == "verify" else
+                  check_db(env, linkage_only=args.mode == "linkage", witness_ids=args.witness_id))
     except (OSError, KeyError, ValueError) as error:
         report("probe_error", error=type(error).__name__)
         passed = False
