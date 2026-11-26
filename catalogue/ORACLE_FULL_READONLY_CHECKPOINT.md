@@ -48,3 +48,9 @@ MySQL 8.4.13 і `@@transaction_read_only=1` підтверджені. Ідент
 Жива перевірка 0.4.3 підтвердила всі Source Graph, Articles, OEM і довідники. `audit(8387)` та `audit(21)` повернули 503 за 267 та 638 мс, після чого інсталятор виконав відкат. На коді 0.4.3 відтворено точний HTTP 503 `Oracle audit category limit exceeded` для 257 вузлів. Старий звіт з Oracle містить статуси й час без тіла відповіді.
 
 У 0.4.4 звичайний `/audit` повертає всі категорії. Параметри `offset` і `limit` дають до 100 вузлів на сторінку в тому самому порядку, з незмінними глобальними підсумками та `category_total`, `truncated`, `next_offset`. Gateway пропускає сторінки й використовує наявний ліміт 8 МіБ Source Graph для повної відповіді audit. Нова перевірка повідомляє фактичну кількість вузлів і зіставляє останню сторінку з повною відповіддю. У фінальному інсталяторі можна повторно використати підтверджений linkage type 16. Перевірки після перезапуску є обов’язковими.
+
+### Приймання 26 листопада 2026
+
+Власник підтвердив встановлення 0.4.4 із `1eb06ddd39f5271fce437d84aa99944320af7822`, linkage type `16` і `verify_result.ok=true`. Audit для `107555 / 8387 / 21` повернув відповідно 150 / 278 / 431 вузол із HTTP 200. Останні сторінки audit, Source Graph, Articles, OEM і довідники виробників повернули HTTP 200. Відкат не знадобився.
+
+Catalogue staging працює на `3fcc2bac77db2f82b4074ce4ce3751699d4bad91`, deployment `25fcd181-e67d-4442-af8e-42a379d70683` зі статусом SUCCESS. Через розгорнутий Catalogue Warehouse отримав графи всіх трьох контрольних модифікацій. Приймання створення авто, плану, OEM і надходження зафіксовано в Warehouse Draft PR №583. [Catalogue staging](https://catalogue-api-catalogue-staging.up.railway.app/health) · [Warehouse checkpoint](https://github.com/TsPa33/telegram-bot/blob/feature/carpot-warehouse-universal-intake-20261126/warehouse/docs/stage13/checkpoint.md)
