@@ -157,6 +157,44 @@ def reference_profile(identity, year, base, *, records=None):
             "scope": record["scope"], "physical_fitment_verified": False}
 
 
+
+def reported_topology(base, details):
+    """Use explicit reviewed VIN observations as candidate geometry, not fitment.
+
+    Door counts for regular passenger bodies map to side-door positions. The
+    interpretation is not extended to vans, pickups, buses or commercial cabs.
+    Unknown or conflicting observations never override the Oracle profile.
+    """
+    from app.services.vin_resolution_policy import normalized
+    if (details or {}).get("trust") != "server_vin_report_with_operator_review":
+        return deepcopy(base)
+    facts = details.get("characteristics") or {}
+    if details.get("conflicts") or details.get("consistency_issues"):
+        return deepcopy(base)
+    p = deepcopy(base)
+    if p.get("kind") != "passenger":
+        return p
+    body = normalized("body_class", facts.get("body_class"))
+    body = {"hatchback": "hatch"}.get(body, body)
+    if body in {"sedan", "coupe", "hatch", "wagon", "suv", "convertible"}:
+        if p.get("body") not in (None, body):
+            return p
+        p["body"] = body
+        doors = normalized("doors", facts.get("doors"))
+        side_count = {2: 2, 3: 2, 4: 4, 5: 4}.get(doors)
+        if (side_count and (body not in {"sedan", "coupe", "convertible"} or doors in (2, 4))
+                and (body != "coupe" or side_count == 2)):
+            positions = ["FL", "FR"] + (["RL", "RR"] if side_count == 4 else [])
+            if p.get("side_doors") in (None, positions):
+                p["side_doors"] = positions
+    cylinders = normalized("engine_cylinders", facts.get("engine_cylinders"))
+    if type(cylinders) is int and 1 <= cylinders <= 32:
+        counts = p.setdefault("counts", {})
+        if counts.get("cylinders") in (None, cylinders):
+            counts["cylinders"] = cylinders
+    return p
+
+
 def preview_for_vehicle(db, vehicle, *, adapter=None):
     """Use the real saved plan and current exact Oracle identity; read-only."""
     from sqlalchemy import select
@@ -185,6 +223,7 @@ def preview_for_vehicle(db, vehicle, *, adapter=None):
         identity["kind"])
     normalized = oracle_profile(response, expected_kind=identity["kind"],
                                 expected_car_id=identity["car_id"])
+    normalized["profile"] = reported_topology(normalized["profile"], getattr(vehicle,"vin_details",None))
     rows = list(db.scalars(select(DismantlingItem).where(
         DismantlingItem.account_id == vehicle.account_id,
         DismantlingItem.vehicle_id == vehicle.id)))
