@@ -117,3 +117,43 @@ def reconcile(saved, profile, *, existing_rows=(), seed=None):
             "excluded": report["excluded"], "unmapped_source_ids": report["unmapped_source_ids"],
             "source_rows_retained": len(products),
             "persisted": False, "stock_changed": False, "fitment_verified": False}
+
+
+def preview_for_vehicle(db, vehicle, *, adapter=None):
+    """Use the real saved plan and current exact Oracle identity; read-only."""
+    from sqlalchemy import select
+    from app.models import DismantlingItem
+    from app.services import unified_catalogue, vin_source_directory
+    from app.services.dismantling_plan_v3 import generator_basis
+    from app.services.master_parts_oracle_profile import oracle_profile
+
+    saved = unified_catalogue.saved_state(vehicle)
+    if not saved or unified_catalogue.needs_review(vehicle):
+        return {"status": "missing_or_stale_source_plan", "persisted": False}
+    try:
+        identity = pinned_identity(saved)
+    except (ValueError, KeyError, TypeError):
+        return {"status": "invalid_source_plan", "persisted": False}
+    locator = (vehicle.dismantling_v3 or {}).get("oracle_vehicle_identity", {})
+    if (locator.get("source") != "oracle"
+            or locator.get("identity_fingerprint") != generator_basis(vehicle)
+            or (locator.get("kind"), locator.get("manufacturer_id"),
+                locator.get("model_id"), locator.get("source_modification_id")) !=
+               (identity["kind"], identity["manufacturer_id"], identity["model_id"], identity["car_id"])):
+        return {"status": "unverified_vehicle_identity", "persisted": False}
+    response = vin_source_directory.fetch(
+        adapter or unified_catalogue.CatalogueAdapter(), "attributes",
+        {"kind": identity["kind"], "car_id": identity["car_id"], "limit": 50},
+        identity["kind"])
+    normalized = oracle_profile(response, expected_kind=identity["kind"],
+                                expected_car_id=identity["car_id"])
+    rows = list(db.scalars(select(DismantlingItem).where(
+        DismantlingItem.account_id == vehicle.account_id,
+        DismantlingItem.vehicle_id == vehicle.id)))
+    existing = [{"product_id": unified_catalogue.row_product_id(r),
+                 "row_id": r.id, "protected": bool(r.part_id or r.received_at)}
+                for r in rows]
+    report = reconcile(saved, normalized["profile"], existing_rows=existing)
+    return {**report, "status": "preview", "profile": normalized,
+            "existing_plan_row_count": len(rows),
+            "protected_row_count": sum(r["protected"] for r in existing)}
