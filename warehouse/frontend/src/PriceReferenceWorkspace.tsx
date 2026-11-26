@@ -9,7 +9,6 @@ type Job={rows:Row[];phase:'lookup'|'review'|'apply'|'done';rule:Rule;overwrite:
 type Controls={job:Job|null;busy:boolean;paused:boolean;error:string;start:(target:string,rule:Rule,overwrite:boolean)=>Promise<void>;resume:()=>void;pause:()=>void;apply:()=>void;applyOne:(id:string)=>void;reset:()=>void;selected:number;vehicle:boolean};
 const Context=createContext<Controls|null>(null);
 const LIMIT=5000;
-const delay=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const denied=(e:unknown)=>e instanceof ApiError&&[401,403].includes(e.status);
 const uncertain=(e:unknown)=>!(e instanceof ApiError)||e.status>=500;
 export function PriceReferenceProvider({children,selectedIds,vehicleId,query}:{children:ReactNode;selectedIds:string[];vehicleId:string;query:string}){
@@ -57,7 +56,6 @@ function JobProvider({children,storage,selectedIds,vehicleId,query}:{children:Re
     if(result.price_token!==ctx.price_token){change(r.id,{state:'attention',name:ctx.name,reason:'Дані змінилися — потрібна повторна перевірка'});continue;}
     const chosen=chooseReference(result,ctx,current.current!.rule);
     change(r.id,chosen?{state:'ready',name:ctx.name,value:chosen.value,currency:ctx.currency,token:ctx.price_token,old:ctx.selling_price,count:chosen.group.offer_count,match:chosen.group.match,observed_at:chosen.group.observed_at,checked_at:Date.now()}:{state:'attention',name:ctx.name,reason:'Немає єдиної порівнюваної групи з 3+ цінами'});
-    if(result.live_enabled)await delay(3200);
    }catch(e){if(stop.current||!mounted.current||denied(e)||uncertain(e))throw e;change(r.id,{state:'error',reason:(e as Error).message});}
   }
   fence();persist({...current.current!,phase:'review'});
@@ -96,7 +94,7 @@ export function PriceReferenceToolbar(){
  const progress=lookup?s.checked:s.applied+s.attention+s.skipped;
  return <section className="price-workspace" aria-label="Масове уточнення цін">
   <header><strong>Масове уточнення цін</strong><button type="button" className="secondary" onClick={()=>setOpen(v=>!v)}>{open?'Згорнути':'Налаштувати'}</button></header>
-  {(open||j)&&<><div className="price-workspace-controls">
+  {(open||j)&&<><small>Масове уточнення використовує лише збережені ціни. Актуальний зовнішній пошук доступний для окремої запчастини.</small><div className="price-workspace-controls">
    <label>Запчастини<select aria-label="Обсяг уточнення цін" value={target} disabled={locked} onChange={e=>setTarget(e.target.value)}><option value="filtered">Поточний пошук / категорія</option><option value="selected">Вибрані ({c.selected})</option>{c.vehicle&&<option value="vehicle">Усі запчастини автомобіля</option>}<option value="all">Увесь активний склад</option></select></label>
    <label>Правило<select value={j?.rule.mode||rule.mode} disabled={locked} onChange={e=>setRule({...rule,mode:e.target.value as Rule['mode']})}><option value="average">Середня ціна</option><option value="minimum">Мінімальна ціна</option><option value="maximum">Максимальна ціна</option></select></label>
    <label>Коригування, %<input aria-label="Коригування ціни" value={j?.rule.percent??rule.percent} disabled={locked} onChange={e=>setRule({...rule,percent:e.target.value})} inputMode="decimal"/></label>

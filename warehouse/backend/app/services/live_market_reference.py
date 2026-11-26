@@ -1,6 +1,6 @@
 """Opt-in exact-OEM market lookup. No client-supplied URLs or stock mutations.
 
-Only explicitly approved server-side use of a fixed public OEM route is supported.
+Only a user-initiated individual lookup of a fixed public OEM route is supported.
 Cache contains public source cards, not tenant or user data. No background crawl.
 """
 from collections import OrderedDict, defaultdict
@@ -23,7 +23,9 @@ AGENT = "CarPot-PriceReference/1.0"
 TTL = 86400
 MAX_CACHE = 128
 MAX_BYTES = 262144
-MIN_INTERVAL = 3
+MIN_INTERVAL = 30
+DAILY_LIMIT = 20
+_ATTEMPTS = []
 _LOCK = Lock()
 _CACHE = OrderedDict()
 _ROBOTS = None
@@ -31,21 +33,22 @@ _LAST = float("-inf")
 
 
 def enabled():
-    # A deployment owner must first verify an agreement covering automated use
-    # and anonymous display of the price data. Never infer that from HTTP 200.
-    return (os.getenv("WAREHOUSE_MARKET_LIVE_ENABLED") == "true"
-            and bool(os.getenv("WAREHOUSE_MARKET_ACCESS_APPROVAL", "").strip()))
+    # Limited staging pilot explicitly selected by the operator, not a claim
+    # of provider authorization. Production remains off pending verified terms.
+    return (os.getenv("WAREHOUSE_ENV") == "staging"
+            and os.getenv("WAREHOUSE_MARKET_LIVE_ENABLED") == "true"
+            and os.getenv("WAREHOUSE_MARKET_ACCESS_MODE") == "limited_individual")
 
 
 def oem_key(value):
-    value = (value or "").strip().upper()
+    value = re.sub(r"\s+", "", (value or "").strip().upper())
     if not re.fullmatch(r"[A-Z0-9][A-Z0-9-]{3,39}", value) or not any(c.isdigit() for c in value):
         return None
     return value.replace("-", "")
 
 
 def lookup_path(ctx):
-    value = (ctx.get("oem") or "").strip()
+    value = re.sub(r"\s+", "", (ctx.get("oem") or "").strip())
     key = oem_key(value)
     if not key or not ctx.get("manufacturer") or not ctx.get("model"):
         return None
@@ -281,13 +284,13 @@ def references(ctx, rows):
             maximum=str(max(amounts)), average=str((sum(amounts)/n).quantize(Decimal("0.01"),
             rounding=ROUND_HALF_UP)) if n >= 3 else None,
             observed_at=max(r["observed_at"] for _, r in values),
-            examples=[dict(amount=str(a), currency=currency, observed_at=r["observed_at"])
+            examples=[dict(amount=str(a), currency=currency, observed_at=r["observed_at"], url=r["url"])
                       for a, r in values[:10]]))
     return result
 
 
 def lookup(ctx):
-    """Return (mode, groups, observed_at) or None. No network without approval."""
+    """Return bounded individual lookup or None. No enumeration or background crawl."""
     global _ROBOTS, _LAST
     if not enabled():
         return None
@@ -302,9 +305,11 @@ def lookup(ctx):
             _CACHE.move_to_end(path)
             rows, stamp = cached[1:]
             return "cached", references(ctx, rows), stamp
-        if now - _LAST < MIN_INTERVAL:
+        _ATTEMPTS[:] = [t for t in _ATTEMPTS if now-t < 86400]
+        if now - _LAST < MIN_INTERVAL or len(_ATTEMPTS) >= DAILY_LIMIT:
             return None
         attempted = True
+        _ATTEMPTS.append(now)
         _LAST = now
         if not _ROBOTS or now - _ROBOTS[0] > 3600:
             _ROBOTS = (now, fetch_text("/robots.txt", 65536))
