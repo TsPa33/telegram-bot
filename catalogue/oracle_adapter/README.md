@@ -81,3 +81,36 @@ its leading primary key, and the commercial link discriminator. Set
 `ORACLE_COMMERCIAL_LINKAGE_TYPE` on the adapter to the verified value.
 The gateway can be deployed separately and returns 503 while the upstream
 audit routes are unavailable.
+
+
+## Full Read-Only Catalogue Access — candidate (2026-11-26)
+
+The following additional authenticated GET paths are implemented in the adapter
+and staging gateway. All require explicit kind and have offset/limit pages
+(max 50). The legacy passenger-only /prd contract is unchanged; use /prd-page
+for namespace-safe traversal.
+
+- /api/v1/oracle/vehicles/{car_id}/prd-page
+- /api/v1/oracle/vehicles/{car_id}/products
+- /api/v1/oracle/vehicles/{car_id}/categories
+- /api/v1/oracle/vehicles/{car_id}/part-articles?product_id=402
+
+The names come from verified source PRD fields documented in
+VOLVO_DEEP_AUDIT_FACTS.md and source_coverage_audit.py. Assembly group is not a
+verified node label or a parent-child tree; source labels are not Ukrainian
+CarPot taxonomy. Missing names and OEMs stay null. Part-articles returns source
+article/OEM pairs scoped by vehicle namespace and product, not VIN fitment.
+Each page may contain multiple OEM rows per exact supplier article.
+
+Release blocked: Oracle VM administrative access, live grants, import
+completeness, indexes, commercial discriminator and live EXPLAIN are not
+verified. Do not deploy candidate or register MCP tools until these gates and
+CI pass. Catalogue-wide scans, reverse vehicle compatibility, physical stock
+counts, image resolution and publication of source graphs are out of this
+candidate's verified scope. No writes to source or Warehouse.
+
+Service unit in this repository uses /opt/carpot/oracle-adapter/app.py and
+carpot-oracle-adapter.service; confirm actual VM configuration before updating.
+Never print EnvironmentFile contents. Back up app.py, verify code and dependency
+compatibility, restart only the adapter after approval and preserve rollback.
+Check existing routes plus all new routes using the private authenticated API.
