@@ -79,3 +79,15 @@ def test_auto_oem_does_not_infer_master_fitment():
     r = SimpleNamespace(plan_v3={"snapshot":{"source":[{"kind":managed.KIND}]}},
                         name="Door")
     assert matches(r,{}) is None
+
+
+def test_reference_conflict_prevents_using_wrong_powertrain_or_gearbox():
+    assert managed.profile_conflicts({"powertrain":"ICE"}, {"powertrain":"BEV"})
+    assert managed.profile_conflicts({"transmission":"automatic"}, {"transmission":"manual"})
+    assert not managed.profile_conflicts({"body":"hatch"}, {"body_type":"hatchback"})
+    assert not managed.profile_conflicts({"transmission":"automatic"}, {})
+
+
+def test_intake_is_disabled_without_feature_and_does_not_touch_db(monkeypatch):
+    monkeypatch.setattr(managed, "enabled", lambda: False)
+    assert managed.auto_supplement_new_donor(None,None,None) is None
