@@ -1,0 +1,127 @@
+[
+  {
+    "id": "q5-8r-2014-flexfuel-reference",
+    "identity": {
+      "kind": "passenger",
+      "manufacturer_id": 5,
+      "model_id": 7534,
+      "car_id": 119996
+    },
+    "year": 2014,
+    "scope": "2014 US 2.0T Flex Fuel reference configuration; not factory/VIN verification or OEM evidence",
+    "sources": [
+      "https://www.cars.com/research/audi-q5-2014/specs/",
+      "https://www.caranddriver.com/audi/q5/specs/2014/audi_q5_audi-q5_2014"
+    ],
+    "profile": {
+      "kind": "passenger",
+      "body": "suv",
+      "side_doors": [
+        "FL",
+        "FR",
+        "RL",
+        "RR"
+      ],
+      "rear_closure": "liftgate",
+      "powertrain": "ICE",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "axles": [
+        {
+          "wheel": true,
+          "wheel_count_per_side": 1,
+          "driven": true,
+          "disc_brakes": true,
+          "drum_brakes": false,
+          "abs": true,
+          "coil_spring": true,
+          "independent_suspension": true,
+          "stabilizer": true,
+          "shock": true,
+          "hub": true,
+          "steered": true,
+          "rack_steering": true
+        },
+        {
+          "wheel": true,
+          "wheel_count_per_side": 1,
+          "driven": true,
+          "disc_brakes": true,
+          "drum_brakes": false,
+          "abs": true,
+          "coil_spring": true,
+          "independent_suspension": true,
+          "stabilizer": true,
+          "shock": true,
+          "hub": true
+        }
+      ],
+      "door_features": {
+        "door_glass": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "window_regulator": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "window_motor": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ]
+      },
+      "positions": {
+        "headlamp": [
+          "L",
+          "R"
+        ],
+        "taillamp": [
+          "L",
+          "R"
+        ],
+        "mirror": [
+          "L",
+          "R"
+        ],
+        "bumper": [
+          "front",
+          "rear"
+        ],
+        "front_seat": [
+          "L",
+          "R"
+        ]
+      },
+      "counts": {
+        "cylinders": 4,
+        "spark_plugs": 4,
+        "ignition_coils": 4
+      },
+      "flags": {
+        "ice": true,
+        "conventional_ice": true,
+        "turbo": true,
+        "injection": true,
+        "direct_injection": true,
+        "low_voltage_battery": true,
+        "oil_cooler": true,
+        "hood": true,
+        "grille": true,
+        "rear_glass": true,
+        "fixed_roof": true,
+        "power_windows": true,
+        "liquid_cooling": true,
+        "ac": true,
+        "abs": true,
+        "cabin_filter": true,
+        "spoiler": true
+      }
+    }
+  }
+]
