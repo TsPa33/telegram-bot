@@ -132,6 +132,9 @@ def market_reference(id:str,data:MarketReferenceInput,db:DB,who:Auth):
     if lookup_context(db,account,id)!=context:
         raise HTTPException(409,'Дані деталі змінилися. Повторіть пошук цін.')
     mode,groups,stamp=current
+    if mode not in ("live","cached"):
+        result["lookup_status"]=mode
+        return result
     result["lookup_status"]="matched" if groups else "no_comparable"
     if groups:
         result.update(price_mode=mode,references=public_groups(groups,links=True),historical=[],status="completed",
