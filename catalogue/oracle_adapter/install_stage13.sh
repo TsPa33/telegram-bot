@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Run on the existing Oracle host after prerequisites were verified.
 # Optional --witness-id values are passed to the live read-only linkage probe.
+# --verified-linkage-type 16 reuses confirmed linkage evidence for this host.
 set -euo pipefail
 umask 077
 
-release=5858999e9a71a1730b8d0563c3073ca055c1e98c
+release=1eb06ddd39f5271fce437d84aa99944320af7822
 service=carpot-oracle-adapter.service
 directory=/opt/carpot/oracle-adapter
 backup_root=/var/backups/carpot-oracle-adapter
@@ -40,15 +41,23 @@ curl -fLsS --connect-timeout 10 --max-time 30 "$base/check_source_graph.py" -o "
 (
     cd "$temporary"
     sha256sum --check --strict <<'HASHES'
-c08e9eebc8df8489382b2b2aa075f8a71a9d29cf18e216dd10d5a0b01de0ea9b  app.py
-00d3c2ca60e34900bce382e75c4fb20085968edcae438b4e7b616d4113a0a7b9  check_source_graph.py
+d716eca51854d65c32434a2e3fec993ec671e8f147dfaf8fbe5abc4f23a8511a  app.py
+763bf48d55e85bc9e567822a79312ec78d2581af38719c4e9f092e484d1a9b23  check_source_graph.py
 HASHES
 )
 python="$directory/.venv/bin/python"
 "$python" -c 'import ast,pathlib,sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$temporary/app.py"
-pid=$(systemctl show "$service" -p MainPID --value)
-"$python" "$temporary/check_source_graph.py" linkage "$pid" "$@" | tee "$temporary/diagnosis.jsonl"
-commercial_type=$("$python" - "$temporary/diagnosis.jsonl" <<'PYTHON'
+if [[ ${1:-} == --verified-linkage-type ]]; then
+    if [[ $# != 2 || ${2:-} != 16 ]]; then
+        printf 'Use --verified-linkage-type 16 only after confirming the linkage on this host.\n' >&2
+        exit 2
+    fi
+    commercial_type=16
+    printf 'Reusing verified commercial linkage type 16.\n'
+else
+    pid=$(systemctl show "$service" -p MainPID --value)
+    "$python" "$temporary/check_source_graph.py" linkage "$pid" "$@" | tee "$temporary/diagnosis.jsonl"
+    commercial_type=$("$python" - "$temporary/diagnosis.jsonl" <<'PYTHON'
 import json
 import sys
 
@@ -59,7 +68,8 @@ if result.get("ready_to_install") is not True or result.get("verified_commercial
     raise SystemExit("Direct commercial linkage type 16 was not confirmed")
 print(16)
 PYTHON
-)
+    )
+fi
 
 install -d -m 0700 "$backup_root"
 exec 9>"$backup_root/install.lock"
