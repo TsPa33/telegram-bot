@@ -81,3 +81,20 @@ def test_non_aleto_links_never_become_aleto_recommendation(platform,vehicle,monk
     r=check(platform,p);assert r.status_code==200,r.text
     data=r.json();assert data['result_source']=='unavailable'
     assert data['status']=='no_matches' and not data['offers'] and data['guidance']['level']=='D' and not data['guidance']['cohorts']
+
+
+def test_aleto_average_for_similar_matches_is_read_only(platform,vehicle):
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    with Session(engine()) as db:
+        part=db.get(Part,p);part.oem_number='';part.condition='unknown';db.commit()
+        before=all_tables(db)
+    result=check(platform,p)
+    assert result.status_code==200,result.text
+    data=result.json()
+    assert data['fresh_data_fetched'] is False
+    assert data['guidance']['level']=='C'
+    ref=next(r for r in data['guidance']['aleto_reference'] if r['currency']=='UAH')
+    assert ref['match']=='similar' and ref['condition']=='used'
+    assert ref['offer_count']==3 and ref['average']=='1500.00'
+    assert len(ref['examples'])==3
+    with Session(engine()) as db:assert all_tables(db)==before
