@@ -128,10 +128,10 @@ def test_ranks_numeric_series_without_hiding_models_or_requesting_graph(source):
     identity = who()
     page = resolution.search(source, context(identity), VinClarifications(), identity)
     assert page["search_complete"] is True
-    assert [row["source_modification_id"] for row in page["items"]] == [900, 901]
-    assert {row["model_id"] for row in page["models"]} == {700, 701, 702}
+    assert [row["source_modification_id"] for row in page["items"]] == [900]
+    assert {row["model_id"] for row in page["models"]} == {701}
     assert page["models"][0]["model_id"] == 701
-    assert page["automatic"] is None
+    assert page["automatic"] == page["items"][0]["choice"]
     assert {endpoint for endpoint, _ in source.calls} == {"manufacturers", "models", "modifications", "attributes"}
 
 
@@ -148,10 +148,7 @@ def test_conflicting_facts_are_ranked_and_old_tokens_are_rejected(source, field,
     ticket = page["items"][0]["choice"]
     changed = context(identity, decoded(**{field: conflicting}))
     result = resolution.search(source, changed, VinClarifications(), identity)
-    alternative = next(row for row in result["items"] if row["source_modification_id"] == 900)
-    assert alternative["matches"].get(field.replace("engine_power_hp", "engine_power_kw")) == "mismatch"
-    chosen, _ = resolution.selected_candidate(source, changed, VinClarifications(), alternative["choice"], identity)
-    assert chosen["source_modification_id"] == 900
+    assert all(row["source_modification_id"] != 900 for row in result["items"])
     with pytest.raises(HTTPException, match="Характеристики змінилися") as error:
         resolution.selected_candidate(source, changed, VinClarifications(), ticket, identity)
     assert error.value.status_code == 409
@@ -167,7 +164,7 @@ def test_variant_questions_only_for_relevant_unknowns_and_missing_facts_stay_unk
     assert page["items"][1]["matches"]["engine_displacement_l"] == "unknown"
     clarifications = VinClarifications(answers={"drive_type": "FWD"})
     result = resolution.search(source, ctx, clarifications, identity)
-    assert [row["source_modification_id"] for row in result["items"]] == [900, 901]
+    assert [row["source_modification_id"] for row in result["items"]] == [900]
     assert result["questions"] == []
     result = resolution.search(source, ctx, VinClarifications(answers={"drive_type": None}), identity)
     assert len(result["items"]) == 2 and result["automatic"] is None and not result["questions"]
@@ -470,7 +467,7 @@ def test_incomplete_scoped_search_asks_only_supported_clarifications(source):
     assert not result["search_complete"] and result["automatic"] is None
     assert result["questions"] == [{"field": "drive_type", "options": ["FWD", "AWD"]}]
     clarified = resolution.search(source, ctx, VinClarifications(answers={"drive_type": "AWD"}), identity, **scope)
-    assert [row["source_modification_id"] for row in clarified["items"]] == [901, 900]
+    assert [row["source_modification_id"] for row in clarified["items"]] == [901]
     assert clarified["questions"] == [] and clarified["automatic"] is None
 
 
@@ -535,3 +532,16 @@ def test_selected_graph_adds_oem_before_explicit_receipt(logged, source, monkeyp
         assert part.quantity == 1
         assert part.oem_number == "OEM-41"
         assert part.oem_provenance["physical_number_confirmed_by_user"] is False
+
+
+def test_oracle_real_attribute_names_and_fuel_conflict():
+    from app.services.vin_resolution_policy import source_specs, compare
+    rows = [("FuelType", "Дизель"), ("EngineType", "Дизель"), ("EngineCode", "D 4204 T6"),
+            ("Capacity_Technical", "1969 ccm"), ("Power", "140 kW"), ("Power", "190 PS"),
+            ("DriveType", "Привод на все колеса")]
+    specs = source_specs([dict(attribute_type=k, display_value=v) for k,v in rows])
+    assert list(specs["fuel_type"]) == ["diesel"]
+    assert list(specs["engine_displacement_l"]) == [1.969]
+    assert list(specs["drive_type"]) == ["AWD"]
+    assert "engine_power_kw" in specs
+    assert compare({"fuel_type": {"value": "petrol"}}, {"specs": specs}) == {"fuel_type": "mismatch"}

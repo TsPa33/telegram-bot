@@ -11,10 +11,10 @@ ALIASES = {
         "commercial": ("commercial vehicle", "commercial", "heavy truck", "truck tractor", "вантажний автомобіль", "автобус", "bus", "tractor truck"),
     },
     "body_class": {
-        "sedan": ("sedan", "saloon", "седан", "стандартний седан"),
+        "sedan": ("sedan", "saloon", "sedan/saloon", "седан", "стандартний седан"),
         "wagon": ("station wagon", "wagon", "estate", "універсал"),
         "hatchback": ("hatchback", "хетчбек", "хетчбек/ліфтбек"),
-        "suv": ("suv", "sport utility vehicle (suv)", "позашляховик (suv)", "позашляховик"),
+        "suv": ("suv", "sport utility vehicle (suv)", "sport utility vehicle [suv]/multipurpose vehicle [mpv]", "позашляховик (suv)", "позашляховик"),
         "coupe": ("coupe", "coupé", "купе"),
         "convertible": ("convertible", "cabriolet", "кабріолет"),
         "van": ("van", "фургон", "box van"),
@@ -23,8 +23,8 @@ ALIASES = {
         "tractor": ("tractor unit", "truck tractor", "сідельний тягач"),
     },
     "fuel_type": {
-        "diesel": ("diesel", "дизель", "дизельне паливо"),
-        "petrol": ("petrol", "gasoline", "benzin", "бензин"),
+        "diesel": ("diesel", "дизель", "дизельне паливо", "дизельный двигатель", "дизельное топливо"),
+        "petrol": ("petrol", "gasoline", "benzin", "бензин", "бензиновый двигатель", "бензиновий двигун"),
         "electric": ("electric", "electric motor", "електро", "електричний"),
         "hybrid": ("hybrid", "гібрид", "petrol/electric", "бензин/електро"),
         "lpg": ("lpg", "liquefied petroleum gas", "зріджений газ"),
@@ -41,14 +41,14 @@ ATTRIBUTE_NAMES = {
     "body_class": ("body type", "body class", "body construction type", "construction type", "тип кузова", "кузов"),
     "fuel_type": ("fuel type", "fuel", "тип палива", "вид палива", "паливо"),
     "engine_code": ("engine code", "engine number", "motor code", "код двигуна"),
-    "engine_displacement_l": ("capacity (cc)", "capacity (ccm)", "engine capacity", "engine displacement", "displacement", "cylinder capacity", "engine displacement (cc)", "engine displacement (l)", "displacement (cc)", "displacement (ccm)", "displacement (l)", "об'єм двигуна", "робочий об'єм (см³)"),
-    "engine_power_kw": ("power (kw)", "power kw", "engine power (kw)", "engine power", "потужність (квт)"),
+    "engine_displacement_l": ("capacity (cc)", "capacity (ccm)", "Capacity_Technical", "engine capacity", "engine displacement", "displacement", "cylinder capacity", "engine displacement (cc)", "engine displacement (l)", "displacement (cc)", "displacement (ccm)", "displacement (l)", "об'єм двигуна", "робочий об'єм (см³)"),
+    "engine_power_kw": ("power (kw)", "power kw", "Power", "engine power (kw)", "engine power", "потужність (квт)"),
     "engine_power_hp": ("power (hp)", "power (ps)", "engine power (hp)", "horsepower", "потужність (к.с.)"),
     "transmission": ("transmission", "transmission type", "gearbox type", "gearbox", "тип коробки передач", "кпп"),
     "drive_type": ("drive type", "drive", "drivetrain", "traction type", "тип приводу", "привід"),
     "transmission_speeds": ("number of gears", "gears", "transmission speeds", "кількість передач"),
     "doors": ("doors", "number of doors", "кількість дверей"),
-    "engine_cylinders": ("cylinders", "number of cylinders", "кількість циліндрів"),
+    "engine_cylinders": ("cylinders", "number of cylinders", "NumberOfCylinders", "кількість циліндрів"),
 }
 TECHNICAL = tuple(key for key in ATTRIBUTE_NAMES if key != "engine_power_hp")
 FIELDS = ("manufacturer", "model", "year", "vehicle_type", "engine", *TECHNICAL, "engine_power_hp")
@@ -113,7 +113,8 @@ def normalized(field, value):
 _ALIASES = {field: {key(alias): canonical for canonical, values in groups.items() for alias in values}
             for field, groups in ALIASES.items()}
 _DRIVE = {"front": "FWD", "rear": "RWD", "передній": "FWD", "задній": "RWD",
-          "переднійпривід": "FWD", "заднійпривід": "RWD"}
+          "переднійпривід": "FWD", "заднійпривід": "RWD",
+          "приводнавсеколеса": "AWD", "переднийпривод": "FWD", "заднийпривод": "RWD"}
 _ATTRIBUTES = {key(alias): field for field, values in ATTRIBUTE_NAMES.items() for alias in values}
 _ROMAN = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6", "vii": "7", "viii": "8", "ix": "9", "x": "10"}
 _SERIES = re.compile(r"(?:(\d+)\s*(?:series|серія|er)|(?:series|серія)\s*(\d+))\b", re.I)
@@ -187,6 +188,8 @@ def source_specs(rows):
     for row in rows:
         attribute = row.get("attribute_type", row.get("attributetype"))
         field = _ATTRIBUTES.get(key(attribute))
+        if key(attribute) == "enginetype":
+            field = "fuel_type"
         if field:
             raw = row.get("display_value", row.get("displayvalue"))
             value = normalized(field, raw)
@@ -197,6 +200,11 @@ def source_specs(rows):
             if value is not None:
                 label = f"{value:g} kW" if field == "engine_power_kw" else raw
                 values.setdefault(field, {}).setdefault(value, label)
+    # Oracle supplies kW and PS for the same engine. Rounded conversions are equivalent.
+    power = values.get("engine_power_kw", {})
+    if power and max(power) - min(power) <= 2:
+        preferred = next((v for v in power if v.is_integer()), next(iter(power))) if all(isinstance(v, float) for v in power) else next(iter(power))
+        values["engine_power_kw"] = {preferred: power[preferred]}
     return {field: observations for field, observations in values.items() if len(observations) == 1}
 
 
@@ -253,6 +261,8 @@ def compare(evidence, candidate):
                 facts[field] = _platform_relation(value, identifiers)
             elif field == "fuel_type" and possibilities and (
                     value == "hybrid" or "hybrid" in possibilities) and value not in possibilities:
+                facts[field] = "unknown"
+            elif field == "body_class" and value == "suv" and set(possibilities) == {"wagon"}:
                 facts[field] = "unknown"
             elif possibilities:
                 matches = any(_observations_match(field, value, observation.get("reported"), item, source)

@@ -205,6 +205,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
     </>}
     {error&&<p role="alert">{error}</p>}
     {existing&&<button type="button" className="primary" onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
+    {!manual&&result&&!ready&&!saving&&<p role="status">{checkingChoice?'Перевіряємо каталог запчастин…':!choice?'Оберіть сумісну модифікацію або уточніть характеристики VIN.':!hasGraph&&!acceptBase?'Додавання заблоковано: для обраної модифікації каталог запчастин не підтверджено. Повторіть перевірку каталогу.':'Заповніть марку та модель автомобіля.'}</p>}
     <div className="vin-footer">
       <div className="vin-actions">
         <Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!ready}

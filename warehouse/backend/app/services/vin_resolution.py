@@ -218,6 +218,7 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
                 model_cursors.append({"maker": f'{maker["kind"]}:{maker["manufacturer_id"]}',
                                       "after": model_cursor, "kind": maker["kind"]})
             model_rows.extend((maker, model) for model in models)
+        model_rows = [pair for pair in model_rows if _eligible(evidence, _model_facts(*pair))]
         model_rows.sort(key=lambda pair: (
             policy.compare(evidence, _model_facts(*pair)).get("model") != "compatible",
             policy.compare(evidence, _model_facts(*pair)).get("year") != "compatible",
@@ -243,9 +244,8 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
             for variant in page["items"]:
                 directory_rows.append((maker, model, variant))
         complete &= len(directory_rows) <= _MAX_VARIANTS
-        if selected_model and len(directory_rows) > _MAX_VARIANTS:
-            next_after = directory_rows[_MAX_VARIANTS - 1][2]["id"]
-        candidates = list(executor.map(lambda row: _candidate(adapter, *row), directory_rows[:_MAX_VARIANTS]))
+        # A scoped page is fully evaluated before filtering; global search remains bounded.
+        candidates = list(executor.map(lambda row: _candidate(adapter, *row), directory_rows if selected_model else directory_rows[:_MAX_VARIANTS]))
     complete &= all(candidate["attributes_complete"] for candidate in candidates)
     def rank(candidate):
         matches = policy.compare(evidence, candidate)
@@ -253,6 +253,7 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
         return (matches.get("model") != "compatible", matches.get("model") == "mismatch",
                 matches.get("year") == "mismatch", values.count("mismatch"), -values.count("compatible"))
 
+    candidates = [candidate for candidate in candidates if _eligible(evidence, candidate)]
     candidates.sort(key=rank)
     answers = clarifications.answers
     status = ("complete" if complete
@@ -307,6 +308,8 @@ def selected_candidate(adapter, context, clarifications, token, who):
         if not candidate["attributes_complete"]:
             raise HTTPException(503, "Дані модифікації тимчасово недоступні")
         raise HTTPException(409, "Дані модифікації змінилися. Повторіть вибір")
+    if not _eligible(evidence, candidate):
+        raise HTTPException(409, "Модифікація суперечить характеристикам VIN. Уточніть дані та повторіть вибір")
     return candidate, evidence
 
 
