@@ -20,22 +20,22 @@ try {
   const page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`/vehicles?donor=${vehicle.id}`);
-  await page.getByText('Aleto — довідник пропозицій',{exact:true}).click();
+  await page.getByText('Довідник ринкових цін',{exact:true}).click();
   await expect(page.getByText(/Пропозицій: 1472\./)).toBeVisible();
   await expect(page.getByText(/Сумісність за роком, VIN і комплектацією не перевірена/)).toBeVisible();
-  await page.getByLabel('Пошук назви, артикулу або OEM').fill(item.article);
-  await expect(page.getByText(/Пропозицій: 1\./)).toBeVisible();
-  await expect(page.getByRole('link',{name:item.title,exact:true})).toHaveAttribute('href',item.source_url);
+  await page.getByLabel('Пошук назви або OEM').fill(item.title);
+  await expect(page.getByRole('cell',{name:item.title,exact:true}).first()).toBeVisible();
+  await expect(page.locator('table a[href*="aleto.ua"]')).toHaveCount(0);
   const rows=await page.locator('table tbody tr').count();
-  assert.equal(rows,1);
-  await page.getByLabel('Пошук назви, артикулу або OEM').fill('');
+  assert.ok(rows>=1);
+  await page.getByLabel('Пошук назви або OEM').fill('');
   await expect(page.getByText(/Пропозицій: 1472\./)).toBeVisible();
   const category=reference.categories.find(n=>n.subcategory_id);
-  await page.getByLabel('Категорія Aleto',{exact:true}).selectOption(category.category_id);
-  await page.getByLabel('Підкатегорія Aleto',{exact:true}).selectOption(category.subcategory_id);
+  await page.getByLabel('Категорія довідника',{exact:true}).selectOption(category.category_id);
+  await page.getByLabel('Підкатегорія довідника',{exact:true}).selectOption(category.subcategory_id);
   await expect(page.locator('table tbody tr').first()).toBeVisible();
   assert.deepEqual(errors,[]);
   await context.close();
-  console.log(`PASS Aleto real test catalogue, search, filters and source link ${viewport.width}px`);
+  console.log(`PASS Aleto real test catalogue, search, filters and no source link ${viewport.width}px`);
  }
 } finally {await browser.close();}

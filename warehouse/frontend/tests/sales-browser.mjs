@@ -20,7 +20,25 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const row=name=>page.locator('.ui11-result-wrap,.mobile-search-result,.stock-row-wrap').filter({has:page.getByRole('button',{name,exact:true})});
  const search=page.getByRole('combobox',{name:'Пошук запчастин',exact:true});
  async function searchPage(){await page.goto(origin+'/search');await search.fill('ка');await search.press('Escape');await expect(row('Капот')).toBeVisible();}
- async function action(label,stock=false,scope=row('Капот')){await scope.getByRole('button',{name:'Дії Капот',exact:true}).click();if(stock)await page.getByRole('menuitem',{name:'Складські операції',exact:true}).click();await page.getByRole('menuitem',{name:label,exact:true}).click();return page.getByRole('dialog').last();}
+ async function action(label,stock=false,scope=row('Капот')){
+  const trigger=scope.getByRole('button',{name:'Дії Капот',exact:true});
+  const menu=page.getByRole('menu',{name:'Дії запчастини Капот',exact:true});
+  await trigger.click();
+  await expect(menu).toBeVisible();
+  if(stock){
+   if(viewport.width<601){
+    // A mobile result can shift as focus/viewport/background data changes.
+    // Reproduce a scroll without relying on a timing delay or forced click.
+    await page.evaluate(()=>window.dispatchEvent(new Event('scroll')));
+    await expect(menu).toBeVisible();
+   }
+   await menu.getByRole('menuitem',{name:'Складські операції',exact:true}).click();
+   await expect(menu.getByRole('menuitem',{name:label,exact:true})).toBeVisible();
+  }
+  await menu.getByRole('menuitem',{name:label,exact:true}).click();
+  await expect(menu).not.toBeVisible();
+  return page.getByRole('dialog').last();
+ }
  await page.goto(origin+'/search');await expect(page.getByRole('heading',{name:'Пошук запчастин',exact:true})).toBeVisible();
  if(viewport.width<601)await page.getByRole('button',{name:'Фільтри',exact:true}).click();
  await page.getByLabel('Марка пошуку',{exact:true}).selectOption('Volvo');await page.getByLabel('Модель пошуку',{exact:true}).selectOption('XC90');await page.getByLabel('Автомобіль пошуку',{exact:true}).selectOption(volvo.id);
@@ -44,7 +62,19 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   assert.equal((await get('/parts/'+hood.id)).quantity,quantity);
   await page.reload();await page.goto(origin+'/orders');const replay=page.waitForRequest(r=>r.method()==='POST'&&r.url().endsWith('/orders/checkout'));await page.getByRole('button',{name:'Перевірити результат запиту',exact:true}).click();const request=await replay;assert.equal(request.postDataJSON().request_key,saleKeys.at(-1));await expect(page.getByRole('heading',{name:'Замовлення №'+committed.number,exact:true})).toBeVisible();assert.equal((await get('/parts/'+hood.id)).quantity,quantity);
   if(quantity===2){
-   await searchPage();modal=await action('Перемістити',true);await modal.getByLabel('Нове місце',{exact:true}).fill('Полиця B');await expect(modal.getByLabel('Примітка (необов’язково)',{exact:true})).not.toHaveAttribute('required');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();
+   await searchPage();
+   if(viewport.width<601){
+    // Keep the search field focused after dismissing suggestions, then use
+    // the native action popover. The menu must survive a layout/scroll shift.
+    const trigger=row('Капот').getByRole('button',{name:'Дії Капот',exact:true});
+    await search.focus();await search.press('Escape');await trigger.click();
+    const menu=page.getByRole('menu',{name:'Дії запчастини Капот',exact:true});
+    await expect(menu).toBeVisible();
+    await page.evaluate(()=>{window.scrollTo(0,document.documentElement.scrollHeight);window.dispatchEvent(new Event('scroll'));});
+    await expect(menu.getByRole('menuitem',{name:'Складські операції',exact:true})).toBeInViewport();
+    await page.keyboard.press('Escape');await expect(menu).not.toBeVisible();
+   }
+   modal=await action('Перемістити',true);await modal.getByLabel('Нове місце',{exact:true}).fill('Полиця B');await expect(modal.getByLabel('Примітка (необов’язково)',{exact:true})).not.toHaveAttribute('required');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();
    modal=await action('Списати',true);await modal.getByLabel('Причина списання',{exact:true}).fill('Пошкоджено при огляді');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();const state=await get('/parts/'+hood.id);assert.equal(state.quantity,1);assert.equal(state.location,'Полиця B');assert.equal(state.selling_price,'777.89');assert.equal(state.currency,'UAH');
    const audit=await get(`/audit?part_id=${hood.id}&limit=100`);for(const type of ['sale','write_off','transfer'])assert.equal(audit.items.filter(r=>r.type===type).length,1);
   }
@@ -55,5 +85,84 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.goto(origin+`/inventory?vehicle_id=${volvo.id}`);await page.getByRole('checkbox',{name:'Тільки в наявності',exact:true}).uncheck();
  const receiptKeys=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/parts/'+hood.id+'/operations'))receiptKeys.push(r.postDataJSON().request_key);});
  for(const quantity of [1,2]){modal=await action('Додати кількість',true);await modal.getByLabel('Кількість',{exact:true}).fill('1');await modal.getByLabel('Примітка (необов’язково)',{exact:true}).fill('Нове надходження');await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();await expect(modal).not.toBeVisible();assert.equal((await get('/parts/'+hood.id)).quantity,quantity);}
- assert.equal(new Set(receiptKeys).size,2);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:`test-results/sales-${viewport.width}.png`,fullPage:true});assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);await context.close();console.log(`PASS seller Unicode/OEM/article, prices, card/list, lost-response checkout and last-unit replay, writeoff/transfer/audit, fresh receipt keys ${viewport.width}`);
+ assert.equal(new Set(receiptKeys).size,2);
+ // Local-only reference fixture: all seller-price PATCHes use the real
+ // authenticated API, row revision, idempotency key and disposable DB.
+ const first=await stock(volvo,'Масова ціна A',1,{condition:'used'});
+ const second=await stock(volvo,'Масова ціна B',1,{condition:'used'});
+ const existing=await stock(volvo,'Масова ціна C',1,{condition:'used',selling_price:'123.45'});
+ await page.goto(origin+'/inventory?vehicle_id='+volvo.id);
+ const invSearch=page.getByRole('searchbox',{name:'Пошук запчастин',exact:true});
+ await invSearch.fill('Масова ціна');
+ await expect(row('Масова ціна A')).toBeVisible();
+ const toolbar=page.getByRole('region',{name:'Масове уточнення цін',exact:true});
+ await toolbar.getByRole('button',{name:'Налаштувати',exact:true}).click();
+ await toolbar.getByRole('combobox',{name:'Обсяг уточнення цін'}).selectOption('filtered');
+ const pattern='**/market-reference',stamp=new Date().toISOString();
+ let lookups=0;
+ await page.route(pattern,async route=>{
+   const id=route.request().url().split('/').at(-2);
+   const ctx=await get('/parts/'+id+'/price-context');
+   lookups++;
+   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({price_token:ctx.price_token,price_mode:'stored',live_enabled:false,references:[{currency:'UAH',condition:'used',match:'exact',offer_count:3,minimum:'1000.00',maximum:'2000.00',average:'1500.00',observed_at:stamp,examples:[1000,1500,2000].map(amount=>({amount:String(amount)+'.00',currency:'UAH',observed_at:stamp}))}],truncated:false})});
+ });
+ await toolbar.getByRole('button',{name:'Отримати орієнтири',exact:true}).click();
+ await expect(toolbar.getByText('Готово: 2',{exact:true})).toBeVisible();
+ await expect(toolbar.getByText('Пропущено: 1',{exact:true})).toBeVisible();
+ assert.equal(lookups,2);
+ assert.equal((await get('/parts/'+first.id)).selling_price,null);
+ assert.equal((await get('/parts/'+second.id)).selling_price,null);
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
+ await expect(toolbar.getByRole('button',{name:'Додати ціни масово',exact:true})).toBeDisabled();
+ // Single-row apply loses response after commit. Reload and resume must
+ // replay that exact row, never silently apply the second pending row.
+ const pricePattern='**/parts/'+first.id+'/price',keys=[];
+ await page.route(pricePattern,async route=>{
+  keys.push(route.request().postDataJSON().request_key);
+  if(keys.length===1){const r=await route.fetch();assert.equal(r.status(),200,await r.text());await route.abort('failed');}
+  else await route.continue();
+ });
+ await row('Масова ціна A').getByRole('button',{name:'Додати ціну',exact:true}).click();
+ await expect(toolbar.getByText('Не підтверджено: 1',{exact:true})).toBeVisible();
+ await expect(toolbar.getByRole('button',{name:'Продовжити',exact:true})).toBeEnabled();
+ await page.reload();
+ await expect(toolbar.getByRole('button',{name:'Продовжити',exact:true})).toBeVisible();
+ await toolbar.getByRole('button',{name:'Продовжити',exact:true}).click();
+ await expect(toolbar.getByText('Встановлено: 1',{exact:true})).toBeVisible();
+ await expect(toolbar.getByText('Готово: 1',{exact:true})).toBeVisible();
+ assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);
+ assert.equal((await get('/parts/'+first.id)).selling_price,'1500.00');
+ assert.equal((await get('/parts/'+second.id)).selling_price,null);
+ await page.unroute(pricePattern);
+ await toolbar.getByRole('checkbox',{name:'Підтверджую встановлення 1 цін'}).check();
+ await toolbar.getByRole('button',{name:'Додати ціни масово',exact:true}).click();
+ await expect(toolbar.getByText('Встановлено: 2',{exact:true})).toBeVisible();
+ assert.equal((await get('/parts/'+second.id)).selling_price,'1500.00');
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
+ for(const part of [first,second,existing])assert.equal((await get('/parts/'+part.id)).quantity,1);
+ // Single-part workflow is independent of the bulk plan. No mutation on lookup.
+ await row('Масова ціна C').getByRole('button',{name:'Дізнатися ціни Масова ціна C',exact:true}).click();
+ const reference=page.getByRole('dialog',{name:'Орієнтир цін · Масова ціна C',exact:true});
+ await expect(reference.getByLabel('Вибрати ціновий орієнтир')).toHaveValue('0:average');
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'123.45');
+ await reference.getByLabel('Вибрати ціновий орієнтир').selectOption('0:offer-0');
+ await expect(reference.getByLabel('Встановити власну ціну')).toHaveValue('1000.00');
+ await reference.getByLabel('Встановити власну ціну').fill('1100');
+ await reference.getByRole('button',{name:/^Замінити на/}).click();
+ await expect(reference.getByText('Ціну встановлено',{exact:true})).toBeVisible();
+ assert.equal((await get('/parts/'+existing.id)).selling_price,'1100.00');
+ assert.equal((await get('/parts/'+first.id)).selling_price,'1500.00');
+ assert.equal((await get('/parts/'+existing.id)).quantity,1);
+ // Confirm the success panel remains mounted after the actual write and
+ // the new price is visible there before the user closes it.
+ await expect(reference).toBeVisible();
+ await expect(reference.getByText(/Поточна ціна/)).toBeVisible();
+ await expect(reference.locator('.reference-current strong')).toContainText(/1[\s\u00a0\u202f]*100/);
+ await reference.getByRole('button',{name:'Закрити'}).click();
+ await expect(reference).not.toBeVisible();
+ await expect(row('Масова ціна C')).toContainText(/1100[.,]00|1[\s\u00a0\u202f]*100/);
+ await page.unroute(pattern);
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await toolbar.getByRole('button',{name:'Нова перевірка',exact:true}).click();
+ console.log('PASS anonymous bulk references, preserve existing, single replay, explicit apply and stock invariants '+viewport.width);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:`test-results/sales-${viewport.width}.png`,fullPage:true});assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);await context.close();console.log(`PASS seller Unicode/OEM/article, prices, card/list, lost-response checkout and last-unit replay, writeoff/transfer/audit, fresh receipt keys ${viewport.width}`);
 }}finally{await browser.close();}

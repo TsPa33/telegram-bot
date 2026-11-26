@@ -1,6 +1,7 @@
 import SearchPartPreview from "./SearchPartPreview";
 import {NotesDialog,InspectionDialog} from "./WorkshopDialogs";
 import InventoryQuantity from "./InventoryQuantity";
+import AletoPriceButton from "./AletoPriceButton";
 import PlanPartActions from "./PlanPartActions";
 import {partRowInteraction} from "./partRowInteraction";
 import { workspaceSections } from "./vehiclePartsWorkspace";
@@ -1052,6 +1053,7 @@ export default function DismantlingBoard({
                       </div>
                     )}
                     <div className="wd-row-actions">
+                      {!settings && p && <AletoPriceButton key={p.id} part={p} vehicle={vehicle} />}
                       {!settings && !row.parts.length && (
                         <button
                           disabled={

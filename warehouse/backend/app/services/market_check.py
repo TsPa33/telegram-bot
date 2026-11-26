@@ -31,7 +31,7 @@ def check(db,who,id):
     # Never show an aggregate as an Aleto result when its evidence links failed
     # the source allowlist. Do not recompute a median from a filtered subset.
     if any(not source_url(e['url']) for e in rows):
-        g={**g,'level':'D','label':'Ціну не визначено','cohorts':[],'examples':[],'historical_examples':[],'offer_count':0,'example_count':0,'reasons':{**g.get('reasons',{}),'unverified_source_url':1}}
+        g={**g,'level':'D','label':'Ціну не визначено','cohorts':[],'examples':[],'historical_examples':[],'aleto_reference':[],'offer_count':0,'example_count':0,'reasons':{**g.get('reasons',{}),'unverified_source_url':1}}
     checked=utcnow().isoformat()
     return dict(result_source='imported' if offers else 'unavailable',mode='imported_catalogue',status='completed' if offers else 'no_matches',fresh_data_fetched=False,live_refresh_available=False,
         checked_at=checked,observed_at=max((e['observed_at'] for e in offers.values()),default=None),cached=False,

@@ -221,6 +221,7 @@ KNOWN_ROUTES = frozenset({
     ('POST','/api/v1/vehicles/{id}/virtual-dismantling/availability'),
     ('GET','/api/v1/parts/{id}/price-guidance'),
     ('POST','/api/v1/parts/{id}/market-refresh'),
+    ('POST','/api/v1/parts/{id}/market-reference'),
     ('POST','/api/v1/pricing/guidance'),
     ('POST','/api/v1/pricing/previews'),
     ('GET','/api/v1/pricing/previews/{id}'),
