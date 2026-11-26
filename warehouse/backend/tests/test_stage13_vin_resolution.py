@@ -634,3 +634,31 @@ def test_manual_intake_requires_explicit_base_and_replays_without_vin(logged):
     with Session(engine()) as db:
         assert db.get(Vehicle, vid).dismantling_v3["unified_base"] is True
         assert db.scalar(select(func.count()).select_from(Part)) == 0
+
+
+
+def test_later_oracle_selection_preserves_the_manual_plan(logged, source):
+    from uuid import uuid4
+
+    created = logged.post("/api/v1/vehicles", json={
+        "intake_request_key": str(uuid4()), "vin_intake_mode": "manual",
+        "accept_base_catalogue": True, "manufacturer": MAKE, "model": "3 Series", "year": 2015,
+    })
+    assert created.status_code == 201, created.text
+    vid = created.json()["id"]
+    with Session(engine()) as db:
+        old_ids = set(db.scalars(select(DismantlingItem.id).where(DismantlingItem.vehicle_id == vid)))
+    state = logged.get(f"/api/v1/vehicles/{vid}/global-dismantling").json()
+    body = {"identity": {**ORACLE, "confirmed": True}, "manufacturer": MAKE, "model": "3 (F30)",
+            "source_snapshot_sha": SHA, "expected_basis": state["selection_basis"]}
+    path = f"/api/v1/vehicles/{vid}/oracle-catalogue-selection"
+    attached = logged.post(path, json=body)
+    assert attached.status_code == 200, attached.text
+    assert attached.json()["dismantling_v3"]["legacy_base_plan"] is True
+    assert logged.post(path, json=body).status_code == 200
+    with Session(engine()) as db:
+        now_ids = set(db.scalars(select(DismantlingItem.id).where(DismantlingItem.vehicle_id == vid)))
+        assert old_ids < now_ids and len(now_ids - old_ids) == 1
+    legacy = logged.get(f"/api/v1/vehicles/{vid}/dismantling-workspace", params={"source": "base"})
+    assert legacy.status_code == 200, legacy.text
+    assert {item["key"].removeprefix("base:") for item in legacy.json()["items"]} == old_ids

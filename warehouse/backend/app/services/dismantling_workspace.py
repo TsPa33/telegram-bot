@@ -107,7 +107,16 @@ def entries(db, who, v, source):
 
         w = listing(db, v)
         result = []
+        legacy_ids = None
+        if (v.dismantling_v3 or {}).get("legacy_base_plan"):
+            from app.models import DismantlingItem
+            legacy_ids = set(db.scalars(select(DismantlingItem.id).where(
+                DismantlingItem.account_id == who.workspace_account_id,
+                DismantlingItem.vehicle_id == v.id,
+                DismantlingItem.source != "carpot.catalogue.v1")))
         for i in w["items"]:
+            if legacy_ids is not None and i["id"] not in legacy_ids:
+                continue
             ps = [byid[i["part_id"]]] if i["part_id"] in byid else []
             marker = ps[0].compatibility_notes if ps else ""
             match = re.fullmatch(r"plan.parts:ktype=(\d+);pt_id=(\d+)", marker)

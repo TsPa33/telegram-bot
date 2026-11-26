@@ -463,7 +463,7 @@ def select_existing_oracle(id: str, data: ExistingOracleSelection, db: DB, who: 
     source, attributes, _ = vin_source_directory.catalogue_identity(
         adapter, data.identity, manufacturer=data.manufacturer, model=data.model, year=vehicle.year)
     if (vin_source_directory.maker_key(vehicle.manufacturer) != vin_source_directory.maker_key(data.manufacturer)
-            or vin_resolution.policy.model_relation(vehicle.model, data.model) == "mismatch"):
+            or vin_resolution.policy.model_relation(vehicle.model, data.model) != "compatible"):
         raise HTTPException(409, "Марка або модель відрізняється. Спочатку уточніть автомобіль у картці")
     readiness, plan = vin_resolution.graph_preview(adapter, source)
     if not plan:

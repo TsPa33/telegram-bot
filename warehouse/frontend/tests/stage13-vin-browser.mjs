@@ -73,7 +73,14 @@ try{
   await dialog.getByRole('textbox',{name:'Рік автомобіля',exact:true}).fill('2015');
   await dialog.getByRole('combobox',{name:'Марка',exact:true}).selectOption('840');
   await dialog.getByRole('combobox',{name:'Модель',exact:true}).selectOption('701');
+  const temporaryCatalogueFailure='**/api/v1/vehicles/vin/source-graph?*';
+  await page.route(temporaryCatalogueFailure,route=>route.fulfill({status:503,json:{detail:'Service unavailable'}}),{times:1});
   await dialog.getByRole('combobox',{name:'Модифікація',exact:true}).selectOption('900');
+  await expect(dialog.getByRole('alert')).toContainText('Каталог запчастин тимчасово недоступний');
+  await expect(dialog.getByRole('textbox',{name:'Рік автомобіля',exact:true})).toHaveValue('2015');
+  await expect(dialog.getByRole('combobox',{name:'Модифікація',exact:true})).toHaveValue('900');
+  await expect(dialog.getByRole('button',{name:'Додати автомобіль',exact:true})).toBeDisabled();
+  await dialog.getByRole('button',{name:'Повторити',exact:true}).click();
   await expect(dialog.getByText(/План розбору готовий/)).toBeVisible();
   const createCatalogue=page.waitForResponse(response=>response.url().endsWith('/api/v1/vehicles')&&response.request().method()==='POST');
   await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
@@ -162,8 +169,10 @@ try{
   await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();
   await expect(dialog).not.toBeVisible();
   const vehicles=await (await context.request.get('/api/v1/vehicles')).json();
-  assert.equal(vehicles.items.length,1);
-  const donor=vehicles.items[0];
+  assert.equal(vehicles.items.length,3);
+  const vinDonors=vehicles.items.filter(item=>item.vin===vin);
+  assert.equal(vinDonors.length,1);
+  const donor=vinDonors[0];
   assert.equal(donor.vin,vin);
   assert.equal(donor.model,'3 Series');
   const parts=await (await context.request.get('/api/v1/parts?vehicle_id='+donor.id)).json();
@@ -173,7 +182,7 @@ try{
   assert.equal(plan.items[0].name,'Synthetic engine');
   assert.deepEqual(errors,[]);
   assert.deepEqual(paid,[]);
-  console.log('PASS mode switching, stale catalogue response, real API save, one pinned item, zero stock and paid requests');
+  console.log('PASS VIN, no-VIN catalogue and manual intake, stale response cancellation, pinned plan and zero automatic stock');
 }finally{
   await context.close();
   await browser.close();
