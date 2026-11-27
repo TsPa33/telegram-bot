@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 from datetime import datetime, timezone
+from contextlib import closing
 from html.parser import HTMLParser
 from io import BytesIO
 import json
@@ -713,7 +714,7 @@ class MainWindow:
                    style='Quiet.TButton').pack(side='right', padx=(10, 0))
 
         center = ttk.Frame(self.root, style='Dark.TFrame', padding=(14, 0, 14, 7))
-        center.pack(fill='both', expand=True)
+        # Pack the center LAST so fixed footer and actions reserve their space.
         left = ttk.Frame(center, style='Panel.TFrame', padding=12, width=355)
         left.pack(side='left', fill='y', padx=(0, 10))
         left.pack_propagate(False)
@@ -826,7 +827,6 @@ class MainWindow:
 
         # Fixed action bar: never clipped by the vehicle form or long logs.
         actions = ttk.Frame(self.root, style='Panel.TFrame', padding=(12, 8))
-        actions.pack(fill='x', padx=14, pady=(0, 5))
         ttk.Label(actions, text='3  Дії', style='Header.TLabel').pack(side='left', padx=(0, 8))
         self.start_btn = ttk.Button(actions, text='▶ Почати парсинг', command=self.start,
                                     style='Accent.TButton')
@@ -851,7 +851,9 @@ class MainWindow:
         self.cancel_btn.state(['disabled'])
 
         bottom = ttk.Frame(self.root, style='Panel.TFrame', padding=(12, 7))
-        bottom.pack(fill='x', padx=14, pady=(0, 10))
+        bottom.pack(side='bottom', fill='x', padx=14, pady=(0, 10))
+        actions.pack(side='bottom', fill='x', padx=14, pady=(0, 5))
+        center.pack(side='top', fill='both', expand=True)
         bottom_bar = ttk.Frame(bottom, style='Panel.TFrame')
         bottom_bar.pack(fill='x')
         ttk.Label(bottom_bar, text='Стан:', style='Header.TLabel').pack(side='left', padx=(0, 6))
@@ -1064,14 +1066,14 @@ class MainWindow:
             except InterruptedError:
                 status = 'cancelled' if self.cancel_requested else 'paused'
                 if 'job_id' in locals():
-                    with connect_db() as db:
+                    with closing(connect_db()) as db, db:
                         db.execute('UPDATE jobs SET status=? WHERE id=?', (status, job_id))
                 self.events.put(('status', JOB_STATUS[status]))
             except Exception as exc:
                 self.events.put(('error', str(exc)))
                 # Failure is not retried automatically; Cloudflare 403 is terminal until operator action.
                 try:
-                    with connect_db() as con:
+                    with closing(connect_db()) as con, con:
                         if 'job_id' in locals():
                             con.execute('UPDATE jobs SET status=?,error=? WHERE id=?', ('failed', str(exc)[:300], job_id))
                 except Exception:
@@ -1195,7 +1197,7 @@ class MainWindow:
                 webbrowser.open(url)
 
     def _load_vehicles(self):
-        with connect_db() as db:
+        with closing(connect_db()) as db, db:
             self.vehicles = db.execute('SELECT * FROM vehicles ORDER BY manufacturer, model, year, id').fetchall()
         self.vehicle_box['values'] = [
             f'{row["manufacturer"]} {row["model"]} {row["year"] or ""} · #{row["id"]}'
@@ -1212,7 +1214,7 @@ class MainWindow:
             return
         try:
             make, model, year, generation = self._vehicle()
-            with connect_db() as db:
+            with closing(connect_db()) as db, db:
                 details = {}
                 if self.vin_candidate:
                     vin, decoded, provider = self.vin_candidate
@@ -1259,7 +1261,7 @@ class MainWindow:
         self.model.set(row['model'])
         self.generation.set(row['generation'])
         self.year.set(str(row['year'] or ''))
-        with connect_db() as db:
+        with closing(connect_db()) as db, db:
             job = db.execute('SELECT * FROM jobs WHERE vehicle_id=? ORDER BY id DESC LIMIT 1',
                              (self.vehicle_id,)).fetchone()
         self.job_id = job['id'] if job else None
@@ -1281,7 +1283,7 @@ class MainWindow:
         if not self.job_id or not selection:
             return
         article = self.table.item(selection[0], 'values')[0]
-        with connect_db() as db:
+        with closing(connect_db()) as db, db:
             rows = db.execute('''SELECT observed_at, currency, price FROM price_history
                                  WHERE job_id=? AND article=? ORDER BY observed_at DESC LIMIT 25''',
                               (self.job_id, article)).fetchall()
@@ -1289,7 +1291,7 @@ class MainWindow:
         messagebox.showinfo(f'Історія: {article}', summary or 'Немає спостережень')
 
     def _load_catalogues(self):
-        with connect_db() as db:
+        with closing(connect_db()) as db, db:
             self.catalogues = db.execute('SELECT * FROM jobs WHERE vehicle_id IS NULL ORDER BY id DESC').fetchall()
         self.archive_box.configure(values=[
             f'{row["manufacturer"]} {row["model"]} · #{row["id"]} · {JOB_STATUS.get(row["status"], row["status"])}'
@@ -1319,7 +1321,7 @@ class MainWindow:
 
     def _load_last_job(self):
         try:
-            with connect_db() as con:
+            with closing(connect_db()) as con, con:
                 job = con.execute('SELECT * FROM jobs ORDER BY id DESC LIMIT 1').fetchone()
             if job:
                 self.job_id = job['id']
@@ -1340,7 +1342,7 @@ class MainWindow:
             self.next_page.state(['disabled'])
             return
         try:
-            with connect_db() as con:
+            with closing(connect_db()) as con, con:
                 stats = job_stats(con, self.job_id)
                 rows = local_store.search(con, self.job_id, self.query.get(), self.category_filter.get(),
                                           self.has_oem.get(), self.has_price.get(), self.sort_price.get(), self.offset)
