@@ -143,6 +143,42 @@ def probe_aleto_control():
             log.warning("Aleto proxy probe %s: %s: %s", label, type(exc).__name__, safe)
 
 
+def probe_aleto_connect():
+    """Compare HTTP proxy CONNECT to the Oracle hostname and Tailscale IP."""
+    import socket
+    import ssl
+    from urllib.parse import urlsplit
+    raw_proxy = os.getenv("WAREHOUSE_ALETO_WORKER_PROXY", "")
+    raw_url = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "")
+    if not raw_proxy or not raw_url:
+        return
+    proxy, destination = urlsplit(raw_proxy), urlsplit(raw_url)
+    hostname = destination.hostname
+    if not hostname or hostname != "carpot-oracle.tailf95906.ts.net":
+        log.warning("Aleto CONNECT diagnostic skipped for unexpected destination")
+        return
+    for label, host in (("dns-name", hostname), ("tailnet-ip", "100.87.244.120")):
+        try:
+            with socket.create_connection((proxy.hostname, proxy.port), timeout=6) as conn:
+                conn.settimeout(6)
+                connect = f"CONNECT {host}:8443 HTTP/1.1\\r\\nHost: {host}:8443\\r\\n\\r\\n"
+                conn.sendall(connect.encode("ascii"))
+                reply = b""
+                while b"\\r\\n\\r\\n" not in reply and len(reply) < 1024:
+                    chunk = conn.recv(1024)
+                    if not chunk:
+                        break
+                    reply += chunk
+                status = reply.split(b"\\r\\n", 1)[0][:80].decode("ascii", "replace")
+                log.info("Aleto CONNECT target %s: %s", label, status)
+                if b" 200 " not in reply.split(b"\\r\\n", 1)[0]:
+                    continue
+                with ssl.create_default_context().wrap_socket(conn, server_hostname=hostname) as tls:
+                    log.info("Aleto TLS target %s: %s", label, tls.version())
+        except Exception as exc:
+            log.warning("Aleto CONNECT target %s: %s: %s", label, type(exc).__name__, str(exc).splitlines()[0][:120])
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
     if os.getenv("WAREHOUSE_ENV") != "staging":
@@ -158,6 +194,7 @@ def main():
     drop_volume_bootstrap_privileges()
     migrate(timeout)
     probe_aleto_control()
+    probe_aleto_connect()
     # Dual-stack works in both new IPv4/IPv6 Railway environments and legacy
     # IPv6-only private networks; also accepts IPv4 deployment health checks.
     listener = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
