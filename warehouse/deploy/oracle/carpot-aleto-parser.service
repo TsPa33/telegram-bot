@@ -1,0 +1,28 @@
+[Unit]
+Description=CarPot Aleto catalogue worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=carpot-aleto-parser
+StateDirectory=carpot-market-reference
+WorkingDirectory=/opt/carpot-aleto-parser/backend
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/carpot-aleto-parser/venv/bin/python -m app.aleto_worker --database /var/lib/carpot-market-reference/catalogue.sqlite3 run
+Restart=on-failure
+RestartSec=10
+CPUQuota=25%
+MemoryMax=256M
+TasksMax=32
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+InaccessiblePaths=-/etc/mysql -/etc/my.cnf -/etc/my.cnf.d -/var/lib/mysql -/run/mysqld -/run/mysql
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

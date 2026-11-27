@@ -88,11 +88,21 @@ def price(value,currency):
 
 
 def parse_page(html,url,observed_at,model):
+    if model not in ROOTS:
+        raise ValueError('UNSUPPORTED_MODEL')
+    return extract_page(
+        html, url, observed_at, manufacturer='Volvo', model=model,
+        source='aleto-offline-fixture', data_origin='synthetic_offline_fixture',
+        adapter_version=VERSION,
+    )
+
+
+def extract_page(html, url, observed_at, *, manufacturer, model, source, data_origin, adapter_version):
+    """Extract cards from supplied HTML without requesting any URLs."""
     source_url(url)
     if len(html.encode())>MAX_PAGE_BYTES:raise ValueError('PAGE_TOO_LARGE')
     stamp=datetime.fromisoformat(observed_at.replace('Z','+00:00'))
     if stamp.tzinfo is None:raise ValueError('MISSING_OBSERVATION_TIMEZONE')
-    if model not in ROOTS:raise ValueError('UNSUPPORTED_MODEL')
     tree=Tree();tree.feed(html);tree.close()
     cards=[n for n in tree.root.all() if n.has('detail-item')]
     if len(cards)>MAX_RECORDS:raise ValueError('TOO_MANY_CARDS')
@@ -125,10 +135,10 @@ def parse_page(html,url,observed_at,model):
                         if target=='category':category=clean(m[2])
                         else:subcategory=clean(m[2])
             labels=card.find(cls='detail-item-labels')
-            record=dict(article=article,oem=oem,title=title,price_uah=price(p_uah.text(),'uah') if p_uah else None,price_usd=price(p_usd.text(),'usd') if p_usd else None,url=source_url(a.attrs['href'],url),source_page=url,condition=labels.text() if labels else '',category=category,subcategory=subcategory,model='Volvo '+model,checked_at=observed_at,raw_excerpt=card.text()[:700],data_origin='synthetic_offline_fixture',adapter_version=VERSION)
+            record=dict(article=article,oem=oem,title=title,price_uah=price(p_uah.text(),'uah') if p_uah else None,price_usd=price(p_usd.text(),'usd') if p_usd else None,url=source_url(a.attrs['href'],url),source_page=url,condition=labels.text() if labels else '',category=category,subcategory=subcategory,model=manufacturer+' '+model,checked_at=observed_at,raw_excerpt=card.text()[:700],data_origin=data_origin,adapter_version=adapter_version)
             records.append(record)
             if not category or not subcategory:raise ValueError('MISSING_TAXONOMY')
-            row=ImportRow.model_validate(dict(source='aleto-offline-fixture',source_article=article,manufacturer='Volvo',model=model,category=category,subcategory=subcategory,part_name=title,oem=oem,condition=record['condition'],price_uah=record['price_uah'],price_usd=record['price_usd'],source_url=record['url'],observed_at=observed_at,source_record={k:'' if v is None else str(v) for k,v in record.items()})).model_dump(mode='json')
+            row=ImportRow.model_validate(dict(source=source,source_article=article,manufacturer=manufacturer,model=model,category=category,subcategory=subcategory,part_name=title,oem=oem,condition=record['condition'],price_uah=record['price_uah'],price_usd=record['price_usd'],source_url=record['url'],observed_at=observed_at,source_record={k:'' if v is None else str(v) for k,v in record.items()})).model_dump(mode='json')
             rows.append(row)
         except (ValueError,TypeError) as exc:
             code=str(exc) if re.fullmatch('[A-Z_]+',str(exc)) else 'INVALID_RECORD'

@@ -10,6 +10,12 @@ GROUPS={
  'Автомобілі':{'vehicles.view':'Перегляд автомобілів','vehicles.create':'Додавання автомобілів','vehicles.edit':'Редагування автомобілів','vehicles.delete':'Видалення тестових автомобілів','dismantling.manage':'План розбору','catalog.view':'Перегляд довідника','catalog.import':'Імпорт каталогу','market.check':'Ручна перевірка ринкових даних'},
  'Аналітика':{'analytics.view':'Статистика залишків','analytics.financial':'Фінансова аналітика','audit.view':'Історія операцій'},
  'Команда':{'team.view':'Перегляд команди','team.manage_managers':'Керування менеджерами'},
+ 'Парсер каталогу': {
+     'catalog_parser_view': 'Перегляд завдань парсера',
+     'catalog_parser_manage': 'Керування завданнями парсера',
+     'catalog_parser_publish': 'Підготовка результатів парсера до імпорту',
+     'catalog_parser_admin': 'Налаштування планового оновлення цін',
+ },
  'Налаштування':{'settings.manage':'Налаштування складу'},
 }
 PERMISSIONS={k:v for group in GROUPS.values() for k,v in group.items()}
@@ -31,6 +37,14 @@ def route_permissions(method,path,body):
     if (method,path) not in KNOWN_ROUTES:return ['__deny__']
     path=path.removeprefix('/api/v1');read=method=='GET'
     if path in ('/auth/me','/auth/logout','/auth/password') or path in {'/team/readiness','/smart-search/readiness','/workshop/readiness','/orders/readiness','/sales-workspace/readiness','/vehicle-view/readiness','/dismantling/readiness','/dismantling/workspace-readiness','/dismantling/simple-readiness'}:return []
+    if path.startswith('/admin/aleto-worker/'):
+        if path.endswith('/prepare'):
+            return ['catalog_parser_view','catalog_parser_publish']
+        if read or path.endswith('/exports'):
+            return ['catalog_parser_view']
+        if path.endswith('/command') and body.get('action') in ('schedule','unschedule'):
+            return ['catalog_parser_view','catalog_parser_admin']
+        return ['catalog_parser_view','catalog_parser_manage']
     if path.startswith('/admin/import-jobs'):return [] # Each route requires the existing platform-owner Admin dependency.
     if path=='/catalogue/capabilities' or path.startswith('/catalogue/admin/'):
         return []  # Admin endpoints independently require the platform allowlist.

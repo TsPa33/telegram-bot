@@ -1,0 +1,9 @@
+[Unit]
+Description=Check for due CarPot Aleto price refresh jobs
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -257,3 +257,19 @@ KNOWN_ROUTES=KNOWN_ROUTES.union({
     ('GET','/api/v1/billing/orders/{order}'),
     ('POST','/api/v1/billing/orders/{order}/refresh'),
 })
+
+KNOWN_ROUTES = KNOWN_ROUTES.union({
+    ('POST', '/api/v1/admin/aleto-worker/vin'),
+    ('GET', '/api/v1/admin/aleto-worker/jobs'),
+    ('POST', '/api/v1/admin/aleto-worker/jobs'),
+    ('POST', '/api/v1/admin/aleto-worker/jobs/{job_id}/command'),
+    ('GET', '/api/v1/admin/aleto-worker/jobs/{job_id}/results'),
+    ('POST', '/api/v1/admin/aleto-worker/jobs/{job_id}/prepare'),
+})
+
+KNOWN_ROUTES = KNOWN_ROUTES.union({
+    ('GET', '/api/v1/admin/aleto-worker/jobs/{job_id}/prepare'),
+    ('POST', '/api/v1/admin/aleto-worker/jobs/{job_id}/exports'),
+    ('GET', '/api/v1/admin/aleto-worker/jobs/{job_id}/exports/{export_id}'),
+    ('GET', '/api/v1/admin/aleto-worker/jobs/{job_id}/exports/{export_id}/download'),
+})

@@ -1,0 +1,27 @@
+[Unit]
+Description=CarPot Aleto private control API
+After=carpot-aleto-parser.service
+Requires=carpot-aleto-parser.service
+
+[Service]
+User=carpot-aleto-parser
+StateDirectory=carpot-market-reference
+WorkingDirectory=/opt/carpot-aleto-parser/backend
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=CARPOT_ALETO_DATABASE=/var/lib/carpot-market-reference/catalogue.sqlite3
+EnvironmentFile=/etc/carpot-aleto-control.env
+ExecStart=/opt/carpot-aleto-parser/venv/bin/python -m uvicorn app.aleto_control:app --host 127.0.0.1 --port 8732 --no-access-log
+Restart=on-failure
+MemoryMax=256M
+TasksMax=32
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+InaccessiblePaths=-/etc/mysql -/etc/my.cnf -/etc/my.cnf.d -/var/lib/mysql -/run/mysqld -/run/mysql
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
