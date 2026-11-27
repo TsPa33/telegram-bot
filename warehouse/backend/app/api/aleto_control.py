@@ -29,6 +29,19 @@ class VinInput(BaseModel):
     vin: str = Field(max_length=40)
 
 
+def worker_proxy():
+    """Optional private tailnet HTTP CONNECT proxy (Railway staging only)."""
+    raw = os.environ.get('WAREHOUSE_ALETO_WORKER_PROXY', '').strip()
+    if not raw:
+        return None
+    endpoint = urlsplit(raw)
+    if (endpoint.scheme != 'http' or not endpoint.hostname or endpoint.username or endpoint.password
+            or endpoint.query or endpoint.fragment or endpoint.path not in ('', '/')
+            or not endpoint.hostname.endswith('.railway.internal')):
+        raise HTTPException(503, 'Некоректна конфігурація приватного проксі Aleto')
+    return raw
+
+
 def worker_request(who, path):
     base = os.environ.get('WAREHOUSE_ALETO_WORKER_URL', '').rstrip('/')
     token = os.environ.get('WAREHOUSE_ALETO_WORKER_TOKEN', '')
@@ -44,8 +57,13 @@ def worker_request(who, path):
 def worker(who, method, path, payload=None):
     url, headers = worker_request(who, path)
     try:
-        response = httpx.request(method, url, json=payload, headers=headers,
-                                 timeout=10, follow_redirects=False, trust_env=False)
+        proxy = worker_proxy()
+        if proxy:
+            with httpx.Client(proxy=proxy, timeout=10, follow_redirects=False, trust_env=False) as client:
+                response = client.request(method, url, json=payload, headers=headers)
+        else:
+            response = httpx.request(method, url, json=payload, headers=headers,
+                                     timeout=10, follow_redirects=False, trust_env=False)
         if response.status_code in (404, 409, 422):
             raise HTTPException(response.status_code, 'Дію відхилено. Оновіть стан завдання.')
         response.raise_for_status()
@@ -115,7 +133,7 @@ def export_status(job_id: int, who: Auth, export_id: str = Path(pattern=r'^[a-f0
 @router.get('/jobs/{job_id}/exports/{export_id}/download')
 def download_export(job_id: int, who: Auth, export_id: str = Path(pattern=r'^[a-f0-9]{64}$')):
     url, headers = worker_request(who, f'/jobs/{job_id}/exports/{export_id}/download')
-    client = httpx.Client(timeout=30, follow_redirects=False, trust_env=False)
+    client = httpx.Client(proxy=worker_proxy(), timeout=30, follow_redirects=False, trust_env=False)
     try:
         response = client.send(client.build_request('GET', url, headers=headers), stream=True)
         if response.status_code != 200:
