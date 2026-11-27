@@ -200,6 +200,26 @@ def test_model_year_and_source_technical_facts_can_resolve_passenger_and_truck(
     assert [question["field"] for question in ambiguous["questions"]] == ["engine_power_kw"]
 
 
+def test_reported_hyphenated_engine_code_is_not_asked_again(source):
+    source.makers = {"passenger": [{"id": 111, "name": "TOYOTA"}], "commercial": []}
+    source.models = [dict(id=3985, name="LAND CRUISER (_J6_)", construction_interval="1980 - 1991")]
+    source.variants = {3985: [
+        dict(id=9281, model_id=3985, name="4.0 (FJ62_G)", construction_interval="1987 - 1990"),
+        dict(id=30632, model_id=3985, name="4.0 4x4", construction_interval="1987 - 1990"),
+    ]}
+    source.attributes = {
+        9281: [("EngineCode", "3F-E"), ("FuelType", "Бензин"), ("Capacity_Technical", "3955 ccm")],
+        30632: [("EngineCode", "3F"), ("FuelType", "Бензин"), ("Capacity_Technical", "3955 ccm")],
+    }
+    identity = who()
+    report = decoded()
+    report["vehicle"] = dict(manufacturer="TOYOTA", model="Land Cruiser", year=1989,
+                             engine="3F-E", fuel_type="Бензин", engine_displacement_l="3.955")
+    page = resolution.search(source, context(identity, report), VinClarifications(), identity)
+    assert [item["source_modification_id"] for item in page["items"]] == [9281]
+    assert page["automatic"] == page["items"][0]["choice"] and page["questions"] == []
+
+
 @pytest.mark.parametrize("field,conflicting", [
     ("body_class", "coupe"), ("fuel_type", "electric"), ("engine_displacement_l", "2995 cc"),
     ("transmission", "automatic"), ("drive_type", "RWD"), ("year", 2025), ("generation", "F20"),
@@ -594,7 +614,7 @@ def test_selected_graph_adds_oem_before_explicit_receipt(logged, source, monkeyp
     token, _ = lookup_context(logged, monkeypatch)
     page = logged.get("/api/v1/vehicles/vin/resolution", headers={"X-Vin-Context": token}).json()
     result = logged.post("/api/v1/vehicles", json=dict(
-        manufacturer=MAKE, model="3 Series", year=2015, vin=VIN,
+        manufacturer=MAKE, model="3 Series", year=2015, vin=VIN, engine_displacement_l=2,
         vin_resolution={"context": token, "choice": page["items"][0]["choice"]}))
     assert result.status_code == 201, result.text
     donor = result.json()["id"]
@@ -610,6 +630,7 @@ def test_selected_graph_adds_oem_before_explicit_receipt(logged, source, monkeyp
     auto_oem.enrich_vehicle(engine(), account, donor, cache)
     base = f"/api/v1/vehicles/{donor}"
     plan = logged.get(base + "/global-dismantling").json()
+    assert plan["selection"]["identity_fingerprint"] == plan["selection_basis"]
     assert plan["catalogue_oems"]["41"]["oem_number"] == "OEM-41"
     receipt = {"keys": [plan["keys"]["41"]], "confirm_physical_receipt": True}
     assert logged.post(base + "/unified-catalogue/stock", json=receipt).json() == {"added": 1, "skipped": 0}
