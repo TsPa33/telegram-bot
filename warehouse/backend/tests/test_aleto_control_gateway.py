@@ -114,3 +114,42 @@ def test_large_import_resumes_and_full_export_is_filtered(platform, monkeypatch,
     download = platform.get(base + '/exports/' + full + '/download')
     assert sum(1 for _ in csv.DictReader(io.StringIO(download.content.decode('utf-8-sig')))) == size
     assert oracle.get(f'/jobs/{job_id}/exports/{export}', headers={**headers, 'X-Workspace': 'another'}).status_code == 404
+
+
+def test_aleto_worker_private_http_is_restricted_to_railway_staging(monkeypatch):
+    from types import SimpleNamespace
+
+    import pytest
+    from fastapi import HTTPException
+
+    actor = SimpleNamespace(workspace_account_id='workspace-1', actor_id='actor-1')
+    monkeypatch.setenv('WAREHOUSE_ALETO_WORKER_TOKEN', 't' * 40)
+    monkeypatch.setenv('WAREHOUSE_ALETO_WORKER_PROXY',
+                       'http://carpot-aleto-tailnet-proxy.railway.internal:1056')
+    monkeypatch.setenv('RAILWAY_ENVIRONMENT_NAME', 'warehouse-staging')
+    monkeypatch.setenv('WAREHOUSE_ALETO_WORKER_URL',
+                       'http://carpot-oracle.tailf95906.ts.net:8444')
+    url, headers = aleto_control.worker_request(actor, '/jobs')
+    assert url == 'http://carpot-oracle.tailf95906.ts.net:8444/jobs'
+    assert headers['Authorization'] == 'Bearer ' + 't' * 40
+
+    for bad_url in ('http://carpot-oracle.tailf95906.ts.net:8081',
+                    'http://other.tailf95906.ts.net:8444',
+                    'http://carpot-oracle.tailf95906.ts.net:8444/unexpected'):
+        monkeypatch.setenv('WAREHOUSE_ALETO_WORKER_URL', bad_url)
+        with pytest.raises(HTTPException) as exc:
+            aleto_control.worker_request(actor, '/jobs')
+        assert exc.value.status_code == 503
+
+    monkeypatch.setenv('WAREHOUSE_ALETO_WORKER_URL',
+                       'http://carpot-oracle.tailf95906.ts.net:8444')
+    monkeypatch.setenv('RAILWAY_ENVIRONMENT_NAME', 'production')
+    with pytest.raises(HTTPException) as exc:
+        aleto_control.worker_request(actor, '/jobs')
+    assert exc.value.status_code == 503
+
+    monkeypatch.setenv('RAILWAY_ENVIRONMENT_NAME', 'warehouse-staging')
+    monkeypatch.delenv('WAREHOUSE_ALETO_WORKER_PROXY')
+    with pytest.raises(HTTPException) as exc:
+        aleto_control.worker_request(actor, '/jobs')
+    assert exc.value.status_code == 503
