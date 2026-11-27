@@ -47,7 +47,7 @@ JOB_STATUS = {
 }
 
 APP_NAME = 'CarPot Local Aleto'
-VERSION = '1.1.2'
+VERSION = '1.1.3'
 CARPOT_URL = 'https://confident-sparkle-warehouse-staging.up.railway.app/administration/catalogue/import'
 SEED_DB = Path(__file__).resolve().parent / 'migration' / 'local_aleto.sqlite3'
 DATA_DIR = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'CarPot' / (
