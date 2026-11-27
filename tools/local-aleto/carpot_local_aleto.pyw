@@ -1093,7 +1093,24 @@ class MainWindow:
                         page_url = page['url']
                         self.events.put(('status', 'Обробка: ' + urlsplit(page_url).path))
                         raw = source.read(page_url, MAX_BYTES_PAGE, ('text/html',))
-                        data, encoding_warnings = decode_html_page(raw)
+                        try:
+                            data, encoding_warnings = decode_html_page(raw)
+                        except SourceError as decoding_error:
+                            if not (str(decoding_error).startswith('HTML_ENCODING_')
+                                    or str(decoding_error).startswith('Непідтримуване кодування HTML:')):
+                                raise
+                            # A single malformed catalogue page must not stop
+                            # the rest of the already discovered page queue.
+                            # Keep it failed for explicit review/retry.
+                            with con:
+                                con.execute(
+                                    "UPDATE pages SET status='failed', errors=1 "
+                                    "WHERE job_id=? AND url=?", (job_id, page_url))
+                            self.events.put(('log', 'Пропущено пошкоджену сторінку: '
+                                                    + urlsplit(page_url).path + ' · '
+                                                    + str(decoding_error)[:90]))
+                            self.events.put(('refresh', None))
+                            continue
                         records, links, errors, cards = extract_page(data, page_url)
                         errors += encoding_warnings
                         if encoding_warnings:
