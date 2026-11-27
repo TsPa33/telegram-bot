@@ -982,7 +982,17 @@ class MainWindow:
         if not self.busy:
             CatalogueDialog(self)
 
+    def _clear_previous_catalogue(self):
+        """Don't show parts of the previous car while decoding a different VIN."""
+        self.job_id = None
+        self.vehicle_id = None
+        self.vehicle_box.set('')
+        self.archive_box.set('')
+        self.visible_urls = {}
+        self._refresh()
+
     def apply_catalogue(self, kind, make, model, modification, year):
+        self._clear_previous_catalogue()
         proposed = (make['name'], model['name'], year)
         self.oracle_candidate = (proposed, modification['id'], modification['name'], kind)
         if self.vin_candidate:
@@ -1295,6 +1305,7 @@ class MainWindow:
                     else:
                         self.status.set('Каталог не знайдено. Встав посилання вручну.')
                 elif action == 'vin':
+                    self._clear_previous_catalogue()
                     self.vin_candidate = payload
                     _, data, provider = payload
                     self.brand.set(data['Make'])
