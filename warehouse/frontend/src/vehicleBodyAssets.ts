@@ -1,5 +1,5 @@
 import type {ImageAsset} from './vehicleImageTypes';
-// Partial verified set; the runtime gate remains closed until all twelve types are available.
+// Complete static local library; no runtime provider calls.
 export const vehicleBodyAssets: readonly ImageAsset[] = [
   {
     "id": "body-sedan-v2",
@@ -132,6 +132,111 @@ export const vehicleBodyAssets: readonly ImageAsset[] = [
     "kind": "body",
     "bodyType": "minivan",
     "file": "body-minivan.webp",
+    "width": 960,
+    "height": 640,
+    "verified": true,
+    "transparentCutout": true,
+    "priority": 10,
+    "source": {
+      "type": "generated",
+      "description": "Generic body illustration; not a donor or exact model photograph.",
+      "reference": "src/assets/vehicles/body-library-provenance.json"
+    },
+    "usage": {
+      "status": "approved",
+      "license": "OpenAI-generated output; use subject to applicable terms.",
+      "commercialUse": true
+    }
+  },
+  {
+    "id": "body-pickup-v2",
+    "kind": "body",
+    "bodyType": "pickup",
+    "file": "body-pickup.webp",
+    "width": 960,
+    "height": 640,
+    "verified": true,
+    "transparentCutout": true,
+    "priority": 10,
+    "source": {
+      "type": "generated",
+      "description": "Generic body illustration; not a donor or exact model photograph.",
+      "reference": "src/assets/vehicles/body-library-provenance.json"
+    },
+    "usage": {
+      "status": "approved",
+      "license": "OpenAI-generated output; use subject to applicable terms.",
+      "commercialUse": true
+    }
+  },
+  {
+    "id": "body-van-v2",
+    "kind": "body",
+    "bodyType": "van",
+    "file": "body-van.webp",
+    "width": 960,
+    "height": 640,
+    "verified": true,
+    "transparentCutout": true,
+    "priority": 10,
+    "source": {
+      "type": "generated",
+      "description": "Generic body illustration; not a donor or exact model photograph.",
+      "reference": "src/assets/vehicles/body-library-provenance.json"
+    },
+    "usage": {
+      "status": "approved",
+      "license": "OpenAI-generated output; use subject to applicable terms.",
+      "commercialUse": true
+    }
+  },
+  {
+    "id": "body-tractor-v2",
+    "kind": "body",
+    "bodyType": "tractor",
+    "file": "body-tractor.webp",
+    "width": 960,
+    "height": 640,
+    "verified": true,
+    "transparentCutout": true,
+    "priority": 10,
+    "source": {
+      "type": "generated",
+      "description": "Generic body illustration; not a donor or exact model photograph.",
+      "reference": "src/assets/vehicles/body-library-provenance.json"
+    },
+    "usage": {
+      "status": "approved",
+      "license": "OpenAI-generated output; use subject to applicable terms.",
+      "commercialUse": true
+    }
+  },
+  {
+    "id": "body-truck-v2",
+    "kind": "body",
+    "bodyType": "truck",
+    "file": "body-truck.webp",
+    "width": 960,
+    "height": 640,
+    "verified": true,
+    "transparentCutout": true,
+    "priority": 10,
+    "source": {
+      "type": "generated",
+      "description": "Generic body illustration; not a donor or exact model photograph.",
+      "reference": "src/assets/vehicles/body-library-provenance.json"
+    },
+    "usage": {
+      "status": "approved",
+      "license": "OpenAI-generated output; use subject to applicable terms.",
+      "commercialUse": true
+    }
+  },
+  {
+    "id": "body-bus-v2",
+    "kind": "body",
+    "bodyType": "bus",
+    "file": "body-bus.webp",
     "width": 960,
     "height": 640,
     "verified": true,

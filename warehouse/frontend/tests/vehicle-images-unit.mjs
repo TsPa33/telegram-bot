@@ -86,7 +86,9 @@ test('body classification consumes saved VIN characteristics; avoids ambiguous t
 test('all registered body images have exact transparent WebP provenance, no duplicate types',async()=>{
  const metadata=JSON.parse(await readFile(new URL('../src/assets/vehicles/body-library-provenance.json',import.meta.url),'utf8'));
  const {vehicleBodyAssets}=await import(encode(compile(await readFile(new URL('../src/vehicleBodyAssets.ts',import.meta.url),'utf8'))));
+ assert.equal(vehicleBodyAssets.length,12);
  assert.equal(vehicleBodyAssets.length,Object.keys(metadata).length);
+ assert.equal(new Set(vehicleBodyAssets.map(a=>a.file)).size,12);
  assert.equal(new Set(vehicleBodyAssets.map(a=>a.bodyType)).size,vehicleBodyAssets.length);
  for(const a of vehicleBodyAssets){
   const m=metadata[a.bodyType],b=await readFile(new URL('../src/assets/vehicles/'+a.file,import.meta.url));

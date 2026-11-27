@@ -2,7 +2,7 @@ import type {BodyType} from './vehicleImageTypes';
 import {normalizeVehicleName} from './vehicleImageResolver';
 const aliases:Readonly<Record<string,BodyType>>={
  sedan:'sedan',saloon:'sedan','sedan/saloon':'sedan','седан':'sedan',
- hatchback:'hatchback','хетчбек':'hatchback','хечбек':'hatchback',
+ hatchback:'hatchback','хетчбек':'hatchback','хечбек':'hatchback','hatchback/liftback/notchback':'hatchback','liftback':'hatchback','ліфтбек':'hatchback',
  wagon:'wagon','station wagon':'wagon',estate:'wagon','універсал':'wagon',
  suv:'suv',crossover:'suv','sport utility vehicle':'suv','sport utility vehicle (suv)':'suv','позашляховик (suv)':'suv','кросовер':'suv','позашляховик':'suv',
  coupe:'coupe','купе':'coupe',convertible:'convertible',cabriolet:'convertible','кабріолет':'convertible',
@@ -26,7 +26,7 @@ export function resolvePlaceholderBody(vehicle:Record<string,any>):BodyType|unde
  const details=vehicle.vin_details;
  // Actual persisted VIN details contain characteristics and decoded, not a new DB column.
  if(details?.conflicts?.body_class||details?.consistency_issues?.body_class)return 'unknown';
- const raw=[vehicle.body_type,vehicle.bodyType,details?.characteristics?.body_class,details?.decoded?.body_class,vehicle.dismantling_v3?.global_selection?.body_type,vehicle.dismantling_v3?.oracle_vehicle_identity?.body_type];
+ const raw=[vehicle.body_type,vehicle.bodyType,vehicle.body_class,details?.characteristics?.body_class,details?.decoded?.body_class,vehicle.dismantling_v3?.global_selection?.body_type,vehicle.dismantling_v3?.oracle_vehicle_identity?.body_type];
  const explicit=raw.map(normalizeBodyType).filter((v):v is BodyType=>!!v);
  const unique=new Set(explicit);
  if(unique.size>1)return 'unknown';

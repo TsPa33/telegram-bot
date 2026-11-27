@@ -61,5 +61,50 @@
     "sha256": "e96305a77d057a83c4a5ff80c9510aae1731b652badddd7a92275fb6d4295eec",
     "gitSha": "100292aed3c7f28e803242cbbfc4bd1cafc6edda",
     "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "pickup": {
+    "file": "body-pickup.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 70822,
+    "sha256": "bd4ffb9d55cf74964afa7af598976b31dac4438444b53d2e854c0269bb6b936e",
+    "gitSha": "5cae1206c927663c13a3efa038ffe7e3ec9d3efe",
+    "source": "OpenAI generated generic body illustration; standalone generated image; not an actual donor or model photograph"
+  },
+  "van": {
+    "file": "body-van.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 65184,
+    "sha256": "1db3c7a0d1899face7a8287693abb69f4ce6f5fefc29aeaffc271917fde4ed9a",
+    "gitSha": "625a6a3b61ee523b589e9367d5390cfd98a808c9",
+    "source": "OpenAI generated generic body illustration; individually alpha-masked from generated commercial montage, lower native detail, original left-facing orientation retained; not an actual donor or model photograph"
+  },
+  "tractor": {
+    "file": "body-tractor.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 50848,
+    "sha256": "5f7d4ba71a07617ea5edf58aaad96ab1d1073a93cfa88925d2b81bf2dc28fee2",
+    "gitSha": "320b5999af59e77a1fd83c2fe94f033f0211264e",
+    "source": "OpenAI generated generic body illustration; individually alpha-masked from generated commercial montage, lower native detail, original left-facing orientation retained; not an actual donor or model photograph"
+  },
+  "truck": {
+    "file": "body-truck.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 58158,
+    "sha256": "1ed05f1c7e0f4ff6989f33ecc481a184ff2f7b1a683a4c2a6eca4a79e08d4935",
+    "gitSha": "7890eaaa3e30bb662331895b13f917b9c38e7d66",
+    "source": "OpenAI generated generic body illustration; individually alpha-masked from generated commercial montage, lower native detail, original left-facing orientation retained; not an actual donor or model photograph"
+  },
+  "bus": {
+    "file": "body-bus.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 61648,
+    "sha256": "9a99aacc4881283c080bb05135bbf825f6bef8461b736aedf00afbf4795443e4",
+    "gitSha": "a9e2861f6ba96cfd64b84de8498e3790be2030c1",
+    "source": "OpenAI generated generic body illustration; individually alpha-masked from generated commercial montage, lower native detail, original left-facing orientation retained; not an actual donor or model photograph"
   }
 }
