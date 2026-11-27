@@ -37,6 +37,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 import local_store
 from catalogue_client import CatalogueClient
 from catalogue_dialog import CatalogueDialog
+from clipboard_support import install_clipboard_support
 
 JOB_STATUS = {
     'queued': 'Очікує продовження', 'paused': 'Призупинено', 'failed': 'Помилка збору',
@@ -642,6 +643,7 @@ class MainWindow:
         self.statistics = tk.StringVar(value='0 записів  ·  0 з ціною  ·  0 OEM')
         self._style()
         self._draw()
+        self.clipboard_support = install_clipboard_support(root)
         self._load_last_job()
         self._load_vehicles()
         self._load_catalogues()
