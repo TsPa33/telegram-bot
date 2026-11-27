@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter,HTTPException,Query
 from sqlalchemy import select,text
 from app.api.routes import DB,Auth
@@ -12,21 +13,28 @@ from app.schemas import Input
 from app.schemas.pricing import PriceBatch,PricePreview,PriceApply
 router=APIRouter(route_class=SecureRoute,prefix='/api/v1',tags=['Market and seller prices'])
 
+def require_market_reference():
+    if os.getenv("WAREHOUSE_MARKET_REFERENCE_ENABLED", "true").lower() != "true":
+        raise HTTPException(503, "Автоматичне уточнення цін тимчасово вимкнено.")
+
 def catalogue_lock(db):
     if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:key)'),{'key':LOCK}):raise HTTPException(409,'Каталог оновлюється; повторіть перевірку після завершення')
 
 @router.get('/parts/{id}/price-guidance')
 def single(id:str,db:DB,who:Auth):
+    require_market_reference()
     parts=parts_for(db,who.workspace_account_id,[id]);market=guidance(db,parts,who.workspace_account_id)
     return {**market[id],'part_revision':pricing.revisions(db,parts)[id]}
 
 @router.post('/pricing/guidance')
 def batch(data:PriceBatch,db:DB,who:Auth):
+    require_market_reference()
     parts=parts_for(db,who.workspace_account_id,data.ids);market=guidance(db,parts,who.workspace_account_id);versions=pricing.revisions(db,parts)
     return {'items':[{**market[p.id],'part_revision':versions[p.id]} for p in parts]}
 
 @router.post('/pricing/previews')
 def preview(data:PricePreview,db:DB,who:Auth):
+    require_market_reference()
     pricing.owner(who);lock_workspace(db,who.workspace_account_id);catalogue_lock(db)
     result=pricing.preview(db,who,data);db.commit();return result
 
@@ -39,6 +47,7 @@ def status(id:str,db:DB,who:Auth):
 
 @router.post('/pricing/previews/{id}/apply')
 def apply(id:str,data:PriceApply,db:DB,who:Auth):
+    require_market_reference()
     pricing.owner(who);lock_workspace(db,who.workspace_account_id)
     result=pricing.apply(db,who,id,data);db.commit();return result
 
@@ -77,6 +86,7 @@ def selection(db:DB,who:Auth,vehicle_id:str|None=None,q:str=Query('',max_length=
 
 @router.post('/parts/{id}/market-refresh')
 def market_refresh(id:str,data:Input,db:DB,who:Auth):
+    require_market_reference()
     # Local catalogue projection only. No network, writes, queue or price mutation.
     from app.services.market_check import check
     from sqlalchemy.exc import DBAPIError

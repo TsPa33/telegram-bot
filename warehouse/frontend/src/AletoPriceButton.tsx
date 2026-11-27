@@ -1,3 +1,4 @@
+import {marketReferenceEnabled} from './marketReferenceEnabled';
 import {useContext,useEffect,useRef,useState} from 'react';
 import {api,money,labels,type Row} from './api';
 import {ReferenceQuickApply} from './ReferenceQuickApply';
@@ -21,7 +22,7 @@ export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{pa
   if(!mounted.current||!visible.current){pricesChanged();return;}
   dirty.current=true;setConfirmed(row);
  }
- const allowed=can('inventory.view')&&can('catalog.view')&&can('market.check');
+ const allowed=marketReferenceEnabled&&can('inventory.view')&&can('catalog.view')&&can('market.check');
  function close(){sequence.current++;guard.current=false;visible.current=false;setBusy(false);setOpen(false);setData(null);setError('');setConfirmed(null);flush();}
  async function lookup(){
   if(guard.current||!allowed||!part.id)return;
