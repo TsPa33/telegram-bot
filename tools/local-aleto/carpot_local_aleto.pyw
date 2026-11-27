@@ -408,6 +408,37 @@ def price_text(value, currency):
     return str(amount.quantize(Decimal('0.01')))
 
 
+def decode_html_page(raw):
+    """Decode Aleto HTML safely without discarding the entire crawl on one bad byte.
+
+    Pages may use UTF-8 or explicitly declare Windows-1251. If UTF-8 contains
+    isolated invalid bytes, retain correctly decoded content but report a
+    data-quality warning so the crawl finishes as partial, not 'completed'.
+    """
+    if not isinstance(raw, bytes):
+        raise TypeError('HTML має бути байтовим вмістом')
+    head = raw[:8192]
+    declared = re.search(
+        rb'<meta\b[^>]{0,500}?\bcharset\s*=\s*["\']?\s*([a-zA-Z0-9_-]+)',
+        head, re.I,
+    )
+    charset = declared.group(1).decode('ascii').lower().replace('_', '-') if declared else ''
+    if charset in ('windows-1251', 'cp1251', 'win-1251'):
+        return raw.decode('cp1251'), 0
+    if charset not in ('', 'utf-8', 'utf8'):
+        raise SourceError('Непідтримуване кодування HTML: ' + charset[:32])
+    try:
+        return raw.decode('utf-8-sig'), 0
+    except UnicodeDecodeError:
+        # A single invalid byte must not lose previously collected pages or
+        # falsely turn the entire source into Windows-1251 mojibake.
+        repaired = raw.decode('utf-8-sig', errors='replace')
+        bad = repaired.count('\ufffd')
+        if bad > max(50, len(raw) // 500):
+            raise SourceError('HTML_ENCODING_MISMATCH: сторінка має забагато пошкоджених символів')
+        return repaired, bad
+
+
 def extract_page(html, url):
     tree = HTMLTree()
     tree.feed(html)
@@ -442,6 +473,8 @@ def extract_page(html, url):
                     oem = value
             if not article or not title:
                 raise ValueError('Немає артикула або назви')
+            if '\ufffd' in article or '\ufffd' in title or '\ufffd' in oem:
+                raise ValueError('Пошкоджене кодування в критичних полях товару')
             category = subcategory = ''
             script = card.find(tag='script')
             if script:
@@ -1059,8 +1092,14 @@ class MainWindow:
                             break
                         page_url = page['url']
                         self.events.put(('status', 'Обробка: ' + urlsplit(page_url).path))
-                        data = source.read(page_url, MAX_BYTES_PAGE, ('text/html',)).decode('utf-8-sig')
+                        raw = source.read(page_url, MAX_BYTES_PAGE, ('text/html',))
+                        data, encoding_warnings = decode_html_page(raw)
                         records, links, errors, cards = extract_page(data, page_url)
+                        errors += encoding_warnings
+                        if encoding_warnings:
+                            self.events.put(('log',
+                                f'Увага: сторінка містить {encoding_warnings} некоректних '
+                                'символів; збережені записи позначено для перевірки'))
                         with con:
                             for record in records:
                                 local_store.record_prices(con, job_id, record)
