@@ -1,3 +1,4 @@
+import {marketReferenceEnabled} from './marketReferenceEnabled';
 import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import {api,ApiError,csrf,money,type Row} from './api';
 import {TeamIdentity,useCan} from './permissions';
@@ -13,7 +14,7 @@ const denied=(e:unknown)=>e instanceof ApiError&&[401,403].includes(e.status);
 const uncertain=(e:unknown)=>!(e instanceof ApiError)||e.status>=500;
 export function PriceReferenceProvider({children,selectedIds,vehicleId,query}:{children:ReactNode;selectedIds:string[];vehicleId:string;query:string}){
  const identity=useContext(TeamIdentity),can=useCan(),scope=JSON.stringify([identity?.id,identity?.workspace_account_id||identity?.id]);
- const allowed=identity?.role==='DIRECTOR'&&(!identity.workspace_account_id||identity.workspace_account_id===identity.id)&&['inventory.view','catalog.view','market.check','parts.change_price'].every(can);
+ const allowed=marketReferenceEnabled&&identity?.role==='DIRECTOR'&&(!identity.workspace_account_id||identity.workspace_account_id===identity.id)&&['inventory.view','catalog.view','market.check','parts.change_price'].every(can);
  const storage='warehouse.reference-job.v1:'+scope;
  return allowed?<JobProvider key={storage} storage={storage} selectedIds={selectedIds} vehicleId={vehicleId} query={query}>{children}</JobProvider>:<>{children}</>;
 }
