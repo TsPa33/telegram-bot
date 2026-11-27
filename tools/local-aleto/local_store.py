@@ -157,3 +157,22 @@ def import_v1(db, path):
                             job_id, part['page'], part['article'], part['payload'],
                         )).rowcount
             return inserted
+
+
+def install_seed(seed, target):
+    """Place the verified migration in a separate directory on first launch."""
+    import os
+    import shutil
+    from tempfile import TemporaryDirectory
+
+    target = Path(target)
+    if target.exists() or target.is_symlink():
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=target.parent) as directory:
+        stage = Path(directory) / 'local_aleto.sqlite3'
+        shutil.copyfile(seed, stage)
+        try:
+            os.link(stage, target)
+        except FileExistsError:
+            pass

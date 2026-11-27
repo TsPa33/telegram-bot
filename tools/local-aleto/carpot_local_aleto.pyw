@@ -47,7 +47,10 @@ JOB_STATUS = {
 APP_NAME = 'CarPot Local Aleto'
 VERSION = '1.1.0'
 CARPOT_URL = 'https://confident-sparkle-warehouse-staging.up.railway.app/administration/catalogue/import'
-DATA_DIR = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'CarPot' / 'LocalAleto'
+SEED_DB = Path(__file__).resolve().parent / 'migration' / 'local_aleto.sqlite3'
+DATA_DIR = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'CarPot' / (
+    'LocalAleto-v1.1' if SEED_DB.is_file() else 'LocalAleto'
+)
 DB_PATH = DATA_DIR / 'local_aleto.sqlite3'
 USER_AGENT = 'CarPotCatalogueWorker/1.0'
 MIN_INTERVAL_SECONDS = 3
@@ -488,7 +491,7 @@ def build_export_row(record, job):
         'title': record['part_name'], 'oem': record['oem'],
         'category': record['category'], 'subcategory': record['subcategory'],
         'source_page': record['source_page'], 'checked_at': record['observed_at'],
-        'data_origin': 'public_html_local', 'parser': VERSION,
+        'data_origin': record.get('data_origin', 'public_html_local'), 'parser': VERSION,
     }
     if job['year']:
         provenance['selected_year'] = str(job['year'])
@@ -606,6 +609,7 @@ class MainWindow:
         self._draw()
         self._load_last_job()
         self._load_vehicles()
+        self._load_catalogues()
         self.root.after(150, self._poll)
 
     def _style(self):
@@ -646,6 +650,12 @@ class MainWindow:
         ttk.Button(garage, text='Каталог CarPot', command=self._browse_catalogue, style='Quiet.TButton').pack(side='left', padx=6)
         self.vehicle_details = tk.StringVar(value='Виберіть збережене авто або заповніть його дані')
         ttk.Label(self.root, textvariable=self.vehicle_details, style='Help.TLabel', wraplength=850).pack(fill='x', padx=16, pady=(0, 8))
+        archives = ttk.Frame(self.root, style='Panel.TFrame', padding=(10, 4))
+        archives.pack(fill='x', padx=16, pady=(0, 6))
+        ttk.Label(archives, text='Збережені каталоги моделей', style='Dark.TLabel').pack(side='left', padx=(0, 8))
+        self.archive_box = ttk.Combobox(archives, state='readonly', style='Dark.TCombobox')
+        self.archive_box.pack(side='left', fill='x', expand=True)
+        self.archive_box.bind('<<ComboboxSelected>>', self._select_archive)
         center = ttk.Frame(self.root, style='Dark.TFrame', padding=(16, 0, 16, 12))
         center.pack(fill='both', expand=True)
         left = ttk.Frame(center, style='Panel.TFrame', padding=18, width=385)
@@ -1109,6 +1119,35 @@ class MainWindow:
         summary = '\n'.join(f'{row[0]} · {row[2]} {row[1]}' for row in rows)
         messagebox.showinfo(f'Історія: {article}', summary or 'Немає спостережень')
 
+    def _load_catalogues(self):
+        with connect_db() as db:
+            self.catalogues = db.execute('SELECT * FROM jobs WHERE vehicle_id IS NULL ORDER BY id DESC').fetchall()
+        self.archive_box.configure(values=[
+            f'{row["manufacturer"]} {row["model"]} · #{row["id"]} · {JOB_STATUS.get(row["status"], row["status"])}'
+            for row in self.catalogues
+        ])
+        for index, row in enumerate(self.catalogues):
+            if row['id'] == self.job_id:
+                self.archive_box.current(index)
+                break
+
+    def _select_archive(self, _event=None):
+        index = self.archive_box.current()
+        if self.busy or index < 0:
+            return
+        self.vehicle_id = None
+        self.vehicle_box.set('')
+        self.vehicle_details.set('Каталог моделі · сумісність із VIN не підтверджено')
+        row = self.catalogues[index]
+        self.vin_candidate = self.oracle_candidate = None
+        self.job_id = row['id']
+        for attr, key in [('brand', 'manufacturer'), ('model', 'model'),
+                          ('generation', 'generation'), ('catalogue', 'catalogue')]:
+            getattr(self, attr).set(row[key])
+        self.year.set(str(row['year'] or ''))
+        self.status.set(JOB_STATUS.get(row['status'], row['status']))
+        self._filter()
+
     def _load_last_job(self):
         try:
             with connect_db() as con:
@@ -1199,6 +1238,8 @@ class MainWindow:
                 action, payload = self.events.get_nowait()
                 if action == 'busy':
                     self._set_busy(payload)
+                    if not payload:
+                        self._load_catalogues()
                 elif action == 'candidates':
                     self.candidate_box['values'] = payload
                     if payload:
@@ -1252,6 +1293,8 @@ class MainWindow:
 
 
 def main():
+    if SEED_DB.is_file():
+        local_store.install_seed(SEED_DB, DB_PATH)
     root = tk.Tk()
     MainWindow(root)
     root.mainloop()
