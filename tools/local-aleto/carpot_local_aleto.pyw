@@ -133,7 +133,11 @@ def find_candidates(xml, manufacturer, model, year=None, generation=''):
     decoded = xml.decode('utf-8-sig')
     if re.search(r'<!\s*(?:DOCTYPE|ENTITY)\b', decoded, re.I):
         raise ValueError('Некоректний sitemap')
-    key_prefix = _make_slug(manufacturer) + '-' + _make_slug(model)
+    brand_key = _make_slug(manufacturer)
+    model_key = _make_slug(model)
+    # VIN decoders may already include the make in the model (e.g. 'Polestar 2').
+    # Avoid 'polestar-polestar-2', which hides valid Aleto catalogue links.
+    key_prefix = model_key if model_key == brand_key or model_key.startswith(brand_key + '-') else brand_key + '-' + model_key
     gen_key = _make_slug(generation)
     found = {}
     source = ElementTree.iterparse(BytesIO(xml), events=('start', 'end'))
