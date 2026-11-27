@@ -975,6 +975,7 @@ class MainWindow:
             vehicle_id = self.vehicle_id
         self._set_busy(True)
         self.status.set('Збір запчастин…')
+        self.workflow_hint.set('Збір активний. Прогрес і кількість деталей видно в таблиці праворуч.')
         def task():
             try:
                 con = connect_db()
@@ -1235,6 +1236,8 @@ class MainWindow:
             self._select_vehicle()
             if not self.job_id:
                 self.catalogue.set(saved_catalogue)
+            self.status.set('Автомобіль збережено у «Мої автомобілі».')
+            self.workflow_hint.set('Далі: знайдіть каталог Aleto та натисніть «Почати парсинг».')
         except (ValueError, sqlite3.Error) as error:
             messagebox.showerror(APP_NAME, str(error))
 
