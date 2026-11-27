@@ -619,8 +619,8 @@ class MainWindow:
     def __init__(self, root):
         self.root = root
         root.title(f'{APP_NAME}  ·  {VERSION}')
-        root.geometry('1170x765')
-        root.minsize(950, 650)
+        root.geometry('1280x780')
+        root.minsize(980, 660)
         root.configure(bg=DARK)
         self.events = queue.Queue()
         self.stop = threading.Event()
@@ -675,111 +675,211 @@ class MainWindow:
         style.map('Dark.Treeview', background=[('selected', '#127D78')])
 
     def _draw(self):
-        top = ttk.Frame(self.root, style='Dark.TFrame', padding=(22, 18, 22, 14))
+        """Compact workflow: vehicle -> catalogue -> collection -> export.
+
+        Important actions live outside the center pane so they stay reachable
+        even at the minimum window size and under Windows display scaling.
+        """
+        top = ttk.Frame(self.root, style='Dark.TFrame', padding=(18, 10, 18, 7))
         top.pack(fill='x')
         ttk.Label(top, text='CarPot  /  Local Aleto', style='Title.TLabel').pack(side='left')
-        tk.Label(top, text='Локальний збір · Windows', bg=DARK, fg=MUTED, font=('Segoe UI', 10)).pack(side='right')
-        garage = ttk.Frame(self.root, style='Panel.TFrame', padding=(10, 6))
-        garage.pack(fill='x', padx=16, pady=(0, 8))
-        ttk.Label(garage, text='Моя база автомобілів', style='Header.TLabel').pack(side='left', padx=(0, 8))
-        self.vehicle_box = ttk.Combobox(garage, state='readonly', style='Dark.TCombobox')
+        tk.Label(top, text='Власна база автомобілів і запчастин', bg=DARK, fg=MUTED,
+                 font=('Segoe UI', 10)).pack(side='right')
+
+        garage = ttk.Frame(self.root, style='Panel.TFrame', padding=(10, 7))
+        garage.pack(fill='x', padx=14, pady=(0, 5))
+        ttk.Label(garage, text='Мої автомобілі', style='Header.TLabel').pack(side='left', padx=(0, 8))
+        self.vehicle_box = ttk.Combobox(garage, state='readonly', style='Dark.TCombobox', width=23)
         self.vehicle_box.pack(side='left', fill='x', expand=True)
         self.vehicle_box.bind('<<ComboboxSelected>>', self._select_vehicle)
-        ttk.Button(garage, text='Зберегти авто', command=self._save_vehicle, style='Quiet.TButton').pack(side='left', padx=6)
-        ttk.Button(garage, text='Додати за VIN', command=self._decode_vin, style='Quiet.TButton').pack(side='left', padx=6)
-        ttk.Button(garage, text='Імпорт SQLite v1.0', command=self._import_database, style='Quiet.TButton').pack(side='left')
-        ttk.Button(garage, text='Каталог CarPot', command=self._browse_catalogue, style='Quiet.TButton').pack(side='left', padx=6)
-        self.vehicle_details = tk.StringVar(value='Виберіть збережене авто або заповніть його дані')
-        ttk.Label(self.root, textvariable=self.vehicle_details, style='Help.TLabel', wraplength=850).pack(fill='x', padx=16, pady=(0, 8))
-        archives = ttk.Frame(self.root, style='Panel.TFrame', padding=(10, 4))
-        archives.pack(fill='x', padx=16, pady=(0, 6))
-        ttk.Label(archives, text='Збережені каталоги моделей', style='Dark.TLabel').pack(side='left', padx=(0, 8))
+        ttk.Button(garage, text='Додати за VIN', command=self._decode_vin,
+                   style='Quiet.TButton').pack(side='left', padx=(8, 3))
+        ttk.Button(garage, text='З каталогу CarPot', command=self._browse_catalogue,
+                   style='Quiet.TButton').pack(side='left', padx=3)
+        ttk.Button(garage, text='Зберегти авто', command=self._save_vehicle,
+                   style='Accent.TButton').pack(side='left', padx=(4, 0))
+
+        self.vehicle_details = tk.StringVar(value='Додайте авто через VIN або виберіть з каталогу CarPot')
+        tk.Label(self.root, textvariable=self.vehicle_details, bg=DARK, fg=MUTED,
+                 anchor='w', font=('Segoe UI', 9)).pack(fill='x', padx=20, pady=(0, 5))
+
+        archives = ttk.Frame(self.root, style='Panel.TFrame', padding=(10, 5))
+        archives.pack(fill='x', padx=14, pady=(0, 6))
+        ttk.Label(archives, text='Зібрані каталоги моделей', style='Dark.TLabel').pack(side='left', padx=(0, 8))
         self.archive_box = ttk.Combobox(archives, state='readonly', style='Dark.TCombobox')
         self.archive_box.pack(side='left', fill='x', expand=True)
         self.archive_box.bind('<<ComboboxSelected>>', self._select_archive)
-        center = ttk.Frame(self.root, style='Dark.TFrame', padding=(16, 0, 16, 12))
-        center.pack(fill='both', expand=True)
-        left = ttk.Frame(center, style='Panel.TFrame', padding=18, width=385)
-        left.pack(side='left', fill='y', padx=(0, 12))
-        left.pack_propagate(False)
-        right = ttk.Frame(center, style='Panel.TFrame', padding=15)
-        right.pack(side='left', fill='both', expand=True)
-        ttk.Label(left, text='Автомобіль', style='Header.TLabel').pack(anchor='w', pady=(0, 12))
-        self._field(left, 'Марка', self.brand)
-        self._field(left, 'Модель', self.model)
-        self._field(left, 'Рік (за потреби)', self.year)
-        self._field(left, 'Покоління (необов’язково)', self.generation)
-        self._field(left, 'Посилання на каталог Aleto', self.catalogue)
-        ttk.Label(left, text='Адресу можна вставити вручну або знайти у sitemap.',
-                  style='Help.TLabel', wraplength=315).pack(anchor='w', pady=(2, 10))
-        self.discover_btn = ttk.Button(left, text='Знайти каталог', command=self.find_catalogues, style='Quiet.TButton')
-        self.discover_btn.pack(fill='x', pady=(2, 7))
-        self.candidate_box = ttk.Combobox(left, state='readonly', style='Dark.TCombobox')
-        self.candidate_box.pack(fill='x', pady=(0, 8))
-        self.candidate_box.bind('<<ComboboxSelected>>', self.choose_candidate)
-        self.start_btn = ttk.Button(left, text='Почати / продовжити збір', command=self.start,
-                                    style='Accent.TButton')
-        self.start_btn.pack(fill='x', pady=(4, 7))
-        ttk.Button(left, text='Оновити ціни', command=lambda: self.start(update_prices=True),
-                   style='Quiet.TButton').pack(fill='x', pady=(0, 4))
-        self.pause_btn = ttk.Button(left, text='Призупинити', command=self.pause, style='Quiet.TButton')
-        self.pause_btn.pack(fill='x', pady=(0, 4))
-        ttk.Button(left, text='Скасувати збір', command=self.cancel, style='Quiet.TButton').pack(fill='x', pady=(0, 8))
-        ttk.Label(left, text='Експорт у CarPot', style='Header.TLabel').pack(anchor='w', pady=(10, 8))
-        ttk.Label(left, text='CSV v2 для існуючого імпорту Warehouse. Перед записом у каталог — перегляд і підтвердження.',
-                  style='Help.TLabel', wraplength=315).pack(anchor='w', pady=(0, 10))
-        self.export_btn = ttk.Button(left, text='1. Підготувати CSV', command=self.export, style='Quiet.TButton')
-        self.export_btn.pack(fill='x', pady=(0, 7))
-        self.upload_btn = ttk.Button(left, text='2. Відкрити імпорт у CarPot', command=self.open_carpot,
-                                    style='Accent.TButton')
-        self.upload_btn.pack(fill='x', pady=(0, 8))
-        ttk.Label(left, text='Вибери CSV у браузері. Автоматичний імпорт без сесії адміністратора недоступний.',
-                  style='Help.TLabel', wraplength=315).pack(anchor='w')
+        ttk.Button(archives, text='Імпорт старої SQLite', command=self._import_database,
+                   style='Quiet.TButton').pack(side='right', padx=(10, 0))
 
-        ttk.Label(right, text='Знайдені запчастини', style='Header.TLabel').pack(anchor='w')
+        center = ttk.Frame(self.root, style='Dark.TFrame', padding=(14, 0, 14, 7))
+        center.pack(fill='both', expand=True)
+        left = ttk.Frame(center, style='Panel.TFrame', padding=12, width=355)
+        left.pack(side='left', fill='y', padx=(0, 10))
+        left.pack_propagate(False)
+        right = ttk.Frame(center, style='Panel.TFrame', padding=12)
+        right.pack(side='left', fill='both', expand=True)
+
+        ttk.Label(left, text='1  Автомобіль', style='Header.TLabel').pack(anchor='w', pady=(0, 5))
+        row1 = ttk.Frame(left, style='Panel.TFrame')
+        row1.pack(fill='x')
+        row1.columnconfigure(0, weight=1)
+        row1.columnconfigure(1, weight=1)
+        make = ttk.Frame(row1, style='Panel.TFrame')
+        make.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+        model = ttk.Frame(row1, style='Panel.TFrame')
+        model.grid(row=0, column=1, sticky='ew', padx=(5, 0))
+        self._field(make, 'Марка', self.brand)
+        self._field(model, 'Модель', self.model)
+        row2 = ttk.Frame(left, style='Panel.TFrame')
+        row2.pack(fill='x', pady=(0, 5))
+        row2.columnconfigure(0, weight=1)
+        row2.columnconfigure(1, weight=1)
+        year = ttk.Frame(row2, style='Panel.TFrame')
+        year.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+        generation = ttk.Frame(row2, style='Panel.TFrame')
+        generation.grid(row=0, column=1, sticky='ew', padx=(5, 0))
+        self._field(year, 'Рік', self.year)
+        self._field(generation, 'Покоління (за потреби)', self.generation)
+
+        ttk.Separator(left, orient='horizontal').pack(fill='x', pady=(7, 9))
+        ttk.Label(left, text='2  Каталог Aleto', style='Header.TLabel').pack(anchor='w')
+        ttk.Label(left, text='Знайдіть каталог або вставте посилання /car/.../',
+                  style='Help.TLabel', wraplength=320).pack(anchor='w', pady=(3, 4))
+        ttk.Entry(left, textvariable=self.catalogue, style='Dark.TEntry').pack(fill='x')
+        self.discover_btn = ttk.Button(left, text='Знайти каталоги для цього авто',
+                                       command=self.find_catalogues, style='Quiet.TButton')
+        self.discover_btn.pack(fill='x', pady=(8, 0))
+        self.candidate_panel = ttk.Frame(left, style='Panel.TFrame')
+        ttk.Label(self.candidate_panel, text='Виберіть знайдений каталог',
+                  style='Help.TLabel').pack(anchor='w', pady=(2, 3))
+        self.candidate_box = ttk.Combobox(self.candidate_panel, state='readonly',
+                                          style='Dark.TCombobox')
+        self.candidate_box.pack(fill='x')
+        self.candidate_box.bind('<<ComboboxSelected>>', self.choose_candidate)
+        # An empty combo looks like a broken progress/scroll bar on Windows.
+        # Display it only when candidates have actually been found.
+        self.workflow_hint = tk.StringVar(value='Після вибору каталогу натисніть «Почати парсинг» нижче.')
+        ttk.Label(left, textvariable=self.workflow_hint, style='Help.TLabel',
+                  wraplength=320).pack(anchor='w', pady=(9, 0))
+
+        ttk.Label(right, text='Запчастини вибраного каталогу', style='Header.TLabel').pack(anchor='w')
         self.stats_label = tk.Label(right, textvariable=self.statistics, bg=PANEL, fg=ACCENT,
                                     font=('Segoe UI Semibold', 10), anchor='w')
-        self.stats_label.pack(fill='x', pady=(5, 13))
+        self.stats_label.pack(fill='x', pady=(3, 8))
+
+        filters = ttk.Frame(right, style='Panel.TFrame')
+        filters.pack(fill='x', pady=(0, 7))
+        filters.columnconfigure(0, weight=3)
+        filters.columnconfigure(1, weight=2)
+        ttk.Label(filters, text='Пошук: назва / OEM / артикул',
+                  style='Help.TLabel').grid(row=0, column=0, sticky='w')
+        ttk.Label(filters, text='Категорія', style='Help.TLabel').grid(
+            row=0, column=1, sticky='w', padx=(7, 0))
+        search = ttk.Entry(filters, textvariable=self.query, style='Dark.TEntry')
+        search.grid(row=1, column=0, sticky='ew')
+        search.bind('<Return>', lambda _event: self._filter())
+        category = ttk.Entry(filters, textvariable=self.category_filter, style='Dark.TEntry')
+        category.grid(row=1, column=1, sticky='ew', padx=(7, 0))
+        category.bind('<Return>', lambda _event: self._filter())
+        ttk.Button(filters, text='Застосувати', command=self._filter,
+                   style='Quiet.TButton').grid(row=1, column=2, padx=(7, 0))
+        selections = ttk.Frame(right, style='Panel.TFrame')
+        selections.pack(fill='x', pady=(0, 6))
+        ttk.Checkbutton(selections, text='Лише з OEM', variable=self.has_oem,
+                        command=self._filter).pack(side='left')
+        ttk.Checkbutton(selections, text='Лише з ціною', variable=self.has_price,
+                        command=self._filter).pack(side='left', padx=(10, 0))
+        ttk.Checkbutton(selections, text='Сортувати за ціною', variable=self.sort_price,
+                        command=self._filter).pack(side='left', padx=(10, 0))
+        ttk.Button(selections, text='Скинути фільтри', command=self._reset_filters,
+                   style='Quiet.TButton').pack(side='right')
+
         table_area = ttk.Frame(right, style='Panel.TFrame')
         table_area.pack(fill='both', expand=True)
-        filters = ttk.Frame(right, style='Panel.TFrame')
-        filters.pack(fill='x', before=table_area)
-        ttk.Label(filters, text='Пошук / категорія', style='Help.TLabel').pack(side='left', padx=(0, 4))
-        ttk.Entry(filters, textvariable=self.query, width=18, style='Dark.TEntry').pack(side='left')
-        ttk.Entry(filters, textvariable=self.category_filter, width=15, style='Dark.TEntry').pack(side='left', padx=3)
-        ttk.Button(filters, text='Знайти', command=self._filter, style='Quiet.TButton').pack(side='left')
-        ttk.Checkbutton(filters, text='OEM', variable=self.has_oem, command=self._filter).pack(side='left')
-        ttk.Checkbutton(filters, text='Ціна', variable=self.has_price, command=self._filter).pack(side='left')
-        controls = ttk.Frame(right, style='Panel.TFrame')
-        controls.pack(fill='x')
-        ttk.Button(controls, text='‹', command=lambda: self._page(-100)).pack(side='left')
-        self.next_page = ttk.Button(controls, text='›', command=lambda: self._page(100))
-        self.next_page.pack(side='left')
-        ttk.Checkbutton(controls, text='За ціною UAH', variable=self.sort_price, command=self._filter).pack(side='left')
-        ttk.Button(controls, text='Історія цін', command=self._history).pack(side='right')
+        table_area.rowconfigure(0, weight=1)
+        table_area.columnconfigure(0, weight=1)
         cols = ('article', 'name', 'oem', 'price', 'tax')
         self.table = ttk.Treeview(table_area, columns=cols, show='headings', style='Dark.Treeview')
-        definitions = [('article', 'Артикул', 85), ('name', 'Назва запчастини', 310),
-                       ('oem', 'OEM', 100), ('price', 'Ціна', 105), ('tax', 'Категорія', 130)]
+        definitions = [('article', 'Артикул', 82), ('name', 'Назва запчастини', 290),
+                       ('oem', 'OEM', 105), ('price', 'Ціна', 105), ('tax', 'Категорія', 125)]
         for key, title, width in definitions:
             self.table.heading(key, text=title)
-            self.table.column(key, width=width, anchor='w', minwidth=60)
-        scroll = ttk.Scrollbar(table_area, orient='vertical', command=self.table.yview)
-        self.table.configure(yscrollcommand=scroll.set)
-        self.table.pack(side='left', fill='both', expand=True)
+            self.table.column(key, width=width, anchor='w', minwidth=55,
+                              stretch=(key == 'name'))
+        vertical = ttk.Scrollbar(table_area, orient='vertical', command=self.table.yview)
+        horizontal = ttk.Scrollbar(table_area, orient='horizontal', command=self.table.xview)
+        self.table.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
+        self.table.grid(row=0, column=0, sticky='nsew')
+        vertical.grid(row=0, column=1, sticky='ns')
+        horizontal.grid(row=1, column=0, sticky='ew')
         self.table.bind('<Double-1>', self._open_part)
-        scroll.pack(side='right', fill='y')
-        bottom = ttk.Frame(self.root, style='Panel.TFrame', padding=(18, 12))
-        bottom.pack(fill='x', padx=16, pady=(0, 15))
-        ttk.Label(bottom, text='Стан і журнал', style='Header.TLabel').pack(anchor='w')
-        tk.Label(bottom, textvariable=self.status, bg=PANEL, fg=ACCENT, anchor='w',
-                 font=('Segoe UI Semibold', 10)).pack(fill='x', pady=(3, 6))
+        pager = ttk.Frame(right, style='Panel.TFrame')
+        pager.pack(fill='x', pady=(5, 0))
+        ttk.Button(pager, text='← Назад', command=lambda: self._page(-100),
+                   style='Quiet.TButton').pack(side='left')
+        self.next_page = ttk.Button(pager, text='Далі →', command=lambda: self._page(100),
+                                    style='Quiet.TButton')
+        self.next_page.pack(side='left', padx=5)
+        ttk.Button(pager, text='Історія цін', command=self._history,
+                   style='Quiet.TButton').pack(side='right')
+
+        # Fixed action bar: never clipped by the vehicle form or long logs.
+        actions = ttk.Frame(self.root, style='Panel.TFrame', padding=(12, 8))
+        actions.pack(fill='x', padx=14, pady=(0, 5))
+        ttk.Label(actions, text='3  Дії', style='Header.TLabel').pack(side='left', padx=(0, 8))
+        self.start_btn = ttk.Button(actions, text='▶ Почати парсинг', command=self.start,
+                                    style='Accent.TButton')
+        self.start_btn.pack(side='left', padx=(0, 5))
+        self.update_btn = ttk.Button(actions, text='Оновити ціни',
+                                     command=lambda: self.start(update_prices=True),
+                                     style='Quiet.TButton')
+        self.update_btn.pack(side='left', padx=(0, 4))
+        self.pause_btn = ttk.Button(actions, text='Пауза', command=self.pause,
+                                    style='Quiet.TButton')
+        self.pause_btn.pack(side='left', padx=(0, 4))
+        self.cancel_btn = ttk.Button(actions, text='Зупинити', command=self.cancel,
+                                     style='Quiet.TButton')
+        self.cancel_btn.pack(side='left')
+        self.upload_btn = ttk.Button(actions, text='Імпорт у CarPot', command=self.open_carpot,
+                                     style='Quiet.TButton')
+        self.upload_btn.pack(side='right')
+        self.export_btn = ttk.Button(actions, text='Підготувати CSV', command=self.export,
+                                     style='Accent.TButton')
+        self.export_btn.pack(side='right', padx=(0, 6))
+        self.pause_btn.state(['disabled'])
+        self.cancel_btn.state(['disabled'])
+
+        bottom = ttk.Frame(self.root, style='Panel.TFrame', padding=(12, 7))
+        bottom.pack(fill='x', padx=14, pady=(0, 10))
+        bottom_bar = ttk.Frame(bottom, style='Panel.TFrame')
+        bottom_bar.pack(fill='x')
+        ttk.Label(bottom_bar, text='Стан:', style='Header.TLabel').pack(side='left', padx=(0, 6))
+        tk.Label(bottom_bar, textvariable=self.status, bg=PANEL, fg=ACCENT, anchor='w',
+                 font=('Segoe UI Semibold', 10)).pack(side='left', fill='x', expand=True)
+        ttk.Button(bottom_bar, text='Журнал ▾', command=self._toggle_log,
+                   style='Quiet.TButton').pack(side='right')
         self.progress = ttk.Progressbar(bottom, mode='indeterminate')
-        self.progress.pack(fill='x', pady=(0, 4))
-        self.log = tk.Text(bottom, height=5, bg=FIELD, fg=MUTED, font=('Consolas', 9),
-                           relief='flat', wrap='word', state='disabled')
-        self.log.pack(fill='x')
+        self.progress.pack(fill='x', pady=(5, 0))
+        self.log = tk.Text(bottom, height=3, bg=FIELD, fg=MUTED,
+                           font=('Consolas', 9), relief='flat', wrap='word', state='disabled')
+        self.log_visible = False
         self._log('Програма готова. Дані зберігаються локально в ' + str(DATA_DIR))
+
+    def _toggle_log(self):
+        self.log_visible = not self.log_visible
+        if self.log_visible:
+            self.log.pack(fill='x', pady=(6, 0))
+        else:
+            self.log.pack_forget()
+
+    def _reset_filters(self):
+        self.query.set('')
+        self.category_filter.set('')
+        self.has_oem.set(False)
+        self.has_price.set(False)
+        self.sort_price.set(False)
+        self._filter()
 
     def _field(self, parent, name, var):
         ttk.Label(parent, text=name, style='Dark.TLabel').pack(anchor='w', pady=(6, 3))
@@ -798,6 +898,9 @@ class MainWindow:
         self.start_btn.configure(state=state)
         self.discover_btn.configure(state=state)
         self.export_btn.configure(state=state)
+        self.update_btn.configure(state=state)
+        self.pause_btn.configure(state='normal' if busy else 'disabled')
+        self.cancel_btn.configure(state='normal' if busy else 'disabled')
 
     def _vehicle(self):
         make = clean(self.brand.get())
@@ -821,6 +924,8 @@ class MainWindow:
         self.stop.clear()
         self._set_busy(True)
         self.status.set('Пошук каталогів Aleto…')
+        self.candidate_panel.pack_forget()
+        self.candidate_box['values'] = ()
         def task():
             try:
                 source = SourceClient(self.stop)
@@ -1304,14 +1409,21 @@ class MainWindow:
                 elif action == 'candidates':
                     self.candidate_box['values'] = payload
                     if payload:
+                        self.candidate_panel.pack(fill='x', pady=(6, 0))
                         self.candidate_box.current(0)
                         self.choose_candidate()
-                        self._log(f'Знайдено кандидатів: {len(payload)}. Перевір вибраний каталог.')
-                        self.status.set('Каталоги знайдено — перевір вибір')
+                        self._log(f'Знайдено каталогів: {len(payload)}. Перевір вибраний.')
+                        self.status.set('Каталог знайдено — можна почати збір')
+                        self.workflow_hint.set('Наступний крок: натисніть «Почати парсинг» у панелі дій.')
                     else:
-                        self.status.set('Каталог не знайдено. Встав посилання вручну.')
+                        self.candidate_panel.pack_forget()
+                        self.workflow_hint.set('Каталог Aleto не знайдено. Спробуйте вручну вставити URL /car/.../')
+                        self.status.set('Каталог не знайдено. Вставте посилання вручну.')
                 elif action == 'vin':
                     self._clear_previous_catalogue()
+                    self.candidate_panel.pack_forget()
+                    self.candidate_box['values'] = ()
+                    self.workflow_hint.set('Перевірте характеристики, збережіть авто, знайдіть каталог.')
                     self.vin_candidate = payload
                     _, data, provider = payload
                     self.brand.set(data['Make'])
