@@ -110,6 +110,30 @@ def drop_volume_bootstrap_privileges():
             )
 
 
+def probe_aleto_control():
+    """Read-only startup probe; never log worker credentials or response bodies."""
+    base = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "").rstrip("/")
+    token = os.getenv("WAREHOUSE_ALETO_WORKER_TOKEN", "")
+    if not base or not token:
+        log.warning("Aleto probe: worker URL or token is not configured")
+        return
+    try:
+        import httpx
+        from app.api.aleto_control import worker_proxy
+
+        with httpx.Client(proxy=worker_proxy(), timeout=9, follow_redirects=False,
+                          trust_env=False) as client:
+            response = client.get(base + "/jobs", headers={
+                "Authorization": "Bearer " + token,
+                "X-Workspace": "staging-connectivity-check",
+            })
+        log.info("Aleto probe: HTTP status=%s", response.status_code)
+    except Exception as exc:
+        # Exception class and sanitized first line only; the token is never included.
+        safe = str(exc).splitlines()[0][:180].replace(token, "[REDACTED]")
+        log.warning("Aleto probe: %s: %s", type(exc).__name__, safe)
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
     if os.getenv("WAREHOUSE_ENV") != "staging":
@@ -124,6 +148,7 @@ def main():
         raise RuntimeError("Invalid staging PORT or startup timeout")
     drop_volume_bootstrap_privileges()
     migrate(timeout)
+    probe_aleto_control()
     # Dual-stack works in both new IPv4/IPv6 Railway environments and legacy
     # IPv6-only private networks; also accepts IPv4 deployment health checks.
     listener = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
