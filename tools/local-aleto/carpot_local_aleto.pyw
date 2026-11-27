@@ -181,6 +181,41 @@ def find_candidates(xml, manufacturer, model, year=None, generation=''):
     return [found[k] for k in sorted(found)]
 
 
+def find_brand_page_candidates(html, page_url, manufacturer, model, year=None, generation=''):
+    """Find catalogues linked on Aleto's public manufacturer page.
+
+    The sitemap can omit recently added catalogues. Reuse the same URL and
+    model/year checks rather than trusting arbitrary manufacturer-page links.
+    """
+    if len(html) > 2 * 1024 * 1024:
+        raise ValueError('Завелика сторінка марки')
+    links = set()
+
+    class Links(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag != 'a' or len(links) >= 10000:
+                return
+            href = dict(attrs).get('href')
+            if not href:
+                return
+            try:
+                url = source_url(href, page_url)
+            except ValueError:
+                return
+            if re.fullmatch(r'/(?:ua/)?car/[a-z0-9-]+/?', urlsplit(url).path):
+                links.add(url)
+
+    links_parser = Links(convert_charrefs=True)
+    links_parser.feed(html.decode('utf-8-sig'))
+    links_parser.close()
+    root = ElementTree.Element(SITEMAP_NS + 'urlset')
+    for url in sorted(links):
+        item = ElementTree.SubElement(root, SITEMAP_NS + 'url')
+        ElementTree.SubElement(item, SITEMAP_NS + 'loc').text = url
+    return find_candidates(ElementTree.tostring(root, encoding='utf-8'),
+                           manufacturer, model, year, generation)
+
+
 class SourceError(Exception):
     pass
 
@@ -787,6 +822,16 @@ class MainWindow:
                 for sitemap in SITEMAPS:
                     raw = source.read(sitemap, MAX_BYTES_SITEMAP, ('text/xml', 'application/xml'))
                     found.update(find_candidates(raw, make, model, year, gen))
+                if not found:
+                    # Aleto's manufacturer directory may list models omitted by sitemaps.
+                    brand_url = f'https://aleto.ua/ua/mark/{_make_slug(make)}/'
+                    try:
+                        page = source.read(brand_url, 2 * 1024 * 1024, ('text/html',))
+                        found.update(find_brand_page_candidates(page, brand_url, make, model, year, gen))
+                    except (SourceError, UnicodeError, ValueError) as exc:
+                        # Searching is advisory; the user can still paste a valid
+                        # catalogue URL manually without losing the vehicle.
+                        self.events.put(('status', 'Сторінка марки недоступна: ' + str(exc)[:100]))
                 self.events.put(('candidates', sorted(found)))
             except InterruptedError:
                 self.events.put(('status', 'Пошук зупинено'))
