@@ -59,7 +59,8 @@ Auth = Annotated[Identity, Depends(identity)]
 def user_info(user):
     from app.services.team import user_info as info
     from app.services.catalogue_import import platform_admin
-    return {**info(user), 'catalogue_platform_admin': platform_admin(user)}
+    from app.services.master_parts_managed import enabled
+    return {**info(user), 'catalogue_platform_admin': platform_admin(user), 'construction_intake': enabled()}
 
 
 def session_response(db, response, user):
@@ -372,11 +373,22 @@ def intake_replay(db, account_id, request_key, request_sha):
 def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: BackgroundTasks):
     values = data.model_dump()
     from app.services.catalogue_format import digest
+    from app.services import master_parts_managed
+    from app.services.dismantling_plan_v3 import generator_basis
+
+    construction_enabled = master_parts_managed.enabled() and "dismantling.manage" in who.permissions
+    facts = values.pop("construction") or {}
+    facts = {field: value for field, value in facts.items() if value is not None}
+    model_selection = values.pop("catalogue_model")
+    if (data.construction is not None or model_selection is not None) and not construction_enabled:
+        raise HTTPException(422, "Конструктивний каталог недоступний")
 
     accept_base = values.pop("accept_base_catalogue")
     request_key = values.pop("intake_request_key")
     graph_sha = values.pop("catalogue_graph_sha")
-    request_sha = digest(data.model_dump(mode="json", exclude={"intake_request_key"})) if request_key else None
+    excluded = {"intake_request_key"} | {field for field in ("construction", "catalogue_model")
+                                        if getattr(data, field) is None}
+    request_sha = digest(data.model_dump(mode="json", exclude=excluded)) if request_key else None
     if existing := intake_replay(db, who.workspace_account_id, request_key, request_sha):
         return vehicle_view(db, existing, who.workspace_account_id)
     resolution = data.vin_resolution
@@ -398,12 +410,14 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         raise HTTPException(422, "Оберіть один спосіб додавання автомобіля")
     if accept_base and (intake_mode != "manual" or oracle_selection or resolution):
         raise HTTPException(422, "Базовий каталог можна обрати при ручному додаванні")
-    if request_key and intake_mode == "manual" and not (oracle_selection or accept_base):
+    if request_key and intake_mode == "manual" and not (oracle_selection or accept_base or construction_enabled):
         raise HTTPException(422, "Оберіть модифікацію або підтвердьте базовий каталог")
-    if (explicit_catalogue and not oracle_selection) or (graph_sha and not explicit_catalogue):
+    if model_selection is not None and (intake_mode != "catalogue" or oracle_selection is not None):
+        raise HTTPException(422, "Оберіть модель або модифікацію з каталогу")
+    if (explicit_catalogue and not (oracle_selection or model_selection)) or (graph_sha and not (explicit_catalogue and oracle_selection)):
         raise HTTPException(422, "Оберіть модифікацію з каталогу")
     intake_state = {"vin_intake": intake_mode} if intake_mode else {}
-    if values["vin"] and (selection or oracle_selection and not explicit_catalogue):
+    if values["vin"] and (selection or model_selection or oracle_selection and not explicit_catalogue):
         raise HTTPException(422, "Для VIN виберіть модифікацію за перевіреним контекстом")
     if resolution:
         from app.permissions import require_permission
@@ -426,6 +440,8 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
                 values["model"] = candidate["model"]
             can_prepare = "dismantling.manage" in who.permissions
             readiness, stage13_plan = vin_resolution.graph_preview(adapter, candidate) if can_prepare else ("identity_only", None)
+            if readiness == "identity_mismatch":
+                raise HTTPException(409, "Модифікація змінилася. Повторіть вибір")
             if resolution.graph_sha and (not stage13_plan
                     or stage13_plan["payload"]["source_snapshot_sha"] != resolution.graph_sha):
                 raise HTTPException(409, "Версія графа запчастин змінилася. Перевірте вибір ще раз")
@@ -433,10 +449,22 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
                 allow_upgrade=can_prepare and readiness != "unsupported")
         elif resolution.graph_sha:
             raise HTTPException(422, "Оберіть модифікацію перед перевіркою графа")
-        if not stage13_plan and not resolution.accept_base_catalogue:
+        if not stage13_plan and not (resolution.accept_base_catalogue or construction_enabled):
             raise HTTPException(422, "Підтвердьте модифікацію з каталогом запчастин або явно погодьте базовий каталог")
     if resolution:
         intake_state = {"vin_intake": "reviewed"}
+    if model_selection is not None:
+        from app.permissions import require_permission
+        from app.services import vin_source_directory
+        from app.services.unified_catalogue import CatalogueAdapter
+
+        require_permission(who, "vehicles.create", "catalog.view", "dismantling.manage")
+        kind = vin_source_directory.catalogue_model(
+            CatalogueAdapter(), data.catalogue_model,
+            manufacturer=values["manufacturer"], model=values["model"], year=values["year"])
+        facts["model_id"] = data.catalogue_model.model_id
+        if kind:
+            facts["kind"] = kind
     if oracle_selection is not None:
         from app.permissions import require_permission
         from app.services import vin_resolution, vin_source_directory
@@ -449,11 +477,13 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
             oracle_identity, attributes, fields = vin_source_directory.catalogue_identity(
                 adapter, oracle_selection, manufacturer=values["manufacturer"], model=values["model"], year=values["year"])
             readiness, stage13_plan = vin_resolution.graph_preview(adapter, oracle_identity)
-            if not stage13_plan:
+            if readiness == "identity_mismatch":
+                raise HTTPException(409, "Модифікація змінилася. Повторіть вибір")
+            if not stage13_plan and not construction_enabled:
                 if readiness in ("unavailable", "unsupported", "identity_only"):
                     raise HTTPException(503, "Каталог запчастин тимчасово недоступний. Спробуйте ще раз або додайте автомобіль вручну")
                 raise HTTPException(409, "Для обраної модифікації запчастин у каталозі не знайдено")
-            if graph_sha and graph_sha != stage13_plan["payload"]["source_snapshot_sha"]:
+            if graph_sha and (not stage13_plan or graph_sha != stage13_plan["payload"]["source_snapshot_sha"]):
                 raise HTTPException(409, "Каталог змінився. Оновіть план розбору")
             oracle_identity.update(source_attributes=attributes, catalogue_readiness=readiness,
                                    allow_upgrade=True, directory_snapshot=digest(oracle_identity))
@@ -494,6 +524,12 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         # Pin the plan against the same Numeric(4, 1) representation used on reload.
         values["engine_displacement_l"] = values["engine_displacement_l"].quantize(Decimal("0.1"))
     row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
+    if construction_enabled:
+        from app.services.master_parts_reconciliation import construction_reference
+        reference = construction_reference(row, source_model_id=(oracle_identity or {}).get("model_id") or facts.get("model_id"))
+        if reference and not row.generation:
+            row.generation = reference["family"]["generations"][0].upper()
+        intake_state["master_construction_intake"] = {"facts": facts, "vehicle_basis": generator_basis(row)}
     db.add(row)
     if intake_state:
         row.dismantling_v3 = intake_state
@@ -501,7 +537,6 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         # One donor, one versioned source plan. Potential dismantling types are
         # NOT physical stock and require later explicit confirmation for receipt.
         from app.services import unified_catalogue as catalogue
-        from app.services.dismantling_plan_v3 import generator_basis
         db.flush()
         payload = source_plan["payload"]
         row.dismantling_v3 = {**(row.dismantling_v3 or {}), "global_selection": dict(
@@ -520,7 +555,6 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     elif oracle_identity is not None:
         # Exact Oracle source identity is intentionally separate from the pinned
         # part graph. No synthetic Catalogue/OEM applicability is created.
-        from app.services.dismantling_plan_v3 import generator_basis
         db.flush()
         row.dismantling_v3={**(row.dismantling_v3 or {}),
             "oracle_vehicle_identity":{**oracle_identity,
@@ -528,10 +562,8 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         if stage13_plan:
             vin_resolution.persist_graph(db, row, stage13_plan, readiness=oracle_identity["catalogue_readiness"])
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
-    if stage13_plan and oracle_identity is not None:
-        from app.services.master_parts_managed import auto_supplement_new_donor
-        auto_supplement_new_donor(db, row, who)
-    if accept_base and "dismantling.manage" in who.permissions:
+    master_result = master_parts_managed.auto_supplement_new_donor(db, row, who)
+    if accept_base and not (master_result or {}).get("created") and "dismantling.manage" in who.permissions:
         from app.services import dismantling
         dismantling.start(db, row.id, who.workspace_account_id)
         row.dismantling_v3 = {**row.dismantling_v3, "unified_base": True}
@@ -709,7 +741,9 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     changes = data.model_dump(exclude_unset=True)
     resolution = changes.pop("vin_resolution", None)
     intake_mode = changes.pop("vin_intake_mode", None)
-    if changes.pop("accept_base_catalogue", None) or changes.pop("intake_request_key", None) or changes.pop("catalogue_graph_sha", None):
+    intake_only = {field: changes.pop(field, None) for field in ("construction", "catalogue_model", "accept_base_catalogue",
+                                                               "intake_request_key", "catalogue_graph_sha")}
+    if any(intake_only.values()):
         raise HTTPException(422, "Ці поля застосовуються лише під час додавання")
     if resolution is not None or intake_mode is not None or changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
         raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")

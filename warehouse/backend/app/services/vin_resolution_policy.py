@@ -145,11 +145,11 @@ def model_relation(left, right):
     a, a_generations, a_id = model_parts(left)
     b, b_generations, b_id = model_parts(right)
     if a and a == b:
+        ordinals = [re.sub(r"\([^()]*\)", "", str(v)).strip().casefold().rpartition(" ")[2]
+                    for v in (left, right)]
+        if all(ordinal in _ROMAN for ordinal in ordinals) and ordinals[0] != ordinals[1]:
+            return "mismatch"
         if a_generations and b_generations and a_generations.isdisjoint(b_generations):
-            a_ordinal = str(left).casefold().split()
-            b_ordinal = str(right).casefold().split()
-            if a_ordinal[-1] in _ROMAN and b_ordinal[-1] in _ROMAN:
-                return "mismatch"
             if all(_platform_relation(value, b_generations) == "mismatch" for value in a_generations):
                 return "mismatch"
         return "compatible"

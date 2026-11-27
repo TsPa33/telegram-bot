@@ -150,13 +150,31 @@ def manufacturer_page(adapter, *, kind, name="", after=0, limit=50):
     return dict(items=items, next_after=cursor)
 
 
-def catalogue_identity(adapter, selection, *, manufacturer, model, year=None):
-    from app.services.vin_resolution_policy import interval, source_specs
-
+def catalogue_maker(adapter, selection, manufacturer):
     makers = manufacturer_page(adapter, kind=selection.kind, after=selection.manufacturer_id - 1, limit=1)
     maker = next((row for row in makers["items"] if row["id"] == selection.manufacturer_id), None)
     if not maker or norm(maker["name"]) != norm(manufacturer):
         raise HTTPException(409, "Виробник змінився. Повторіть вибір із каталогу")
+
+
+def catalogue_model(adapter, selection, *, manufacturer, model, year):
+    from app.services.vin_resolution_policy import interval
+    catalogue_maker(adapter, selection, manufacturer)
+    page = source_page("models", source_id=selection.manufacturer_id,
+                       kind=selection.kind, after=selection.model_id - 1, adapter=adapter)
+    row = next((item for item in page["items"] if item["id"] == selection.model_id), None)
+    if not row or norm(model) != norm(row["name"]):
+        raise HTTPException(409, "Модель змінилася. Повторіть вибір із каталогу")
+    start, end = interval(row.get("construction_interval"))
+    if not year or (start and year < start) or (end and year > end):
+        raise HTTPException(422, "Оберіть допустимий рік виробництва моделі")
+    return "passenger" if selection.kind == "passenger" else None
+
+
+def catalogue_identity(adapter, selection, *, manufacturer, model, year=None):
+    from app.services.vin_resolution_policy import interval, source_specs
+
+    catalogue_maker(adapter, selection, manufacturer)
     identity = confirm_identity(selection, manufacturer=manufacturer, model=model, adapter=adapter, maker_checked=True)
     start, end = interval(identity["construction_interval"])
     if year and ((start and year < start) or (end and year > end)):
