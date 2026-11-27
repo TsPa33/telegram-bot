@@ -111,33 +111,36 @@ def drop_volume_bootstrap_privileges():
 
 
 def probe_aleto_control():
-    """Read-only startup probe; never log worker credentials or response bodies."""
-    base = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "").rstrip("/")
-    token = os.getenv("WAREHOUSE_ALETO_WORKER_TOKEN", "")
-    if not base or not token:
-        log.warning("Aleto probe: worker URL or token is not configured")
-        return
-    import ssl
+    """Read-only differential probe for Oracle Serve ports; do not log secrets."""
+    from urllib.parse import urlsplit
     import httpx
     from app.api.aleto_control import worker_proxy
 
-    for label, tls12 in (("default", False), ("tls12", True)):
+    base = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "").rstrip("/")
+    token = os.getenv("WAREHOUSE_ALETO_WORKER_TOKEN", "")
+    if not base or not token:
+        log.warning("Aleto probe: worker URL or token missing")
+        return
+    host = urlsplit(base).hostname
+    if not host:
+        log.warning("Aleto probe: invalid Oracle hostname")
+        return
+    tests = [
+        ("existing-oracle-443", "https://" + host + "/health", {}),
+        ("aleto-control-8443", base + "/jobs", {
+            "Authorization": "Bearer " + token,
+            "X-Workspace": "staging-connectivity-check",
+        }),
+    ]
+    for label, url, headers in tests:
         try:
-            verify = ssl.create_default_context()
-            if tls12:
-                verify.maximum_version = ssl.TLSVersion.TLSv1_2
-            with httpx.Client(proxy=worker_proxy(), verify=verify, timeout=8,
-                              follow_redirects=False, trust_env=False) as client:
-                response = client.get(base + "/jobs", headers={
-                    "Authorization": "Bearer " + token,
-                    "X-Workspace": "staging-connectivity-check",
-                })
-            log.info("Aleto probe %s: HTTP status=%s", label, response.status_code)
-            if response.status_code == 200:
-                break
+            with httpx.Client(proxy=worker_proxy(), timeout=7, follow_redirects=False,
+                              trust_env=False) as client:
+                response = client.get(url, headers=headers)
+            log.info("Aleto proxy probe %s: HTTP status=%s", label, response.status_code)
         except Exception as exc:
             safe = str(exc).splitlines()[0][:180].replace(token, "[REDACTED]")
-            log.warning("Aleto probe %s: %s: %s", label, type(exc).__name__, safe)
+            log.warning("Aleto proxy probe %s: %s: %s", label, type(exc).__name__, safe)
 
 
 def main():
