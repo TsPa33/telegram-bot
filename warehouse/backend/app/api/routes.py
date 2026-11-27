@@ -2,6 +2,7 @@ from app.api.secure_route import SecureRoute
 import json
 import secrets
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated, Literal
 from fastapi import (
     APIRouter,
@@ -460,7 +461,6 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
                 if field in ("engine_code", "fuel_type", "drive_type", "transmission") and not values.get(field):
                     values[field] = value if field == "drive_type" else label
                 elif field == "engine_displacement_l" and not values.get(field) and 0.05 <= value <= 99.9:
-                    from decimal import Decimal
                     values[field] = Decimal(str(value)).quantize(Decimal("0.1"))
         else:
             oracle_identity = vin_source_directory.confirm_identity(
@@ -490,6 +490,9 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     if values.get('vin_details') and not resolution:
         values['vin_details']={**values['vin_details'],'trust':'user_confirmed_reported_not_factory_verified'}
     number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
+    if values["engine_displacement_l"] is not None:
+        # Pin the plan against the same Numeric(4, 1) representation used on reload.
+        values["engine_displacement_l"] = values["engine_displacement_l"].quantize(Decimal("0.1"))
     row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
     db.add(row)
     if intake_state:

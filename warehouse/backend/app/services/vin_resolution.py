@@ -27,7 +27,11 @@ _MAX_MATCHED_VARIANTS = 50
 _AUTO_TECHNICAL = {"engine_code", "fuel_type", "engine_displacement_l", "engine_power_kw",
                    "drive_type", "transmission"}
 _AUTO_CONFLICTS = _AUTO_TECHNICAL | {"manufacturer", "model", "year", "vehicle_type", "generation"}
-_REPORTED_ENGINE_CODE = re.compile(r"(?=.{5,21}$)(?![VILWH](?:[1-9]|1[0-6])(?:[A-Z]|$))[A-Z]{1,5}[0-9]{2,}[A-Z0-9]*", re.I)
+# Recognize compact engine designations while leaving layout and capacity
+# descriptions (such as V6DOHC or 2.0L AWD) as display-only observations.
+_REPORTED_ENGINE_CODE = re.compile(
+    r"(?=.{5,21}$)(?![VILWH](?:[1-9]|1[0-6])(?:[A-Z]|$))[A-Z]{1,5}[0-9]{2,}[A-Z0-9]*"
+    r"|[1-9](?![LIV]-)[A-Z]{1,3}-[A-Z][A-Z0-9]{0,6}", re.I)
 
 
 def _signature(purpose, payload):
