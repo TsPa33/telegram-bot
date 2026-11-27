@@ -1,0 +1,3 @@
+# Static body library: seven exact assets imported
+
+Previous full CI at 210a276a succeeded: Warehouse, corporate UX QA, Billing and dedicated body-library QA. Seven standalone OpenAI-generated assets transferred and git blob SHA1 matched against local bytes; provenance records exact SHA256 and dimensions. Files: sedan, hatchback, wagon, SUV, coupe, convertible, minivan. Native source of minivan 1774×887 RGBA, output 960×640. Remaining: pickup, cargo van, tractor, rigid truck, bus. Image generation repeatedly returned collages instead of isolated vehicles; not accepted or included. No model-photo or donor-gallery changes. Completeness gate remains disabled (7/12); no Railway or production change. New CI must pass before any release.

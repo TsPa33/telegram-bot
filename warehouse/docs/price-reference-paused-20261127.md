@@ -1,0 +1,3 @@
+# Temporary pause of automated price references
+
+User requested suspension pending own price database. Frontend VITE_WAREHOUSE_MARKET_REFERENCE_ENABLED=false build argument and shared marketReferenceEnabled switch hides individual lookup, bulk job provider, market price summary/statistics and stops guidance polling. Backend WAREHOUSE_MARKET_REFERENCE_ENABLED=false blocks market-refresh/reference, guidance and automatic preview/apply; WAREHOUSE_MARKET_LIVE_ENABLED=false and WAREHOUSE_MARKET_AUTOPALMA_ENABLED=false stop provider calls. Manual selling price editor, price context, stock and stored catalogue data remain. Re-enable only on explicit instruction. No production change, no deletion or migration.

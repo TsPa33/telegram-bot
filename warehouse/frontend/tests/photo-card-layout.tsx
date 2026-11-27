@@ -1,0 +1,16 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import VehicleImage from '../src/VehicleImage';
+import '../src/tokens.css';
+import '../src/style.css';
+import '../src/design-system.css';
+import '../src/vehicle-cards.css';
+import '../src/vehicles-r1146.css';
+import '../src/premium-emerald-r10.css';
+import '../src/theme-surfaces.css';
+import '../src/themes.css';
+import '../src/corporate-ux-v2.css';
+import '../src/integrated-ux-polish.css';
+import '../src/mobile-search-checkout.css';
+const items=[{manufacturer:'Alfa Romeo',model:'147 (937_)',year:2008},{manufacturer:'Audi',model:'Q5',year:null},{manufacturer:'DAF',model:'XF 105',year:2007},{manufacturer:'Volvo',model:'XC90',year:2016},{manufacturer:'Unknown',model:'Unmapped',year:2022}];
+createRoot(document.getElementById('root')!).render(<div className="corporate-donor-grid" style={{display:'grid',gap:16,padding:12}}>{items.map((v,i)=><article key={i} className="vehicle-card vehicle-summary-card r1141-card r1146-card corporate-donor-card"><div className="r1146-card-intro"><div className="corporate-donor-top"><div className="r1146-card-heading"><div><strong>{v.manufacturer} {v.model}</strong><p>{v.year??'Рік не визначено'}</p></div><span className="r1141-status">Заплановано</span></div><div className="r1146-card-photo"><VehicleImage vehicle={v} referenceOnly/></div></div></div></article>)}</div>);

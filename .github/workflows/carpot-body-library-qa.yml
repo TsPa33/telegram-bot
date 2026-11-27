@@ -1,0 +1,35 @@
+name: CarPot body library QA
+on:
+  push:
+    branches: [feature/carpot-body-placeholder-library-20261127, feature/carpot-body-classification-staging-fix-20261127]
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: warehouse/frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: node --test tests/vehicle-images-unit.mjs
+      - run: npm run build
+      - run: python3 -m py_compile scripts/import-body-library.py
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          npm run dev -- --port 5173 > /tmp/body-library-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5173/tests/body-library-layout.html >/dev/null && break; sleep 1; done
+          node tests/body-library-layout.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: body-library-layout-screenshots
+          path: warehouse/frontend/test-results/body-library-*.png
+          retention-days: 5

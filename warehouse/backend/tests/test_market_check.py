@@ -81,3 +81,97 @@ def test_non_aleto_links_never_become_aleto_recommendation(platform,vehicle,monk
     r=check(platform,p);assert r.status_code==200,r.text
     data=r.json();assert data['result_source']=='unavailable'
     assert data['status']=='no_matches' and not data['offers'] and data['guidance']['level']=='D' and not data['guidance']['cohorts']
+
+
+def test_aleto_average_for_similar_matches_is_read_only(platform,vehicle):
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    with Session(engine()) as db:
+        part=db.get(Part,p);part.oem_number='';part.condition='unknown';db.commit()
+        before=all_tables(db)
+    result=check(platform,p)
+    assert result.status_code==200,result.text
+    data=result.json()
+    assert data['fresh_data_fetched'] is False
+    assert data['guidance']['level']=='C'
+    ref=next(r for r in data['guidance']['aleto_reference'] if r['currency']=='UAH')
+    assert ref['match']=='similar' and ref['condition']=='used'
+    assert ref['offer_count']==3 and ref['average']=='1500.00'
+    assert len(ref['examples'])==3
+    with Session(engine()) as db:assert all_tables(db)==before
+
+
+def test_public_market_reference_has_no_provider_identifiers(platform,vehicle):
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    with Session(engine()) as db:
+        before=all_tables(db)
+    result=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    assert result.status_code==200,result.text
+    data=result.json()
+    ref=next(r for r in data['references'] if r['currency']=='UAH')
+    assert ref['average']=='1500.00'
+    assert not data['fresh_data_fetched']
+    assert all(set(e)=={'amount','currency','observed_at'} for e in ref['examples'])
+    assert 'aleto' not in result.text.lower() and 'https://' not in result.text
+    assert 'article' not in result.text and 'source' not in result.text
+    with Session(engine()) as db:assert all_tables(db)==before
+    with TestClient(app) as other:
+        signup(other,'r5-public-other@example.test')
+        assert other.post('/api/v1/parts/'+p+'/market-reference',json={}).status_code==404
+
+
+def test_live_candidate_public_route_preserves_stock(platform,vehicle,monkeypatch):
+    from app.services import live_market_reference as live
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    stamp=utcnow().isoformat()
+    monkeypatch.setattr(live,'enabled',lambda:True)
+    calls=[]
+    def lookup(ctx):
+        calls.append(ctx)
+        return ('live',[dict(currency='UAH',condition='used',
+        availability='available',assembly='complete',match='similar',offer_count=3,
+        minimum='1000',maximum='2000',average='1500.00',observed_at=stamp,source='aleto',url='https://aleto.ua/',examples=[dict(amount='1000',currency='UAH',observed_at=stamp,article='hidden',url='https://aleto.ua/ua/detail/test-offer/')])],stamp)
+    monkeypatch.setattr(live,'lookup',lookup)
+    with Session(engine()) as db:before=all_tables(db)
+    stored=platform.post('/api/v1/parts/'+p+'/market-reference',json={})
+    assert stored.status_code==200 and stored.json()['price_mode']=='stored' and not calls
+    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
+    assert r.status_code==200,r.text
+    data=r.json()
+    assert data['price_mode']=='live' and data['fresh_data_fetched']
+    assert data['references'][0]['average']=='1500.00'
+    assert data['references'][0]['examples'][0]['reference_url']=='https://aleto.ua/ua/detail/test-offer/'
+    assert 'hidden' not in r.text and len(calls)==1
+    with Session(engine()) as db:assert all_tables(db)==before
+    monkeypatch.setattr(live,'lookup',lambda ctx:None)
+    r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
+    assert r.status_code==200 and r.json()['price_mode']=='stored'
+    assert r.json()['fresh_data_fetched'] is False
+    for reason in ('source_not_found','cooldown','daily_limit','robots_unavailable','source_parse_error'):
+        monkeypatch.setattr(live,'lookup',lambda ctx:(reason,[],None))
+        r=platform.post('/api/v1/parts/'+p+'/market-reference',json={'individual':True})
+        assert r.status_code==200 and r.json()['lookup_status']==reason
+        assert r.json()['price_mode']=='stored' and not r.json()['fresh_data_fetched']
+
+
+def test_reference_revision_and_price_context_no_stock_mutation(platform,vehicle):
+    from uuid import uuid4
+    p=setup(platform,vehicle,[{**item(i),'price_uah':str(1000+500*i)} for i in range(3)])
+    ctx=platform.get('/api/v1/parts/'+p+'/price-context').json()
+    assert ctx['part_id']==p and ctx['eligible'] and ctx['name']
+    reference=platform.post('/api/v1/parts/'+p+'/market-reference',json={}).json()
+    assert reference['price_token']==ctx['price_token']
+    before=platform.get('/api/v1/parts/'+p).json()
+    body=dict(selling_price='1500.00',currency='UAH',expected_token=ctx['price_token'],request_key=str(uuid4()))
+    response=platform.patch('/api/v1/parts/'+p+'/price',json=body)
+    assert response.status_code==200,response.text
+    assert platform.patch('/api/v1/parts/'+p+'/price',json=body).status_code==200
+    stale={**body,'selling_price':'900.00','request_key':str(uuid4())}
+    assert platform.patch('/api/v1/parts/'+p+'/price',json=stale).status_code==409
+    after=platform.get('/api/v1/parts/'+p).json()
+    assert after['selling_price']=='1500.00'
+    for key in ('quantity','reserved_quantity','oem_number','location','availability'):
+        assert after[key]==before[key]
+    selection=platform.get('/api/v1/pricing/selection').json()
+    assert p in selection['ids']
+    later=platform.get('/api/v1/pricing/selection',params={'after_id':p}).json()
+    assert all(x>p for x in later['ids'])

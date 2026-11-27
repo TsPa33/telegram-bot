@@ -1,0 +1,55 @@
+name: CarPot model photo isolated pilot
+on:
+  push:
+    branches:
+      - feature/carpot-model-reference-photos-20261126
+    paths:
+      - ".github/workflows/carpot-model-photo-pilot.yml"
+      - "warehouse/backend/app/services/commons_model_photos.py"
+      - "warehouse/backend/app/services/model_reference_photos.py"
+      - "warehouse/backend/tests/model_photo_pilot.py"
+      - "warehouse/backend/tests/test_commons_model_photos.py"
+      - "warehouse/backend/tests/test_model_reference_photos.py"
+permissions:
+  contents: read
+concurrency:
+  group: carpot-model-photo-pilot
+  cancel-in-progress: true
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WAREHOUSE_COMMONS_USER_AGENT: "CarPot/1.0 (https://github.com/TsPa33/telegram-bot)"
+      PHOTO_PILOT_OUTPUT: /tmp/carpot-photo-pilot
+      PHOTO_PILOT_WEIGHT: /tmp/u2netp.onnx
+      WAREHOUSE_MODEL_PHOTO_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated pilot dependencies
+        run: python -m pip install numpy==1.26.4 onnxruntime==1.20.1 Pillow==12.3.0 httpx==0.28.1 pytest==9.1.1
+      - name: Fetch public lightweight segmentation weights
+        run: |
+          curl --fail --location --max-time 90 --retry 2 --max-filesize 12000000 https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx -o "$PHOTO_PILOT_WEIGHT"
+          echo "8e83ca70e441ab06c318d82300c84806  $PHOTO_PILOT_WEIGHT" | md5sum -c -
+          echo "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8  $PHOTO_PILOT_WEIGHT" | sha256sum -c -
+      - name: Test cache, license gates and transparency
+        working-directory: warehouse/backend
+        run: |
+          mkdir -p /tmp/photo-fixtures
+          cp tests/test_commons_model_photos.py tests/test_model_reference_photos.py /tmp/photo-fixtures/
+          PYTHONPATH=. python -m pytest -q /tmp/photo-fixtures
+      - name: Download and segment four public candidate photos
+        working-directory: warehouse/backend
+        run: PYTHONPATH=. python tests/model_photo_pilot.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carpot-public-model-photo-pilot
+          path: /tmp/carpot-photo-pilot
+          retention-days: 3

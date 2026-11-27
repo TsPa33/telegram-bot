@@ -16,6 +16,7 @@ from app.services.canonical_rules import RULE_FINGERPRINT,classify,placement,sur
 from app.services.canonical_applicability import assess
 from app.services.catalogue_format import digest
 from app.services.canonical_catalogue import source_record
+from app.services.aleto_price_reference import summarize_aleto
 VERSION='market-guidance.3c.1'
 MAX_SOURCE_ROWS=20000
 AGE_DAYS=90
@@ -225,7 +226,9 @@ def guidance(db,parts,account,now=None,*,include_historical=False):
         if not contexts[part.id]['type_id']:reasons['missing_constructive_identity']+=1
         elif not by_type[contexts[part.id]['type_id']]:reasons['no_verified_source_mapping']+=1
         row=empty[part.id];row.update(cohorts=cohorts,examples=sorted(examples.values(),key=lambda e:(e['source'],e['article'],e['currency']))[:10],example_count=len(examples),example_evidence_hash=digest(sorted(examples.values(),key=lambda e:(e['source'],e['article'],e['currency']))),offer_count=len({(e['entry']['source'],e['entry']['article']) for e in seen.values()}),reasons=dict(reasons),truncated=truncated)
-        if include_historical:row['historical_examples']=sorted(historical.values(),key=lambda e:(e['observed_at'],e['source'],e['article'],e['currency']),reverse=True)[:10]
+        if include_historical:
+            row['historical_examples']=sorted(historical.values(),key=lambda e:(e['observed_at'],e['source'],e['article'],e['currency']),reverse=True)[:10]
+            row['aleto_reference']=summarize_aleto(seen.values(),truncated=truncated)
         row['level']='A' if any(c['level']=='A' for c in cohorts) else 'B' if cohorts else 'C' if examples else 'D'
         row['label']={'A':'Ринковий орієнтир','B':'Мало даних','C':'Приклади схожих запчастин','D':'Ціну не визначено'}[row['level']]
         projections[projection_key]=row

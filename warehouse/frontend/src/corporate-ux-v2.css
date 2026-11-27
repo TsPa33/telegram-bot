@@ -29,15 +29,20 @@
 @media(max-width:450px){.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part{grid-template-columns:minmax(0,1fr) 65px}.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-stock{grid-column:1;grid-row:2}.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-actions{grid-column:2;grid-row:2}}
 /* Common donor card: image and caption never overlay vehicle data. */
 .corporate-donor-card .r1146-card-intro{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
-.corporate-donor-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,120px);gap:10px;align-items:start}
+.corporate-donor-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,32%);gap:14px;align-items:start}
 .corporate-donor-card .r1146-card-heading{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
-.corporate-donor-card .r1146-card-photo{position:static!important;inset:auto!important;width:100%!important;min-width:0;max-width:120px;display:flex;flex-direction:column;align-items:center}
-.corporate-donor-card .vehicle-image-shell{width:100%}.corporate-donor-card .vehicle-image{height:68px!important;margin:0!important}
+.corporate-donor-card .r1146-card-photo{position:static!important;inset:auto!important;width:100%!important;min-width:0;max-width:240px;min-height:0!important;overflow:visible!important;justify-self:end;display:flex;flex-direction:column;align-items:center}
+.corporate-donor-card .vehicle-image-shell{width:100%;max-width:240px!important;min-width:0}
+.corporate-donor-card .vehicle-image{height:132px!important;margin:0!important;background:transparent!important}
+.corporate-donor-card .vehicle-image-unavailable{background:transparent;text-align:center;overflow-wrap:anywhere}
+.corporate-donor-card .vehicle-image-attribution{width:100%}
+.corporate-donor-card .r1146-card-heading{min-width:0;overflow-wrap:anywhere}
+@media(max-width:1100px) and (min-width:601px){.corporate-donor-card .vehicle-image{height:112px!important}}
 .corporate-donor-card .donor-image-caption{position:static!important;display:block;font-size:10px;line-height:1.3;text-align:center;white-space:normal;color:var(--color-secondary);max-width:100%}
 .corporate-donor-card .r1146-card-summary{min-width:0}.corporate-donor-card .r1146-card-footer{flex-wrap:wrap;gap:8px}.corporate-donor-card .r1141-car-actions{flex-wrap:wrap}
 .corporate-donor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:900px){.corporate-donor-grid{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:600px){.night-style-select{display:none!important}.corporate-donor-top{grid-template-columns:minmax(0,1fr) 90px}}
+@media(max-width:600px){.night-style-select{display:none!important}.corporate-donor-top{grid-template-columns:minmax(0,1fr) minmax(112px,38%);gap:8px}.corporate-donor-card .vehicle-image{height:90px!important}.corporate-donor-card .vehicle-image-attribution>summary{font-size:10px}}
 /* Order creation and fulfilment. */
 dialog.order-dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
 .order-dialog .order-add-product{margin:9px 0;width:100%;border-style:dashed;color:var(--color-accent)}
@@ -59,3 +64,17 @@ dialog.order-dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh -
 .ui3-inventory .stock-v2-layout .r115-part .ui3-own .seller-price-compact{max-width:100%}
 @media(max-width:450px){.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .r115-codes{grid-column:1/-1;grid-row:3}.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .ui3-own{grid-row:4}}
 :root[data-theme=dark] .app .sidebar{background:linear-gradient(160deg,var(--color-sidebar),var(--color-subtle));border-right-color:var(--color-sidebar-border)}
+
+/* Soft Gradient: artwork shares the card surface, no separate plate or caption. */
+.corporate-donor-card:has(.vehicle-image-shell--body){
+ background:radial-gradient(ellipse at 82% 22%,color-mix(in srgb,var(--color-secondary) 15%,var(--color-surface)) 0%,var(--color-surface) 64%)!important;
+}
+.corporate-donor-card:has(.vehicle-image-shell--body) .corporate-donor-top{grid-template-columns:minmax(0,1fr) minmax(150px,40%);align-items:center}
+.corporate-donor-card:has(.vehicle-image-shell--body) .r1146-card-photo,.corporate-donor-card .vehicle-image-shell--body{max-width:300px!important}
+.corporate-donor-card .vehicle-image-shell--body .vehicle-image{height:148px!important;background:transparent!important}
+.vehicle-image-shell--body .vehicle-image img{opacity:1!important;filter:none!important;mask-image:none!important;-webkit-mask-image:none!important;object-fit:contain}
+.vehicle-image-shell--body .vehicle-image-unavailable{background:transparent;color:var(--color-secondary);opacity:.55}
+@media(max-width:600px){
+ .corporate-donor-card:has(.vehicle-image-shell--body) .corporate-donor-top{grid-template-columns:minmax(0,1fr) minmax(110px,40%)}
+ .corporate-donor-card .vehicle-image-shell--body .vehicle-image{height:94px!important}
+}

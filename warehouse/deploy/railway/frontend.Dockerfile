@@ -9,6 +9,8 @@ COPY frontend/control ./control
 # Tests and migration sources stay in the builder stage, never the public nginx image.
 COPY frontend/tests ./tests
 COPY backend/alembic/versions ./backend/alembic/versions
+ARG VITE_WAREHOUSE_MARKET_REFERENCE_ENABLED=true
+ENV VITE_WAREHOUSE_MARKET_REFERENCE_ENABLED=$VITE_WAREHOUSE_MARKET_REFERENCE_ENABLED
 RUN npm run build
 
 FROM nginx:1.28-alpine

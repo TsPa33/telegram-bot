@@ -1,0 +1,246 @@
+{
+  "source_sha256": "37544991ebb1e6b6dd758bcd3ab24bafb7e81a9c933b19c15ce86f26091bf264",
+  "seed_types": 166,
+  "seed_prd_ids": 151,
+  "triage": {
+    "seed_candidate": 151,
+    "review_categorized": 4931,
+    "likely_non_part": 3448,
+    "review_uncategorized": 18400,
+    "review_same_description": 8
+  },
+  "profiles": [
+    {
+      "scenario": "Audi Q5 source IDs + illustrative SUV profile",
+      "source_types": 117,
+      "mapped_source_types": 45,
+      "physical_candidates": 301,
+      "candidate_types": 127,
+      "review_types": 12,
+      "excluded_types": 27,
+      "states": {
+        "supplement_candidate": 196,
+        "reconcile": 105
+      },
+      "door": 4,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "Volvo XC90 source IDs + illustrative SUV profile",
+      "source_types": 113,
+      "mapped_source_types": 37,
+      "physical_candidates": 301,
+      "candidate_types": 127,
+      "review_types": 12,
+      "excluded_types": 27,
+      "states": {
+        "reconcile": 97,
+        "supplement_candidate": 204
+      },
+      "door": 4,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic sedan",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 299,
+      "candidate_types": 126,
+      "review_types": 12,
+      "excluded_types": 28,
+      "states": {
+        "supplement_candidate": 299
+      },
+      "door": 4,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic coupe",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 273,
+      "candidate_types": 126,
+      "review_types": 12,
+      "excluded_types": 28,
+      "states": {
+        "supplement_candidate": 273
+      },
+      "door": 2,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic 3-door hatch",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 275,
+      "candidate_types": 127,
+      "review_types": 12,
+      "excluded_types": 27,
+      "states": {
+        "supplement_candidate": 275
+      },
+      "door": 2,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic LCV van",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 287,
+      "candidate_types": 126,
+      "review_types": 12,
+      "excluded_types": 28,
+      "states": {
+        "supplement_candidate": 287
+      },
+      "door": 3,
+      "cab_door": 0,
+      "rear_closure": 2,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic tractor 4x2",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 213,
+      "candidate_types": 111,
+      "review_types": 12,
+      "excluded_types": 43,
+      "states": {
+        "supplement_candidate": 213
+      },
+      "door": 0,
+      "cab_door": 2,
+      "rear_closure": 0,
+      "wheel": 6,
+      "brake_disc": 2,
+      "brake_drum": 2,
+      "brake_pad_set": 1,
+      "brake_shoe_set": 1,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic tractor 6x4",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 244,
+      "candidate_types": 111,
+      "review_types": 12,
+      "excluded_types": 43,
+      "states": {
+        "supplement_candidate": 244
+      },
+      "door": 0,
+      "cab_door": 2,
+      "rear_closure": 0,
+      "wheel": 10,
+      "brake_disc": 2,
+      "brake_drum": 4,
+      "brake_pad_set": 1,
+      "brake_shoe_set": 2,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic BEV",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 226,
+      "candidate_types": 88,
+      "review_types": 18,
+      "excluded_types": 60,
+      "states": {
+        "supplement_candidate": 226
+      },
+      "door": 4,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "synthetic PHEV",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 304,
+      "candidate_types": 130,
+      "review_types": 12,
+      "excluded_types": 24,
+      "states": {
+        "supplement_candidate": 304
+      },
+      "door": 4,
+      "cab_door": 0,
+      "rear_closure": 1,
+      "wheel": 4,
+      "brake_disc": 4,
+      "brake_drum": 0,
+      "brake_pad_set": 2,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    },
+    {
+      "scenario": "unknown profile",
+      "source_types": 0,
+      "mapped_source_types": 0,
+      "physical_candidates": 0,
+      "candidate_types": 0,
+      "review_types": 166,
+      "excluded_types": 0,
+      "states": {},
+      "door": 0,
+      "cab_door": 0,
+      "rear_closure": 0,
+      "wheel": 0,
+      "brake_disc": 0,
+      "brake_drum": 0,
+      "brake_pad_set": 0,
+      "brake_shoe_set": 0,
+      "OEM_proposed": 0
+    }
+  ],
+  "scope": "offline synthetic profiles, not live coverage or production fitment"
+}

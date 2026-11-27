@@ -12,7 +12,7 @@ const {createVehicleImageResolver,normalizeVehicleName}=await import(encode(code
 const source={type:'owned',description:'Synthetic test metadata only',reference:'local-fixture'},usage={status:'approved',commercialUse:true,license:'Test fixture'};
 const body=(id,type='unknown')=>({id,kind:type==='unknown'?'unknown':'body',file:id+'.webp',width:960,height:400,bodyType:type,verified:true,source,usage});
 const model=(id,generation,from,to)=>({...body(id,'suv'),kind:generation?'generation':'model',manufacturer:'Example Motors',model:'Sample',generation,yearFrom:from,yearTo:to});
-const fallback={sedan:null,hatchback:null,wagon:null,suv:'suv',coupe:null,convertible:null,minivan:null,pickup:null,van:null,unknown:'unknown'};
+const fallback={sedan:null,hatchback:null,wagon:null,suv:'suv',coupe:null,convertible:null,minivan:null,pickup:null,van:null,tractor:null,truck:null,bus:null,unknown:'unknown'};
 const base=[body('suv','suv'),body('unknown')],input={manufacturer:'Example Motors',model:'Sample',year:2018};
 const resolver=(assets=[],rules=[],fallbacks=fallback,extraURLs={})=>createVehicleImageResolver({version:'test',assets:[...base,...assets],bodyRules:rules,fallbacks},{...Object.fromEntries([...base,...assets].map(a=>[a.file,'/assets/'+a.file])),...extraURLs});
 const ids=rows=>rows.map(r=>r.asset.id);
@@ -45,4 +45,75 @@ test('shipped WebP resources match provenance hashes/dimensions, alpha and size 
   assert.equal(bytes.toString('ascii',8,12),'WEBP');assert.equal(bytes.toString('ascii',12,16),'VP8X');assert(bytes[20]&16,'Alpha channel required');
   assert.equal(bytes.readUIntLE(24,3)+1,asset.width);assert.equal(bytes.readUIntLE(27,3)+1,asset.height);
  }assert.equal(count,4);
+});
+
+
+test('reviewed reference photos allow unknown year without claiming generation',()=>{const a={...model('photo',undefined,2008,2017),referencePhoto:true,allowUnknownYear:true};const resolve=resolver([a]);assert.equal(resolve({...input,year:undefined})[0].tier,'model-reference');assert.equal(resolve({...input,year:null})[0].asset.id,'photo');assert.equal(resolve({...input,year:2024})[0].tier,'unknown');assert.equal(resolve({...input,year:undefined,generation:'II'})[0].tier,'unknown');assert.equal(resolve({...input,year:'unknown'})[0].tier,'unknown');assert.equal(resolve({...input,year:undefined,model:'Other'})[0].tier,'unknown');});
+test('generated or unapproved photos cannot supply unknown-year references',()=>{const a={...model('photo',undefined,2008,2017),referencePhoto:true,allowUnknownYear:true};for(const change of [{source:{...source,type:'generated'}},{verified:false},{allowUnknownYear:false}])assert.equal(resolver([{...a,...change}])({...input,year:undefined})[0].tier,'unknown');});
+
+test('reviewed seed contains four hashed transparent model images and matches control identities',async()=>{
+ const provenance=JSON.parse(await readFile(new URL('../src/assets/vehicles/model-reference-provenance.json',import.meta.url),'utf8'));
+ assert.equal(provenance.length,4);
+ for(const a of provenance){
+  const b=await readFile(new URL('../src/assets/vehicles/'+a.file,import.meta.url));
+  assert.equal(createHash('sha256').update(b).digest('hex'),a.sha256);
+  assert.equal(b.length,a.bytes);assert(b.length<=100000);
+  assert.equal(b.toString('ascii',8,16),'WEBPVP8X');assert(b[20]&16);
+  assert.equal(b.readUIntLE(24,3)+1,a.width);assert.equal(b.readUIntLE(27,3)+1,a.height);
+ }
+ const {modelReferenceAssets}=await import(encode(compile(await readFile(new URL('../src/vehicleModelReferenceAssets.ts',import.meta.url),'utf8'))));
+ const resolve=resolver(modelReferenceAssets);
+ for(const [vehicle,expected] of [[{manufacturer:'Alfa Romeo',model:'147 (937_)',year:2008},'reference-alfa-147.webp'],[{manufacturer:'Audi',model:'Q5',year:null},'reference-audi-q5.webp'],[{manufacturer:'DAF',model:'XF 105',year:2007},'reference-daf-xf.webp'],[{manufacturer:'Volvo',model:'XC90',year:2016},'reference-volvo-xc90.webp']]) {
+  const a=resolve(vehicle)[0].asset;assert.equal(a.file,expected);assert.equal(a.transparentCutout,true);
+ }
+ assert(!resolve({manufacturer:'Volvo',model:'XC90',year:2005}).some(x=>x.asset.referencePhoto));
+});
+
+const classification=await import(encode(compile(await readFile(new URL('../src/vehicleBodyClassification.ts',import.meta.url),'utf8')).replaceAll("'./vehicleImageResolver'",JSON.stringify(encode(code)))));
+test('body classification consumes saved VIN characteristics; avoids ambiguous truck guessing',()=>{
+ const r=classification.resolvePlaceholderBody;
+ assert.equal(r({vin_details:{characteristics:{body_class:'Седан'}}}),'sedan');
+ assert.equal(r({vin_details:{decoded:{body_class:'truck tractor'}}}),'tractor');
+ assert.equal(r({manufacturer:'DAF',model:'XF 105'}),undefined);
+ assert.equal(r({manufacturer:'Alfa Romeo',model:'147 (937_)'}),'hatchback');
+ assert.equal(r({manufacturer:'Volvo',model:'XC90'}),'suv');
+ assert.equal(r({manufacturer:'Volvo',model:'XC90',body_type:'wagon',vin_details:{characteristics:{body_class:'sedan'}}}),'unknown');
+ assert.equal(r({manufacturer:'Audi',model:'Q5',vin_details:{conflicts:{body_class:['sedan','suv']}}}),'suv');
+ for(const type of ['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','tractor','truck','bus'])assert.equal(r({body_type:type}),type);
+ assert.equal(r({manufacturer:'Other',model:'Ambiguous'}),undefined);
+});
+
+test('all registered body images have exact transparent WebP provenance, no duplicate types',async()=>{
+ const metadata=JSON.parse(await readFile(new URL('../src/assets/vehicles/body-library-provenance.json',import.meta.url),'utf8'));
+ const {vehicleBodyAssets}=await import(encode(compile(await readFile(new URL('../src/vehicleBodyAssets.ts',import.meta.url),'utf8'))));
+ assert.equal(vehicleBodyAssets.length,12);
+ assert.equal(vehicleBodyAssets.length,Object.keys(metadata).length);
+ assert.equal(new Set(vehicleBodyAssets.map(a=>a.file)).size,12);
+ assert.equal(new Set(vehicleBodyAssets.map(a=>a.bodyType)).size,vehicleBodyAssets.length);
+ for(const a of vehicleBodyAssets){
+  const m=metadata[a.bodyType],b=await readFile(new URL('../src/assets/vehicles/'+a.file,import.meta.url));
+  assert.equal(m.file,a.file);assert.equal(createHash('sha256').update(b).digest('hex'),m.sha256);
+  assert.equal(b.length,m.bytes);assert(b.length<=150000);assert.equal(b.toString('ascii',8,16),'WEBPVP8X');assert(b[20]&16);
+  assert.equal(b.readUIntLE(24,3)+1,960);assert.equal(b.readUIntLE(27,3)+1,640);
+ }
+});
+
+test('staging regression: model families and exact Oracle commercial variants select body art',()=>{
+ const r=classification.resolvePlaceholderBody;
+ for(const v of [
+  {manufacturer:'AUDI',model:'Q5',year:null,vin_details:{conflicts:{body_class:['SUV','MPV']}}},
+  {manufacturer:'VOLVO',model:'XC90',year:2016,vin_details:{consistency_issues:{body_class:'ambiguous'},decoded:{body_class:'MPV'}}},
+  {manufacturer:'VOLVO',model:'XC90 II',year:2016},
+  {manufacturer:'Volvo',model:'XC90',year:2017},
+  {manufacturer:'Volvo',model:'XC60',year:2022}
+ ])assert.equal(r(v),'suv');
+ const daf={manufacturer:'DAF',model:'XF 105',year:2007};
+ assert.equal(r({...daf,dismantling_v3:{global_selection:{modification_description:'FTS 105.460, FTR 105.460'}}}),'tractor');
+ assert.equal(r({...daf,dismantling_v3:{global_selection:{modification_description:'FA 105.460'}}}),'truck');
+ assert.equal(r({...daf,dismantling_v3:{oracle_vehicle_identity:{modification:'FT 105.460'}}}),'tractor');
+ assert.equal(r({...daf,body_type:'Седельный тягач'}),'tractor');
+ assert.equal(r(daf),undefined);
+ assert.equal(r({manufacturer:'Example',model:'Q5'}),undefined);
+ assert.equal(r({manufacturer:'Volvo',model:'XC90 unknown extension'}),undefined);
+ assert.equal(r({manufacturer:'Other',model:'Unknown',vin_details:{conflicts:{body_class:['sedan','wagon']}}}),'unknown');
 });

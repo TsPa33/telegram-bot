@@ -1,0 +1,40 @@
+name: CarPot reviewed photo seed
+on:
+  push:
+    branches:
+      - feature/carpot-model-reference-photos-20261126
+    paths:
+      - ".github/workflows/carpot-reviewed-photo-seed.yml"
+      - "warehouse/frontend/scripts/import-reviewed-pilot.py"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: carpot-public-model-photo-pilot
+          repository: TsPa33/telegram-bot
+          run-id: 45877387835
+          github-token: ${{ github.token }}
+          path: /tmp/reviewed-pilot
+      - name: Validate and import exact reviewed files
+        run: python3 warehouse/frontend/scripts/import-reviewed-pilot.py /tmp/reviewed-pilot
+      - name: Commit only reviewed seed assets to draft branch
+        run: |
+          set -eu
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add warehouse/frontend/src/vehicleModelReferenceAssets.ts warehouse/frontend/src/assets/vehicles/reference-*.webp warehouse/frontend/src/assets/vehicles/model-reference-provenance.json
+          git diff --cached --stat
+          git commit -m "Seed four verified pilot model reference WebP assets"
+          git push origin HEAD:refs/heads/feature/carpot-model-reference-photos-20261126

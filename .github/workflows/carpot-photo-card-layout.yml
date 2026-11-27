@@ -1,0 +1,33 @@
+name: CarPot photo card layout
+on:
+  push:
+    branches: [feature/carpot-photo-card-polish-20261126]
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: warehouse/frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          npm run dev -- --port 5173 > /tmp/photo-card-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5173/tests/photo-card-layout.html >/dev/null && break; sleep 1; done
+          node tests/photo-card-layout.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: photo-card-layout-screenshots
+          path: warehouse/frontend/test-results/photo-cards-*.png
+          retention-days: 3

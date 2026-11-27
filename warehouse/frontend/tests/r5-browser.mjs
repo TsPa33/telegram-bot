@@ -1,3 +1,61 @@
-import {chromium,expect as baseExpect} from '@playwright/test';import assert from 'node:assert/strict';import fs from 'node:fs';
-const expect=baseExpect.configure({timeout:20000}),origin='http://127.0.0.1:5208';if(process.env.WAREHOUSE_E2E!=='1')throw Error('Local synthetic only');const f=JSON.parse(fs.readFileSync('/tmp/r1-fixture.json'));assert(f.synthetic&&f.database==='warehouse_r1_test');const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']}),out='/workspace/scratch/r5';fs.mkdirSync(out,{recursive:true});const results=[];
-try{const login=await b.newContext({baseURL:origin});const r=await login.request.post('/api/v1/auth/login',{data:{email:'ui3-owner@example.test',password:'local-ui3-owner-password'}});assert.equal(r.status(),200);assert.equal((await r.json()).user.id,f.owner_id);const state=await login.storageState();await login.close();for(const width of [1440,1280,1000,900,768,390,375]){const c=await b.newContext({baseURL:origin,storageState:state,viewport:{width,height:width<1000?844:1000},extraHTTPHeaders:{'X-Warehouse-Client':'5'}}),p=await c.newPage(),errors=[],writes=[];const before=await(await c.request.get('/api/v1/parts/'+f.target)).json();p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().includes('/api/v1/')&&r.method()!=='GET'&&!r.url().endsWith('/pricing/guidance')&&!r.url().endsWith('/market-refresh'))writes.push(r.url());});await p.goto('/');const q=p.getByRole('combobox',{name:'Пошук запчастин'});await q.fill('OEM-123-A');const row=p.getByRole('article',{name:'Фара · передня ліва',exact:true});await expect(row).toBeVisible();await q.press('Escape');await row.getByRole('button',{name:'Дії Фара · передня ліва',exact:true}).click();await p.getByRole('menuitem',{name:'Відкрити картку',exact:true}).click();const region=p.getByRole('region',{name:'Перевірка ринкових даних',exact:true}),button=region.getByRole('button',{name:'Перевірити ринкові ціни',exact:true});let release;const gate=new Promise(r=>{release=r;});await p.route('**/market-refresh',async route=>{await gate;await route.continue();});await button.click();await expect(region.getByRole('button',{name:'Перевіряємо каталог…'})).toBeDisabled();await expect(region).toContainText('Перевіряємо збережені пропозиції');release();await expect(button).toBeEnabled();const details=region.locator('details').filter({has:p.getByText('Деталі перевірки',{exact:true})});await expect(details).not.toHaveAttribute('open','');await details.locator('summary').click();await expect(region.getByText('Дозвіл на програмне отримання свіжих даних не підтверджено. Перевірено лише імпортований каталог.',{exact:true})).toBeVisible();await details.locator('summary').click();await expect(region).toContainText('Дозвіл на програмне отримання свіжих даних не підтверджено');await expect(region).toContainText('Перевірено локальну копію');await expect(region.getByRole('link',{name:'Перевірити на Aleto вручну'})).toHaveAttribute('href','https://aleto.ua/');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await button.scrollIntoViewIfNeeded();await p.screenshot({path:`${out}/check-${width}.png`});await p.unroute('**/market-refresh');if([1440,390].includes(width)){const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/r5-market-check.json',import.meta.url)));await p.route('**/market-refresh',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fixture)}));await button.click();await expect(region).toContainText('1200.00 UAH');await expect(region).toContainText('30.00 USD');await expect(region).toContainText('Різних пропозицій: 1');await expect(region).toContainText('27.06.2026');await expect(region.getByRole('link',{name:'Переглянути оголошення'})).toHaveCount(2);await button.scrollIntoViewIfNeeded();await p.screenshot({path:`${out}/offers-fixture-${width}.png`});await p.unroute('**/market-refresh');}await p.route('**/market-refresh',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Synthetic local database timeout; retry allowed'})}));await button.click();await expect(region.getByRole('alert')).toContainText('Synthetic local database timeout');await expect(region).toContainText('Перевірено локальну копію');await p.unroute('**/market-refresh');await button.click();await expect(region.getByRole('alert')).toHaveCount(0);await expect(region).toContainText('Перевірено локальну копію');await p.keyboard.press('Escape');await p.goto('/sales?tab=orders');await expect(p.getByRole('heading',{name:'Продажі',exact:true})).toBeVisible();await p.getByRole('button',{name:'Нове замовлення',exact:true}).click();await expect(p.getByRole('region',{name:'Кошик замовлення',exact:true})).toBeVisible();await p.keyboard.press('Escape');const after=await(await c.request.get('/api/v1/parts/'+f.target)).json();assert.deepEqual(after,before);assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);results.push({width,loading:true,imported_only:true,source_unavailable_explicit:true,error_keeps_previous:true,retry:true,no_stock_or_price_writes:true,no_overflow:true,js_errors:errors});console.log('PASS '+width);await c.close();}fs.writeFileSync(out+'/results.json',JSON.stringify(results,null,2));}finally{await b.close();}
+// Local-only real API plus controlled anonymous-price UI fixture.
+import {chromium,expect as baseExpect} from '@playwright/test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const expect=baseExpect.configure({timeout:20000}),origin='http://127.0.0.1:5208';
+if(process.env.WAREHOUSE_E2E!=='1')throw Error('Local synthetic only');
+const f=JSON.parse(fs.readFileSync('/tmp/r1-fixture.json'));
+assert(f.synthetic&&f.database==='warehouse_r1_test');
+const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+const out='/workspace/scratch/r5';fs.mkdirSync(out,{recursive:true});const results=[];
+try{
+ const login=await b.newContext({baseURL:origin});
+ const r=await login.request.post('/api/v1/auth/login',{data:{email:'ui3-owner@example.test',password:'local-ui3-owner-password'}});
+ assert.equal(r.status(),200);assert.equal((await r.json()).user.id,f.owner_id);
+ const state=await login.storageState();await login.close();
+ for(const width of [1440,1280,1000,900,768,390,375]){
+  const c=await b.newContext({baseURL:origin,storageState:state,viewport:{width,height:width<1000?844:1000},extraHTTPHeaders:{'X-Warehouse-Client':'5'}});
+  const p=await c.newPage(),errors=[],writes=[];
+  const before=await(await c.request.get('/api/v1/parts/'+f.target)).json();
+  p.on('pageerror',e=>errors.push(e.message));
+  p.on('request',r=>{if(r.url().includes('/api/v1/')&&r.method()!=='GET'&&!r.url().endsWith('/pricing/guidance')&&!r.url().endsWith('/market-reference'))writes.push(r.url());});
+  await p.goto('/');
+  const q=p.getByRole('combobox',{name:'Пошук запчастин'});await q.fill('OEM-123-A');
+  const row=p.getByRole('article',{name:'Фара · передня ліва',exact:true});await expect(row).toBeVisible();
+  await q.press('Escape');
+  const button=row.getByRole('button',{name:/^Дізнатися ціни/});
+  let release;const gate=new Promise(resolve=>{release=resolve;});
+  await p.route('**/market-reference',async route=>{await gate;await route.continue();});
+  await button.click();
+  const modal=p.getByRole('dialog',{name:/^Орієнтир цін/});
+  await expect(modal.getByRole('status')).toContainText('Шукаємо схожі пропозиції');
+  release();await expect(modal.getByText(/Наявність не перевірено/)).toBeVisible();
+  await expect(modal.getByRole('status')).toHaveCount(0);
+  await expect(modal.getByRole('link')).toHaveCount(0);
+  assert(!/aleto|https:\/\//i.test(await modal.innerText()));
+  await modal.getByRole('button',{name:'Закрити'}).click();
+  await p.unroute('**/market-reference');
+  const observed_at='2026-10-27T12:00:00+00:00';
+  const fixture={status:'completed',fresh_data_fetched:false,truncated:false,references:[{currency:'UAH',condition:'used',match:'similar',offer_count:3,minimum:'1000.00',maximum:'2000.00',average:'1500.00',observed_at,examples:[1000,1500,2000].map(amount=>({amount:String(amount),currency:'UAH',observed_at}))}],historical:[]};
+  await p.route('**/market-reference',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fixture)}));
+  await button.click();
+  await expect(modal.getByText('Середня ціна',{exact:true})).toBeVisible();
+  await expect(modal.getByText('Ціна №3',{exact:true})).toBeVisible();
+  await expect(modal.getByRole('link')).toHaveCount(0);
+  assert(!/aleto|https:\/\//i.test(await modal.innerText()));
+  assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await p.screenshot({path:out+'/anonymous-'+width+'.png'});
+  await modal.getByRole('button',{name:'Закрити'}).click();
+  await p.unroute('**/market-reference');
+  await p.route('**/market-reference',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Synthetic local timeout'})}));
+  await button.click();await expect(modal.getByRole('alert')).toContainText('Synthetic local timeout');
+  await p.unroute('**/market-reference');
+  await modal.getByRole('button',{name:'Повторити'}).click();await expect(modal.getByRole('alert')).toHaveCount(0);
+  await expect(modal.getByRole('status')).toHaveCount(0);
+  await modal.getByRole('button',{name:'Закрити'}).click();
+  assert.deepEqual(await(await c.request.get('/api/v1/parts/'+f.target)).json(),before);
+  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
+  results.push({width,anonymous:true,no_links:true,loading:true,retry:true,no_stock_or_price_writes:true});console.log('PASS '+width);await c.close();
+ }
+ fs.writeFileSync(out+'/results.json',JSON.stringify(results,null,2));
+}finally{await b.close();}

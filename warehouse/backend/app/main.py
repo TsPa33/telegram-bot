@@ -19,9 +19,14 @@ async def lifespan(app):
     stop,thread=start_worker()
     from app.services.auto_oem import start_worker as start_oem_worker
     oem_stop,oem_thread=start_oem_worker()
+    from app.services.model_reference_photos import start_worker as start_model_photo_worker
+    photo_stop,photo_thread=start_model_photo_worker()
     try:yield
     finally:
-        stop.set();oem_stop.set()
+        stop.set();oem_stop.set();photo_stop.set()
+        if photo_thread:
+            import asyncio
+            await asyncio.to_thread(photo_thread.join,2)
         if oem_thread:
             import asyncio
             await asyncio.to_thread(oem_thread.join,2)
