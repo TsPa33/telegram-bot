@@ -46,8 +46,16 @@ def worker_request(who, path):
     base = os.environ.get('WAREHOUSE_ALETO_WORKER_URL', '').rstrip('/')
     token = os.environ.get('WAREHOUSE_ALETO_WORKER_TOKEN', '')
     url = urlsplit(base)
+    private_tailnet_http = (
+        url.scheme == 'http'
+        and os.environ.get('RAILWAY_ENVIRONMENT_NAME') == 'warehouse-staging'
+        and url.hostname == 'carpot-oracle.tailf95906.ts.net'
+        and url.port == 8444
+        and url.path in ('', '/')
+        and bool(worker_proxy())
+    )
     if (len(token) < 32 or not url.hostname or url.username or url.password
-            or url.query or url.fragment or url.scheme != 'https'):
+            or url.query or url.fragment or (url.scheme != 'https' and not private_tailnet_http)):
         raise HTTPException(503, 'Aleto Worker ще не підключено')
     headers = {'Authorization': 'Bearer ' + token, 'X-Workspace': str(who.workspace_account_id),
                'X-Actor': str(who.actor_id)}
