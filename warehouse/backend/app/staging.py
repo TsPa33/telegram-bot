@@ -110,79 +110,6 @@ def drop_volume_bootstrap_privileges():
             )
 
 
-def probe_aleto_control():
-    """Read-only differential probe for Oracle Serve ports; do not log secrets."""
-    from urllib.parse import urlsplit
-    import httpx
-    from app.api.aleto_control import worker_proxy
-
-    base = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "").rstrip("/")
-    token = os.getenv("WAREHOUSE_ALETO_WORKER_TOKEN", "")
-    if not base or not token:
-        log.warning("Aleto probe: worker URL or token missing")
-        return
-    host = urlsplit(base).hostname
-    if not host:
-        log.warning("Aleto probe: invalid Oracle hostname")
-        return
-    tests = [
-        ("existing-oracle-443", "https://" + host + "/health", {}),
-        ("aleto-control-8443", base + "/jobs", {
-            "Authorization": "Bearer " + token,
-            "X-Workspace": "staging-connectivity-check",
-        }),
-    ]
-    for label, url, headers in tests:
-        try:
-            with httpx.Client(proxy=worker_proxy(), timeout=7, follow_redirects=False,
-                              trust_env=False) as client:
-                response = client.get(url, headers=headers)
-            log.info("Aleto proxy probe %s: HTTP status=%s", label, response.status_code)
-        except Exception as exc:
-            safe = str(exc).splitlines()[0][:180].replace(token, "[REDACTED]")
-            log.warning("Aleto proxy probe %s: %s: %s", label, type(exc).__name__, safe)
-
-
-def probe_aleto_connect():
-    """Compare HTTP proxy CONNECT to the Oracle hostname and Tailscale IP."""
-    import socket
-    import ssl
-    from urllib.parse import urlsplit
-    raw_proxy = os.getenv("WAREHOUSE_ALETO_WORKER_PROXY", "")
-    raw_url = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "")
-    if not raw_proxy or not raw_url:
-        return
-    proxy, destination = urlsplit(raw_proxy), urlsplit(raw_url)
-    hostname = destination.hostname
-    if not hostname or hostname != "carpot-oracle.tailf95906.ts.net":
-        log.warning("Aleto CONNECT diagnostic skipped for unexpected destination")
-        return
-    for label, host, port in (
-        ("ssh-ip", "100.87.244.120", 22),
-        ("https-443-ip", "100.87.244.120", 443),
-        ("aleto-ip", "100.87.244.120", 8443),
-    ):
-        try:
-            with socket.create_connection((proxy.hostname, proxy.port), timeout=5) as conn:
-                conn.settimeout(6)
-                request = f"CONNECT {host}:{port} HTTP/1.1\\r\\nHost: {host}:{port}\\r\\n\\r\\n"
-                conn.sendall(request.encode("ascii"))
-                reply = b""
-                while b"\\r\\n\\r\\n" not in reply and len(reply) < 1024:
-                    chunk = conn.recv(1024)
-                    if not chunk:
-                        break
-                    reply += chunk
-                status = reply.split(b"\\r\\n", 1)[0][:80].decode("ascii", "replace")
-                log.info("Aleto CONNECT target %s: %s", label, status)
-                if port != 8443 or b" 200 " not in reply.split(b"\\r\\n", 1)[0]:
-                    continue
-                with ssl.create_default_context().wrap_socket(conn, server_hostname=hostname) as tls:
-                    log.info("Aleto TLS target %s: %s", label, tls.version())
-        except Exception as exc:
-            log.warning("Aleto CONNECT target %s: %s: %s", label, type(exc).__name__, str(exc).splitlines()[0][:120])
-
-
 def main():
     logging.basicConfig(level=logging.INFO)
     if os.getenv("WAREHOUSE_ENV") != "staging":
@@ -197,8 +124,6 @@ def main():
         raise RuntimeError("Invalid staging PORT or startup timeout")
     drop_volume_bootstrap_privileges()
     migrate(timeout)
-    probe_aleto_control()
-    probe_aleto_connect()
     # Dual-stack works in both new IPv4/IPv6 Railway environments and legacy
     # IPv6-only private networks; also accepts IPv4 deployment health checks.
     listener = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
