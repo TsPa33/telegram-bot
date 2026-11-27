@@ -117,21 +117,27 @@ def probe_aleto_control():
     if not base or not token:
         log.warning("Aleto probe: worker URL or token is not configured")
         return
-    try:
-        import httpx
-        from app.api.aleto_control import worker_proxy
+    import ssl
+    import httpx
+    from app.api.aleto_control import worker_proxy
 
-        with httpx.Client(proxy=worker_proxy(), timeout=9, follow_redirects=False,
-                          trust_env=False) as client:
-            response = client.get(base + "/jobs", headers={
-                "Authorization": "Bearer " + token,
-                "X-Workspace": "staging-connectivity-check",
-            })
-        log.info("Aleto probe: HTTP status=%s", response.status_code)
-    except Exception as exc:
-        # Exception class and sanitized first line only; the token is never included.
-        safe = str(exc).splitlines()[0][:180].replace(token, "[REDACTED]")
-        log.warning("Aleto probe: %s: %s", type(exc).__name__, safe)
+    for label, tls12 in (("default", False), ("tls12", True)):
+        try:
+            verify = ssl.create_default_context()
+            if tls12:
+                verify.maximum_version = ssl.TLSVersion.TLSv1_2
+            with httpx.Client(proxy=worker_proxy(), verify=verify, timeout=8,
+                              follow_redirects=False, trust_env=False) as client:
+                response = client.get(base + "/jobs", headers={
+                    "Authorization": "Bearer " + token,
+                    "X-Workspace": "staging-connectivity-check",
+                })
+            log.info("Aleto probe %s: HTTP status=%s", label, response.status_code)
+            if response.status_code == 200:
+                break
+        except Exception as exc:
+            safe = str(exc).splitlines()[0][:180].replace(token, "[REDACTED]")
+            log.warning("Aleto probe %s: %s: %s", label, type(exc).__name__, safe)
 
 
 def main():
