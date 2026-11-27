@@ -123,5 +123,229 @@
         "spoiler": true
       }
     }
+  },
+  {
+    "id": "volvo-xc60-ii-2022-construction",
+    "family": {
+      "oracle_model_id": 37773,
+      "manufacturer": "volvo",
+      "models": [
+        "xc60",
+        "xc60 ii",
+        "xc60 ii 246"
+      ],
+      "generations": [
+        "ii",
+        "2",
+        "xc60 ii",
+        "246"
+      ]
+    },
+    "year": 2022,
+    "scope": "Volvo XC60 II 2022 production geometry. Suspension option, trim and part numbers require vehicle-specific evidence.",
+    "sources": [
+      "https://www.volvocars.com/intl/media/models/xc60/2022/",
+      "https://www.volvocars.com/intl/media/models/xc60/2022/specifications/"
+    ],
+    "profile": {
+      "kind": "passenger",
+      "body": "suv",
+      "side_doors": [
+        "FL",
+        "FR",
+        "RL",
+        "RR"
+      ],
+      "rear_closure": "liftgate",
+      "axles": [
+        {
+          "wheel": true,
+          "wheel_count_per_side": 1,
+          "disc_brakes": true,
+          "hub": true,
+          "independent_suspension": true,
+          "abs": true,
+          "steered": true
+        },
+        {
+          "wheel": true,
+          "wheel_count_per_side": 1,
+          "disc_brakes": true,
+          "hub": true,
+          "independent_suspension": true,
+          "abs": true
+        }
+      ],
+      "positions": {
+        "headlamp": [
+          "L",
+          "R"
+        ],
+        "taillamp": [
+          "L",
+          "R"
+        ],
+        "mirror": [
+          "L",
+          "R"
+        ],
+        "fender": [
+          "front:L",
+          "front:R"
+        ],
+        "bumper": [
+          "front",
+          "rear"
+        ],
+        "front_seat": [
+          "L",
+          "R"
+        ]
+      },
+      "door_features": {
+        "door_glass": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "window_regulator": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "window_motor": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ]
+      },
+      "flags": {
+        "hood": true,
+        "grille": true,
+        "rear_glass": true,
+        "fixed_roof": true,
+        "power_windows": true,
+        "low_voltage_battery": true,
+        "liquid_cooling": true,
+        "ac": true,
+        "abs": true,
+        "cabin_filter": true
+      }
+    }
+  },
+  {
+    "id": "volvo-xc90-ii-2016-construction",
+    "family": {
+      "oracle_model_id": 13084,
+      "manufacturer": "volvo",
+      "models": [
+        "xc90",
+        "xc90 ii",
+        "xc90 ii 256"
+      ],
+      "generations": [
+        "ii",
+        "2",
+        "xc90 ii",
+        "256"
+      ]
+    },
+    "year": 2016,
+    "scope": "Volvo XC90 II 2016 production geometry. Suspension option, trim and part numbers require vehicle-specific evidence.",
+    "sources": [
+      "https://www.volvocars.com/intl/media/models/xc90/2016/",
+      "https://www.volvocars.com/intl/media/models/xc90/2016/specifications/"
+    ],
+    "profile": {
+      "kind": "passenger",
+      "body": "suv",
+      "side_doors": [
+        "FL",
+        "FR",
+        "RL",
+        "RR"
+      ],
+      "rear_closure": "liftgate",
+      "axles": [
+        {
+          "wheel": true,
+          "wheel_count_per_side": 1,
+          "disc_brakes": true,
+          "hub": true,
+          "independent_suspension": true,
+          "abs": true,
+          "steered": true
+        },
+        {
+          "wheel": true,
+          "wheel_count_per_side": 1,
+          "disc_brakes": true,
+          "hub": true,
+          "independent_suspension": true,
+          "abs": true
+        }
+      ],
+      "positions": {
+        "headlamp": [
+          "L",
+          "R"
+        ],
+        "taillamp": [
+          "L",
+          "R"
+        ],
+        "mirror": [
+          "L",
+          "R"
+        ],
+        "fender": [
+          "front:L",
+          "front:R"
+        ],
+        "bumper": [
+          "front",
+          "rear"
+        ],
+        "front_seat": [
+          "L",
+          "R"
+        ]
+      },
+      "door_features": {
+        "door_glass": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "window_regulator": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "window_motor": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ]
+      },
+      "flags": {
+        "hood": true,
+        "grille": true,
+        "rear_glass": true,
+        "fixed_roof": true,
+        "power_windows": true,
+        "low_voltage_battery": true,
+        "liquid_cooling": true,
+        "ac": true,
+        "abs": true,
+        "cabin_filter": true
+      }
+    }
   }
 ]

@@ -748,3 +748,71 @@ def test_later_oracle_selection_preserves_the_manual_plan(logged, source):
     legacy = logged.get(f"/api/v1/vehicles/{vid}/dismantling-workspace", params={"source": "base"})
     assert legacy.status_code == 200, legacy.text
     assert {item["key"].removeprefix("base:") for item in legacy.json()["items"]} == old_ids
+
+
+@pytest.fixture
+def master_intake(monkeypatch):
+    from app.services import master_parts_managed
+    monkeypatch.setattr(master_parts_managed, "enabled", lambda: True)
+
+
+def test_master_intake_creates_xc60_without_choosing_incompatible_oracle(logged, source, monkeypatch, master_intake):
+    v = decoded(manufacturer="Volvo", model="XC60", year=2022, transmission=None,
+                body_class="SUV", vehicle_type="Багатоцільовий пасажирський автомобіль (MPV)",
+                engine_cylinders=4, engine_power_hp="247", electrification="MHEV", fuel_type="Бензин")
+    token, _ = lookup_context(logged, monkeypatch, v)
+    r = logged.post("/api/v1/vehicles", json={"vin": VIN, "manufacturer": "Volvo",
+        "model": "XC60", "year": 2022, "fuel_type": "Бензин", "vin_resolution": {"context": token}})
+    assert r.status_code == 201, r.text
+    car = r.json()
+    assert car["generation"] == "II"
+    assert "oracle_vehicle_identity" not in car["dismantling_v3"]
+    assert "unified_catalogue" not in car["dismantling_v3"]
+    assert car["dismantling_v3"]["master_intake"]["status"] == "supplemented"
+    plan = logged.get(f"/api/v1/vehicles/{car['id']}/dismantling-v3").json()
+    assert plan["plan_sources"] == {"master": plan["total"], "oracle": 0}
+    assert plan["total"] > 50 and plan["counts"]["in_stock"] == 0
+    assert {row["position"] for row in plan["items"] if row["name"] == "Двері кузова"} == {
+        "передні ліві", "передні праві", "задні ліві", "задні праві"}
+    assert all(not row["source_confirmed"] for row in plan["items"])
+    assert logged.post("/api/v1/vehicles", json={"vin": VIN, "manufacturer": "Volvo",
+        "model": "XC60", "year": 2022, "vin_resolution": {"context": token}}).status_code == 409
+    assert normalized("engine_power_hp", "247 hp") == pytest.approx(184.19, abs=0.01)
+    assert normalized("engine_power_hp", "250 PS") == pytest.approx(184, abs=0.15)
+    assert model_relation("XC60 I", "XC60 II (246)") == "mismatch"
+
+
+def test_master_model_and_manual_share_physical_generation(logged, source, master_intake):
+    from uuid import uuid4
+    base = dict(manufacturer=MAKE, model="3 (F30)", year=2015, fuel_type="Diesel",
+                construction={"kind": "passenger", "body": "sedan", "side_doors": 4})
+    model = {"kind": "passenger", "manufacturer_id": 840, "model_id": 701}
+    contents = []
+    for mode, extra in (("manual", {}), ("catalogue", {"catalogue_model": model})):
+        body = {**base, **extra, "intake_request_key": str(uuid4()), "vin_intake_mode": mode}
+        r = logged.post("/api/v1/vehicles", json=body)
+        assert r.status_code == 201, r.text
+        car = r.json()
+        assert logged.post("/api/v1/vehicles", json=body).json()["id"] == car["id"]
+        result = logged.get(f"/api/v1/vehicles/{car['id']}/dismantling-v3").json()
+        assert result["plan_sources"]["master"] == result["total"] > 25
+        assert result["counts"]["in_stock"] == 0
+        contents.append([(i["name"], i["position"]) for i in result["items"]])
+    assert contents[0] == contents[1]
+    mismatch = logged.post("/api/v1/vehicles", json={**base, "year": 2008,
+        "vin_intake_mode": "catalogue", "catalogue_model": model})
+    assert mismatch.status_code == 422
+
+
+def test_master_fallback_keeps_explicit_oracle_snapshot_and_identity_guards(logged, source, master_intake):
+    request = {"vin_intake_mode": "catalogue", "manufacturer": MAKE, "model": "3 (F30)", "year": 2015,
+               "source_identity": {**ORACLE, "confirmed": True}}
+    source.graph_status = "identity_mismatch"
+    assert logged.post("/api/v1/vehicles", json=request).status_code == 409
+    source.graph_status = "absent"
+    assert logged.post("/api/v1/vehicles", json={**request, "catalogue_graph_sha": SHA}).status_code == 409
+    r = logged.post("/api/v1/vehicles", json=request)
+    assert r.status_code == 201, r.text
+    car = r.json()
+    assert car["dismantling_v3"]["oracle_vehicle_identity"]["parts_graph_verified"] is False
+    assert car["dismantling_v3"]["master_intake"]["created"] > 0

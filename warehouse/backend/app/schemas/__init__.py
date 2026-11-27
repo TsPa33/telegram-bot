@@ -120,7 +120,31 @@ class VinResolutionInput(Input):
     graph_sha: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")] | None = None
 
 
+class CatalogueModelInput(Input):
+    kind: Literal["passenger", "commercial"]
+    manufacturer_id: int = Field(strict=True, gt=0)
+    model_id: int = Field(strict=True, gt=0)
+
+
+class ConstructionInput(Input):
+    kind: Literal["passenger", "lcv", "heavy_truck"] | None = None
+    body: Literal["sedan", "hatch", "suv", "coupe", "wagon", "van", "pickup", "tractor", "truck", "convertible"] | None = None
+    side_doors: Literal[2, 4] | None = None
+
+    @model_validator(mode="after")
+    def supported_topology(self):
+        if self.body == "coupe" and self.side_doors == 4:
+            raise ValueError("Купе має двоє бічних дверей")
+        if self.kind == "heavy_truck" and self.body not in (None, "tractor", "truck"):
+            raise ValueError("Оберіть кузов вантажного автомобіля")
+        if self.kind == "passenger" and self.body in ("tractor", "truck"):
+            raise ValueError("Оберіть клас вантажного автомобіля")
+        return self
+
+
 class VehicleInput(Input):
+    construction: ConstructionInput | None = None
+    catalogue_model: CatalogueModelInput | None = None
     vin_intake_mode: Literal["manual", "catalogue"] | None = None
     intake_request_key: Annotated[str, Field(pattern=r"^[a-f0-9-]{36}$")] | None = None
     accept_base_catalogue: bool = False

@@ -1,6 +1,8 @@
-import {useEffect, useRef, useState} from 'react';
+import {useContext, useEffect, useRef, useState} from 'react';
 import {api, type Row} from './api';
-import {DonorSummary, IntakeDisclosure, IntakeFeedback, PlanReady, displacement, measurement, modificationName} from './DonorIntakePresentation';
+import {ConstructionFields, type ConstructionFacts, DonorSummary, IntakeDisclosure, IntakeFeedback, PlanReady, displacement, measurement, modificationName} from './DonorIntakePresentation';
+
+import {TeamIdentity, useCan} from './permissions';
 
 type Kind = 'passenger' | 'commercial';
 type Entry = {id: number; name: string; construction_interval?: string};
@@ -13,6 +15,7 @@ type Graph = {
   attributes?: {attribute_type: string; display_value: string}[];
 };
 export type OracleVehicle = {manufacturer: string; model: string; identity: Row; graph: Graph};
+type OracleModel = {manufacturer: string; model: string; kind: Kind; manufacturer_id: number; model_id: number};
 type DirectoryPage = {items: Entry[]; next_after: number | null};
 
 function useDirectory(path: string) {
@@ -109,9 +112,10 @@ const graphMessage: Record<string, string> = {
   identity_mismatch: 'Модифікація змінилася в каталозі. Повторіть вибір.',
   unverified: 'Не вдалося підтвердити запчастини для цієї модифікації.',
 };
-export default function OracleVehiclePicker({year, onYearChange, initialManufacturer = '', onChange, disabled}: {
+export default function OracleVehiclePicker({year, onYearChange, initialManufacturer = '', onChange, disabled, construction = false, onModelChange}: {
   year: string; initialManufacturer?: string; onChange: (value: OracleVehicle | null) => void; disabled: boolean;
   onYearChange?: (year: string) => void;
+  construction?: boolean; onModelChange?: (value: OracleModel | null) => void;
 }) {
   const [kind, setKind] = useState<Kind>('passenger');
   const [query, setQuery] = useState(initialManufacturer);
@@ -140,6 +144,8 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
   useEffect(() => {
     setGraph(null);
     onChange(null);
+    onModelChange?.(maker && model && !variant ? {manufacturer: maker.name, model: model.name,
+      kind, manufacturer_id: maker.id, model_id: model.id} : null);
     if (!maker || !model || !variant || !yearMatches) return;
     const controller = new AbortController();
     const identity = {kind, manufacturer_id: maker.id, model_id: model.id, source_modification_id: variant.id, confirmed: true};
@@ -150,13 +156,16 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
       .then(result => {
         if (controller.signal.aborted) return;
         setGraph(result);
-        if (result.source_snapshot_sha) onChange({manufacturer: maker.name, model: model.name, identity, graph: result});
+        if (result.source_snapshot_sha || construction && ['absent', 'unavailable', 'unsupported', 'unverified'].includes(result.status)) onChange({manufacturer: maker.name, model: model.name, identity, graph: result});
       })
       .catch(() => {
-        if (!controller.signal.aborted) setGraph({status: 'unavailable', source_snapshot_sha: null});
+        if (controller.signal.aborted) return;
+        const unavailable = {status: 'unavailable', source_snapshot_sha: null};
+        setGraph(unavailable);
+        if (construction) onChange({manufacturer: maker.name, model: model.name, identity, graph: unavailable});
       });
     return () => controller.abort();
-  }, [kind, maker, model, variant, year, yearMatches, validYear, attempt, onChange]);
+  }, [kind, maker, model, variant, year, yearMatches, validYear, attempt, onChange, construction, onModelChange]);
 
   function chooseMaker(value: Entry | null) {
     onChange(null);
@@ -236,6 +245,11 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
     {onYearChange && variant && !yearOptions.length && <p role="status">
       У каталозі відсутні роки виробництва. Цей автомобіль можна додати вручну.
     </p>}
+    {!variant && construction && model && maker && validYear && <>
+      <DonorSummary title={[maker.name, model.name, year].join(' · ')}
+        facts={[['Тип', kind === 'commercial' ? 'Комерційний' : 'Легковий']]}/>
+      <IntakeFeedback>Модифікацію можна додати, якщо вона відома. Master сформує план за даними автомобіля.</IntakeFeedback>
+    </>}
     {variant && <>
       <DonorSummary title={[maker?.name, model?.name, validYear ? year : null].filter(Boolean).join(' · ')} facts={[
         ['Паливо', graph?.characteristics?.fuel_type],
@@ -247,7 +261,9 @@ export default function OracleVehiclePicker({year, onYearChange, initialManufact
       ]}/>
       {!yearMatches ? <IntakeFeedback>Оберіть модифікацію, яку випускали в указаному році.</IntakeFeedback> :
         !graph ? <IntakeFeedback kind="loading">Готуємо план розбору…</IntakeFeedback> :
-        graph.source_snapshot_sha ? <PlanReady counts={graph.counts}/> :
+        graph.source_snapshot_sha ? <PlanReady counts={graph.counts} construction={construction}/> :
+        construction && ['absent', 'unavailable', 'unsupported', 'unverified'].includes(graph.status) ?
+        <IntakeFeedback>Master сформує план за характеристиками обраної модифікації.</IntakeFeedback> :
         <IntakeFeedback kind={graph.status === 'absent' ? 'note' : 'error'}>
           <p>{graphMessage[graph.status] || graphMessage.unavailable}</p>
           {graph.status !== 'absent' && <button type="button" disabled={disabled} onClick={() => setAttempt(n => n + 1)}>Повторити</button>}
@@ -263,15 +279,25 @@ export function CatalogueVehicleIntake({onCreated, onBack, saving, onSavingChang
   onCreated: (row: Row) => void; onBack: () => void;
   saving: boolean; onSavingChange: (saving: boolean) => void;
 }) {
+  const who = useContext(TeamIdentity), can = useCan();
+  const useMaster = who?.construction_intake === true && can('dismantling.manage');
+  const [construction, setConstruction] = useState<ConstructionFacts>({});
+  const [model, setModel] = useState<OracleModel | null>(null);
   const [year, setYear] = useState('');
   const [selected, setSelected] = useState<OracleVehicle | null>(null);
   const [error, setError] = useState('');
   const request = useRef<string | null>(null);
   const writing = useRef(false);
   const validYear = /^\d{4}$/.test(year) && Number(year) >= 1886 && Number(year) <= 2100;
+  const identity = selected || (useMaster && model);
+  useEffect(() => {
+    setConstruction({});
+    request.current = null;
+    setError('');
+  }, [model?.kind, model?.model_id]);
   return <form className="vin-intake" aria-label="Автомобіль із каталогу" onSubmit={async e => {
     e.preventDefault();
-    if (!selected || !validYear || writing.current) return;
+    if (!identity || !validYear || writing.current) return;
     writing.current = true;
     onSavingChange(true);
     setError('');
@@ -279,8 +305,10 @@ export function CatalogueVehicleIntake({onCreated, onBack, saving, onSavingChang
     try {
       const row = await api('/vehicles', 'POST', {
         intake_request_key: request.current, vin_intake_mode: 'catalogue',
-        manufacturer: selected.manufacturer, model: selected.model, year: Number(year),
-        source_identity: selected.identity, catalogue_graph_sha: selected.graph.source_snapshot_sha, status: 'planned',
+        manufacturer: identity.manufacturer, model: identity.model, year: Number(year), status: 'planned',
+        ...(selected ? {source_identity: selected.identity, catalogue_graph_sha: selected.graph.source_snapshot_sha} :
+          model ? {catalogue_model: {kind: model.kind, manufacturer_id: model.manufacturer_id, model_id: model.model_id},
+            ...(Object.values(construction).some(Boolean) ? {construction} : {})} : {}),
       });
       onCreated(row);
     } catch (e) {
@@ -291,13 +319,18 @@ export function CatalogueVehicleIntake({onCreated, onBack, saving, onSavingChang
     }
   }}>
     <div className="vin-content">
-      <OracleVehiclePicker year={year} onYearChange={setYear} disabled={saving} onChange={setSelected}/>
+      <OracleVehiclePicker year={year} onYearChange={setYear} disabled={saving} onChange={setSelected}
+        construction={useMaster} onModelChange={useMaster ? setModel : undefined}/>
+      {useMaster && model && validYear && <IntakeDisclosure label="Уточнити кузов">
+        <ConstructionFields key={model.kind + ':' + model.model_id} value={construction} onChange={setConstruction}
+          showKind={model.kind === 'commercial'} disabled={saving}/>
+      </IntakeDisclosure>}
       {error && <IntakeFeedback kind="error">{error}</IntakeFeedback>}
       {selected && !validYear && <IntakeFeedback>Вкажіть рік цього автомобіля.</IntakeFeedback>}
     </div>
     <div className="vin-footer"><div className="vin-actions">
       <button type="button" disabled={saving} onClick={onBack}>Скасувати</button>
-      <button className="vin-submit" disabled={!selected || !validYear || saving}>{saving ? 'Зберігаємо…' : 'Додати автомобіль'}</button>
+      <button className="vin-submit" disabled={!identity || !validYear || saving}>{saving ? 'Зберігаємо…' : 'Додати автомобіль'}</button>
     </div></div>
   </form>;
 }

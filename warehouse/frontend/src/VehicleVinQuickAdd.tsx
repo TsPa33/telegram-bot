@@ -4,7 +4,7 @@ import {Permit,TeamIdentity,useCan} from './permissions';
 import VinCataloguePicker,{fieldLabels,type Clarifications,type VinChoice} from './VinCataloguePicker';
 import VinDiagnostics from './VinDiagnostics';
 import OracleVehiclePicker,{type OracleVehicle} from './OracleVehiclePicker';
-import {DonorSummary, IntakeDisclosure, IntakeFeedback, ModelYearOptions, PlanReady, displacement, measurement, modificationName} from './DonorIntakePresentation';
+import {ConstructionFields, type ConstructionFacts, DonorSummary, IntakeDisclosure, IntakeFeedback, ModelYearOptions, PlanReady, displacement, measurement, modificationName} from './DonorIntakePresentation';
 import './vin-intake.css';
 
 export type VinDecode={
@@ -29,6 +29,8 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
   const [choice,setChoice]=useState<VinChoice|null>(null);
   const [checkingChoice,setCheckingChoice]=useState(false);
   const [acceptBase,setAcceptBase]=useState(false);
+  const [construction,setConstruction]=useState<ConstructionFacts>({});
+  const canUseMaster=identity?.construction_intake===true&&can('dismantling.manage');
   const [manualSearch,setManualSearch]=useState<string|null>(null);
   const [manualSelection,setManualSelection]=useState<OracleVehicle|null>(null);
   const requestKey=useRef<string|null>(null);
@@ -61,6 +63,8 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
     setClarifications(emptyClarifications);
     setError('');
     setExisting(null);
+    setConstruction({});
+    requestKey.current=null;
     select(null);
   }
   async function decode(){
@@ -89,7 +93,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
   const hasGraph=choice?.graph.status==='exact'||choice?.graph.status==='partial';
   const ready=(manual||result)&&(!vin||valid)&&!!String(manualSelection?.manufacturer||characteristics.manufacturer||'').trim()
     &&!!String(manualSelection?.model||characteristics.model||choice?.candidate.model||'').trim()&&!checkingChoice&&
-    (manual?!!manualSelection||acceptBase:hasGraph||acceptBase);
+    (canUseMaster||(manual?!!manualSelection||acceptBase:hasGraph||acceptBase));
 
   async function create(){
     if(!ready||writing.current)return;
@@ -106,6 +110,7 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
       year:year?Number(year):null,status:'planned',
     };
     if(valid)values.vin=vin;
+    if(canUseMaster&&Object.values(construction).some(Boolean))values.construction=construction;
     if(manual){
       values.vin_intake_mode='manual';
       if(!manualSelection)values.accept_base_catalogue=acceptBase;
@@ -168,9 +173,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
     {loading&&<IntakeFeedback kind="loading">Декодуємо VIN та завантажуємо характеристики</IntakeFeedback>}
     {manual&&<div className="vin-fields vin-manual-fields">
       {manualFields.slice(0,3).map(field=><label key={field}>{fieldLabels[field]}
-        {field==='drive_type'?<select disabled={saving} value={draft[field]||''} onChange={e=>{
-          setDraft(before=>({...before,[field]:e.target.value}));
-        }}><option value="">Невідомо</option><option>FWD</option><option>RWD</option><option>AWD</option><option>4WD</option></select>:
+        {field==='year'?<select disabled={saving} value={draft.year||''} onChange={e=>setDraft(before=>({...before,year:e.target.value}))}>
+          <ModelYearOptions current={String(draft.year||'')}/>
+        </select>:
         <input disabled={saving} value={draft[field]||''} maxLength={field==='year'?4:100}
           onChange={e=>{setDraft(before=>({...before,[field]:e.target.value}))}}/>}
       </label>)}
@@ -191,7 +196,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
             onChange={e=>setDraft(before=>({...before,[field]:e.target.value}))}/>}
         </label>)}</div>
       </details>
-      {!manualSelection&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
+      {canUseMaster&&!manualSelection&&<ConstructionFields value={construction} onChange={setConstruction} disabled={saving}/>}
+      {canUseMaster&&!manualSelection&&<IntakeFeedback>Master сформує план за відомими характеристиками автомобіля.</IntakeFeedback>}
+      {!canUseMaster&&!manualSelection&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
         disabled={saving} onChange={e=>setAcceptBase(e.target.checked)}/>Додати з базовим каталогом CarPot</label>}
     </>}
     {result&&<>
@@ -233,8 +240,10 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
           clarifications.answers.manufacturer,clarifications.answers.model,clarifications.answers.vehicle_type])}
         context={result.resolution_context} clarifications={clarifications} disabled={saving}
         onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onSelect={select} onPending={setCheckingChoice}/>}
-      {hasGraph&&<PlanReady counts={choice?.graph.counts}/>}
-      {!hasGraph&&!checkingChoice&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
+      {hasGraph&&<PlanReady counts={choice?.graph.counts} construction={canUseMaster}/>}
+      {canUseMaster&&!hasGraph&&!checkingChoice&&characteristics.manufacturer&&characteristics.model&&
+        <IntakeFeedback>Master сформує план за визначеними характеристиками автомобіля.</IntakeFeedback>}
+      {!canUseMaster&&!hasGraph&&!checkingChoice&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
         disabled={saving||checkingChoice} onChange={e=>{setAcceptBase(e.target.checked)}}/>
         Додати з базовим каталогом без підтвердженого переліку запчастин</label>}
       <IntakeDisclosure label="Усі характеристики">

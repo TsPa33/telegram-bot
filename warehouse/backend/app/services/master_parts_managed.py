@@ -90,7 +90,8 @@ def profile_conflicts(profile, values):
 
 
 def managed_rows(db, vehicle, config):
-    if not enabled() or not (vehicle.dismantling_v3 or {}).get("unified_catalogue"):
+    state = vehicle.dismantling_v3 or {}
+    if not enabled() or not (state.get("unified_catalogue") or state.get("master_construction_intake")):
         return None
     from app.services.master_parts_reconciliation import preview_for_vehicle
     from app.services.dismantling_plan_v3 import generator_basis
@@ -123,14 +124,16 @@ def receipt_allowed(vehicle, row, quantity):
     if quantity != 1 or vehicle is None or needs_review(vehicle):
         return False
     try:
-        return (ref.get("vehicle_basis") == generator_basis(vehicle)
-                and ref.get("identity") == pinned_identity(saved_state(vehicle)))
+        if ref.get("vehicle_basis") != generator_basis(vehicle):
+            return False
+        identity = ref.get("identity")
+        return identity is None or identity == pinned_identity(saved_state(vehicle))
     except (ValueError, KeyError, TypeError):
         return False
 
 
 def auto_supplement_new_donor(db, vehicle, who):
-    """Extend a freshly saved exact-source donor, in the same transaction.
+    """Build the new donor’s construction plan in the same transaction.
 
     The existing create action authorizes potential plan rows only. Isolate
     optional expansion in a savepoint so unavailable sources cannot prevent
@@ -139,7 +142,7 @@ def auto_supplement_new_donor(db, vehicle, who):
     if not enabled() or "dismantling.manage" not in who.permissions:
         return None
     state = vehicle.dismantling_v3 or {}
-    if not state.get("unified_catalogue") or not state.get("oracle_vehicle_identity"):
+    if not (state.get("unified_catalogue") or state.get("master_construction_intake")):
         return None
     if state.get("master_intake"):
         return state["master_intake"]

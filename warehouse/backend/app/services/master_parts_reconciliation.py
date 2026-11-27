@@ -1,4 +1,4 @@
-"""Read-only integration of Master Catalogue with a pinned Warehouse source plan.
+"""Reconcile Master construction with optional exact Warehouse source data.
 
 The compact Oracle graph deliberately carries no installation attributes. It can
 prove source article associations, not the side, axle or ordinal of a new item.
@@ -168,15 +168,13 @@ def reported_topology(base, details):
     from app.services.vin_resolution_policy import normalized
     if (details or {}).get("trust") != "server_vin_report_with_operator_review":
         return deepcopy(base)
-    facts = details.get("characteristics") or {}
-    if details.get("conflicts") or details.get("consistency_issues"):
-        return deepcopy(base)
+    conflicted = set(details.get("conflicts") or {}) | set(details.get("consistency_issues") or {})
+    facts = {key: value for key, value in (details.get("characteristics") or {}).items()
+             if key not in conflicted}
     p = deepcopy(base)
-    if p.get("kind") != "passenger":
-        return p
     body = normalized("body_class", facts.get("body_class"))
     body = {"hatchback": "hatch"}.get(body, body)
-    if body in {"sedan", "coupe", "hatch", "wagon", "suv", "convertible"}:
+    if p.get("kind") == "passenger" and body in {"sedan", "coupe", "hatch", "wagon", "suv", "convertible"}:
         if p.get("body") not in (None, body):
             return p
         p["body"] = body
@@ -195,60 +193,150 @@ def reported_topology(base, details):
     return p
 
 
+def construction_reference(vehicle, *, source_model_id=None):
+    """A reviewed model-year profile is usable without a parts identity."""
+    from app.services.vin_resolution_policy import key
+    records = json.loads(REFERENCE_PROFILES.read_text(encoding="utf-8"))
+    matches = [r for r in records if r.get("family")
+               and r["family"]["manufacturer"] == key(vehicle.manufacturer)
+               and key(vehicle.model) in {key(name) for name in r["family"]["models"]}
+               and r["year"] == vehicle.year and r["sources"]
+               and (source_model_id is None or r["family"]["oracle_model_id"] == source_model_id)]
+    if len(matches) == 1 and getattr(vehicle, "generation", ""):
+        generation = key(vehicle.generation)
+        matches = [r for r in matches if generation in {key(name) for name in r["family"]["generations"]}]
+    return matches[0] if len(matches) == 1 else None
+
+
+def construction_profile(vehicle, base, hint):
+    from app.services.vin_resolution_policy import normalized
+
+    profile = deepcopy(base)
+    fuel = normalized("fuel_type", getattr(vehicle, "fuel_type", None))
+    if fuel in ("petrol", "diesel"):
+        profile.setdefault("fuel", fuel)
+        profile.setdefault("flags", {}).setdefault("ice", True)
+    details = getattr(vehicle, "vin_details", None) or {}
+    trusted = details.get("trust") == "server_vin_report_with_operator_review"
+    vehicle_type = str((details.get("characteristics") or {}).get("vehicle_type") or "").casefold() if trusted else ""
+    if not profile.get("kind"):
+        profile["kind"] = hint.get("kind") or (
+            "heavy_truck" if "тягач" in vehicle_type else
+            "passenger" if any(v in vehicle_type for v in ("легков", "пасажир", "passenger", "mpv")) else None)
+    if not profile.get("body") and hint.get("body"):
+        profile["body"] = hint["body"]
+    if not profile.get("side_doors") and hint.get("side_doors"):
+        profile["side_doors"] = ["FL", "FR"] + (["RL", "RR"] if hint["side_doors"] == 4 else [])
+    profile = reported_topology(profile, details)
+    if profile["kind"] is None and profile.get("body") in {"sedan", "hatch", "wagon", "suv", "coupe", "convertible"}:
+        profile["kind"] = "passenger"
+    # This path is only for identified motor vehicles. Unknown class still
+    # permits common components while class-/axle-specific positions wait.
+    profile.setdefault("flags", {}).setdefault("all", True)
+    positions = profile.setdefault("positions", {})
+    for name in ("headlamp", "taillamp"):
+        positions.setdefault(name, ["L", "R"])
+    if profile["kind"] == "passenger":
+        positions.setdefault("mirror", ["L", "R"])
+        positions.setdefault("bumper", ["front", "rear"])
+    elif profile.get("body") == "tractor":
+        positions.setdefault("cab_mirror", ["L", "R"])
+        positions.setdefault("cab_door", ["L", "R"])
+    return profile
+
+
 def preview_for_vehicle(db, vehicle, *, adapter=None):
-    """Use the real saved plan and current exact Oracle identity; read-only."""
+    """Build physical candidates and preserve every exact, validated source row."""
     from sqlalchemy import select
+    from fastapi import HTTPException
     from app.models import DismantlingItem
     from app.services import unified_catalogue, vin_source_directory
     from app.services.dismantling_plan_v3 import generator_basis
     from app.services.master_parts_oracle_profile import oracle_profile
-
-    saved = unified_catalogue.saved_state(vehicle)
-    if not saved or unified_catalogue.needs_review(vehicle):
-        return {"status": "missing_or_stale_source_plan", "persisted": False}
-    try:
-        identity = pinned_identity(saved)
-    except (ValueError, KeyError, TypeError):
-        return {"status": "invalid_source_plan", "persisted": False}
-    locator = (vehicle.dismantling_v3 or {}).get("oracle_vehicle_identity", {})
-    if (locator.get("source") != "oracle"
-            or locator.get("identity_fingerprint") != generator_basis(vehicle)
-            or (locator.get("kind"), locator.get("manufacturer_id"),
-                locator.get("model_id"), locator.get("source_modification_id")) !=
-               (identity["kind"], identity["manufacturer_id"], identity["model_id"], identity["car_id"])):
-        return {"status": "unverified_vehicle_identity", "persisted": False}
-    response = vin_source_directory.fetch(
-        adapter or unified_catalogue.CatalogueAdapter(), "attributes",
-        {"kind": identity["kind"], "car_id": identity["car_id"], "limit": 50},
-        identity["kind"])
-    normalized = oracle_profile(response, expected_kind=identity["kind"],
-                                expected_car_id=identity["car_id"])
-    normalized["profile"] = reported_topology(normalized["profile"], getattr(vehicle,"vin_details",None))
-    rows = list(db.scalars(select(DismantlingItem).where(
-        DismantlingItem.account_id == vehicle.account_id,
-        DismantlingItem.vehicle_id == vehicle.id)))
     from app.services.master_parts_managed import master_ref
+
+    state = vehicle.dismantling_v3 or {}
+    basis = generator_basis(vehicle)
+    saved = unified_catalogue.saved_state(vehicle)
+    if unified_catalogue.needs_review(vehicle):
+        return {"status": "missing_or_stale_source_plan", "persisted": False}
+    locator = state.get("oracle_vehicle_identity") or {}
+    identity = None
+    normalized = {"profile": {}, "source_facts": {}, "missing": [], "conflicts": [], "fitment_verified": False}
+    if saved:
+        try:
+            identity = pinned_identity(saved)
+        except (ValueError, KeyError, TypeError):
+            return {"status": "invalid_source_plan", "persisted": False}
+        if (locator.get("source") != "oracle" or locator.get("identity_fingerprint") != basis
+                or (locator.get("kind"), locator.get("manufacturer_id"), locator.get("model_id"),
+                    locator.get("source_modification_id")) !=
+                   (identity["kind"], identity["manufacturer_id"], identity["model_id"], identity["car_id"])):
+            return {"status": "unverified_vehicle_identity", "persisted": False}
+
+    if locator.get("source") == "oracle" and locator.get("identity_fingerprint") == basis:
+        kind, car_id = locator["kind"], locator["source_modification_id"]
+        if kind == "passenger":
+            normalized["profile"]["kind"] = "passenger"
+        try:
+            attributes = locator.get("source_attributes")
+            if attributes:
+                response = dict(source="oracle", kind=kind, source_modification_id=car_id,
+                                truncated=False, vehicle_identity_only=True,
+                                fitment_verified=False, items=attributes)
+            else:
+                response = vin_source_directory.fetch(adapter or unified_catalogue.CatalogueAdapter(), "attributes",
+                    {"kind": kind, "car_id": car_id, "limit": 50}, kind)
+            normalized = oracle_profile(response, expected_kind=kind, expected_car_id=car_id)
+        except (HTTPException, ValueError):
+            normalized["missing"].append("oracle_attributes")
+    hint = state.get("master_construction_intake") or {}
+    hint = hint.get("facts", {}) if hint.get("vehicle_basis") == basis else {}
+    if not hint and not locator and not saved and not state.get("master_construction_intake"):
+        return {"status": "missing_or_stale_source_plan", "persisted": False}
+    reference = construction_reference(vehicle, source_model_id=locator.get("model_id") or hint.get("model_id"))
+    if reference:
+        hint = {**hint, "kind": reference["profile"]["kind"]}
+    normalized["profile"] = construction_profile(vehicle, normalized["profile"], hint)
+
+    rows = list(db.scalars(select(DismantlingItem).where(
+        DismantlingItem.account_id == vehicle.account_id, DismantlingItem.vehicle_id == vehicle.id)))
     existing = []
-    for r in rows:
-        item = {"product_id": unified_catalogue.row_product_id(r),
-                "row_id": r.id, "protected": bool(r.part_id or r.received_at)}
-        ref = master_ref(r)
-        if ref and ref.get("identity") == identity and ref.get("vehicle_basis") == generator_basis(vehicle):
+    for row in rows:
+        item = {"product_id": unified_catalogue.row_product_id(row),
+                "row_id": row.id, "protected": bool(row.part_id or row.received_at)}
+        ref = master_ref(row)
+        if ref and ref.get("vehicle_basis") == basis and ref.get("identity") in (None, identity):
             item.update(master_key=ref.get("master_key"), placement=ref.get("master_placement"))
         existing.append(item)
-    report = reconcile(saved, normalized["profile"], existing_rows=existing)
-    reference = reference_profile(identity, vehicle.year, normalized["profile"])
-    reference_report = None
+
+    def generate(profile):
+        if saved:
+            return reconcile(saved, profile, existing_rows=existing)
+        candidate = preview(read_seed(SEED), profile, existing_rows=existing)
+        return {**candidate, "version": VERSION, "identity": None,
+                "source_type_count": 0, "source_types_with_oem": 0, "source_rows_retained": 0,
+                "physical_candidate_count": len(candidate["positions"]),
+                "gap_candidate_count": candidate["counts"].get("supplement_candidate", 0),
+                "reconciliation_count": candidate["counts"].get("reconcile", 0),
+                "source_cross_reference_candidate_count": 0,
+                "automatically_assigned_physical_oem": 0, "persisted": False,
+                "stock_changed": False, "fitment_verified": False}
+
+    report = generate(normalized["profile"])
     if reference:
-        candidate_report = reconcile(saved, reference["profile"], existing_rows=existing)
-        # A reference is only a review projection. Do not promote its articles
-        # or OEMs even to source-cross-reference candidates for physical rows.
-        for item in candidate_report["positions"]:
+        match_key = {k: (identity or {}).get(k) for k in ("kind", "manufacturer_id", "model_id", "car_id")}
+        reference = reference_profile(match_key, vehicle.year, normalized["profile"],
+                                      records=[{**reference, "identity": match_key}])
+    elif identity:
+        reference = reference_profile(identity, vehicle.year, normalized["profile"])
+    projection = None
+    if reference:
+        candidate = generate(reference["profile"])
+        for item in candidate["positions"]:
             item["source_article_candidates"] = []
             item["oem_status"] = "reference_topology_only"
-        candidate_report["source_cross_reference_candidate_count"] = 0
-        reference_report = {**reference, **candidate_report, "reference_only": True}
-    return {**report, "status": "preview", "profile": normalized,
-            "reference_projection": reference_report,
+        projection = {**reference, **candidate, "source_cross_reference_candidate_count": 0, "reference_only": True}
+    return {**report, "status": "preview", "profile": normalized, "reference_projection": projection,
             "existing_plan_row_count": len(rows),
             "protected_row_count": sum(r["protected"] for r in existing)}

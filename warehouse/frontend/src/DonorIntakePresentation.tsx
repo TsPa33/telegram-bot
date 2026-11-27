@@ -14,17 +14,47 @@ export function DonorSummary({title, facts}: {title: string; facts: [string, unk
   </section>;
 }
 
-export function PlanReady({counts}: {counts?: {categories: number; positions: number}}) {
+export function PlanReady({counts, construction = false}: {counts?: {categories: number; positions: number}; construction?: boolean}) {
   return <div className="vin-ready" role="status">
     <span className="vin-ready-icon" aria-hidden="true"><Check size={22}/></span>
     <div className="vin-ready-copy">
       <strong>План розбору готовий</strong>
-      <p>Каталог сформовано з вибраної модифікації</p>
+      <p>{construction ? "Master доповнить план конструктивними позиціями під час додавання" : "Каталог сформовано з вибраної модифікації"}</p>
     </div>
     {counts && <div className="vin-ready-counts">
       <span>Категорії: <b>{counts.categories}</b></span>
-      <span>Запчастини: <b>{counts.positions}</b></span>
+      <span>{construction ? "Типи Oracle" : "Запчастини"}: <b>{counts.positions}</b></span>
     </div>}
+  </div>;
+}
+
+export type ConstructionFacts = {kind?: string; body?: string; side_doors?: number};
+const bodyOptions = {
+  sedan: 'Седан', hatch: 'Хетчбек', suv: 'Позашляховик', coupe: 'Купе', wagon: 'Універсал',
+  convertible: 'Кабріолет', van: 'Фургон', pickup: 'Пікап', tractor: 'Сідельний тягач', truck: 'Вантажний автомобіль',
+};
+export function ConstructionFields({value, onChange, disabled, showKind = true}: {
+  value: ConstructionFacts; onChange: (value: ConstructionFacts) => void; disabled: boolean; showKind?: boolean;
+}) {
+  const bodies = value.kind === 'heavy_truck' ? ['tractor', 'truck'] as const :
+    Object.keys(bodyOptions).filter(body => body !== 'tractor' && body !== 'truck') as (keyof typeof bodyOptions)[];
+  return <div className="vin-fields">
+    {showKind && <label>Клас автомобіля
+      <select value={value.kind || ''} disabled={disabled} onChange={e => onChange({kind: e.target.value || undefined})}>
+        <option value="">Невідомо</option><option value="passenger">Легковий</option>
+        <option value="lcv">Легкий комерційний</option><option value="heavy_truck">Вантажний</option>
+      </select>
+    </label>}
+    <label>Тип кузова
+      <select value={value.body || ''} disabled={disabled} onChange={e => onChange({...value, body: e.target.value || undefined, side_doors: undefined})}>
+        <option value="">Невідомо</option>{bodies.map(body => <option key={body} value={body}>{bodyOptions[body]}</option>)}
+      </select>
+    </label>
+    {value.body && ['sedan', 'hatch', 'suv', 'wagon', 'convertible'].includes(value.body) && <label>Бічні двері
+      <select value={value.side_doors || ''} disabled={disabled} onChange={e => onChange({...value, side_doors: Number(e.target.value) || undefined})}>
+        <option value="">Невідомо</option><option value="2">2</option><option value="4">4</option>
+      </select>
+    </label>}
   </div>;
 }
 

@@ -62,7 +62,9 @@ def test_reported_doors_are_brand_independent_and_not_inferred_from_body_alone()
     assert reported_topology(base,d)["side_doors"] == ["FL","FR"]
     del d["characteristics"]["doors"]
     assert "side_doors" not in reported_topology(base,d)
-    assert reported_topology({"kind":"heavy_truck"},d) == {"kind":"heavy_truck"}
+    truck = reported_topology({"kind":"heavy_truck"}, d)
+    assert "side_doors" not in truck and "body" not in truck
+    assert truck["counts"]["cylinders"] == 4
     d["trust"]="user_confirmed_reported_not_factory_verified"
     assert reported_topology(base,d) == base
 
