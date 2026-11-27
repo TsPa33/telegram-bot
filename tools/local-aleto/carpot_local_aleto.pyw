@@ -483,7 +483,7 @@ def extract_page(html, url):
             rel = options.get('rel', '')
             classes = options.get('class', '').split()
             if not ('detail-cat-item' in classes or 'next' in rel.split()
-                    or re.search(r'(?:page-\\d+|[?&](?:page|PAGEN_\\d+)=\\d+|/page/\\d+)', href, re.I)):
+                    or re.search(r'(?:page-\d+|[?&](?:page|PAGEN_\d+)=\d+|/page/\d+)', href, re.I)):
                 return
             try:
                 candidate = source_url(href, url)
