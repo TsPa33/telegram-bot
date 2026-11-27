@@ -47,21 +47,21 @@ export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{pa
      {data.lookup_status==='cooldown'&&<p>Зачекайте 30 секунд між зовнішніми перевірками.</p>}
      {data.lookup_status==='daily_limit'&&<p>Вичерпано добовий ліміт зовнішніх перевірок.</p>}
      {data.lookup_status==='busy'&&<p>Виконується інший зовнішній пошук. Повторіть пізніше.</p>}
-     {data.lookup_status==='source_not_found'&&<p>У доступному джерелі немає сторінки для цього OEM.</p>}
+     {data.lookup_status==='source_not_found'&&<p>У перевірених джерелах немає доступної сторінки для цього OEM.</p>}
      {data.lookup_status==='source_no_cards'&&<p>На сторінці цього OEM не виявлено товарних карток.</p>}
      {['robots_denied','robots_unavailable','source_access_denied','source_redirect'].includes(data.lookup_status)&&<p>Правила або відповідь джерела не дозволили виконати автоматичну перевірку.</p>}
      {['source_timeout','source_network_error','source_http_error'].includes(data.lookup_status)&&<p>Не вдалося отримати відповідь джерела. Повторіть пізніше.</p>}
      {['source_content_error','source_response_limit','source_parse_error'].includes(data.lookup_status)&&<p>Відповідь джерела не вдалося безпечно обробити. Ціну не вигадуємо.</p>}
-     {data.lookup_status==='no_comparable'&&<p>У доступному джерелі не знайдено порівнюваних пропозицій для цього OEM.</p>}
+     {data.lookup_status==='no_comparable'&&<p>У перевірених джерелах не знайдено порівнюваних пропозицій для цього OEM.</p>}
      {data.lookup_status==='disabled'&&<p>Зовнішній пошук не активовано.</p>}
      {!references.length&&!data.truncated&&<p>Немає доступних цінових орієнтирів для цієї деталі.</p>}
      {references.map((r,index)=><section className="aleto-reference-group" key={index}>
       <strong>Група {index+1} · {labels[r.condition]||'Стан невідомий'}</strong>
-      <small>{r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
-      {r.average!=null?<><small>Середня ціна</small><strong className="aleto-reference-average">{money(r.average,r.currency)}</strong></>:<strong>Мало пропозицій для середньої ціни</strong>}
+      <small>{r.match_basis==='brand_oem'?'Точний номер і бренд · сумісність не підтверджена':r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
+      {r.average!=null?<><small>Середня ціна</small><strong className="aleto-reference-average">{money(r.average,r.currency)}</strong></>:<strong>{r.offer_count===1?'Ціна окремої пропозиції':'Мало пропозицій для середньої ціни'}</strong>}
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
       <small>Останнє спостереження: {date(r.observed_at)}. Показано {r.examples.length} із {r.offer_count}.</small>
-      {r.examples.map((e:Row,index:number)=><div className="aleto-reference-offer" key={index}><span>Ціна №{index+1}</span><strong>{money(e.amount,r.currency)}</strong><small>{date(e.observed_at)} {typeof e.reference_url==='string'&&/^https:\/\/(www\.)?aleto\.ua\//.test(e.reference_url)&&<a href={e.reference_url} target="_blank" rel="noopener noreferrer">Переглянути першоджерело</a>}</small></div>)}
+      {r.examples.map((e:Row,index:number)=><div className="aleto-reference-offer" key={index}><span>Ціна №{index+1}</span><strong>{money(e.amount,r.currency)}</strong><small>{date(e.observed_at)} {typeof e.reference_url==='string'&&/^https:\/\/((www\.)?aleto\.ua|autopalma\.parts)\//.test(e.reference_url)&&<a href={e.reference_url} target="_blank" rel="noopener noreferrer">{r.source_name==='AutoPalma'?'AutoPalma · першоджерело':'Переглянути першоджерело'}</a>}</small></div>)}
       </section>)}
      {historical.length>0&&<details><summary>Історичні пропозиції ({historical.length})</summary><p>Старі спостереження не враховано в середній ціні.</p>{historical.map((e,index)=><p key={index}>{money(e.amount,e.currency)} · {date(e.observed_at)}</p>)}</details>}
     </div>}

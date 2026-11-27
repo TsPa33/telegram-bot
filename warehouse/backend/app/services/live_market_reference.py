@@ -18,6 +18,7 @@ from time import monotonic
 
 from app.services.aleto_adapter import Tree, price, source_url
 from app.services.canonical_rules import surface, norm
+from app.services import autopalma_market_reference as autopalma
 
 HOST = "aleto.ua"
 AGENT = "CarPot-PriceReference/1.0"
@@ -30,6 +31,8 @@ _ATTEMPTS = []
 _LOCK = Lock()
 _CACHE = OrderedDict()
 _ROBOTS = None
+_AUTOPALMA_ROBOTS = None
+_AUTOPALMA_CACHE = OrderedDict()
 _LAST = float("-inf")
 _LOG = logging.getLogger("warehouse.market_reference")
 
@@ -76,23 +79,27 @@ class _PublicHTTPS(http.client.HTTPSConnection):
     def connect(self):
         # Resolve the fixed provider; reject private/reserved addresses and pin
         # the connection to the resolved IP. TLS still verifies the fixed host.
-        records = socket.getaddrinfo(HOST, 443, type=socket.SOCK_STREAM)
+        records = socket.getaddrinfo(self.host, 443, type=socket.SOCK_STREAM)
         addresses = list(dict.fromkeys(r[4][0] for r in records))
         if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
             raise OSError("non-public address")
         raw = socket.create_connection((addresses[0], 443), timeout=self.timeout)
         try:
-            self.sock = self._context.wrap_socket(raw, server_hostname=HOST)
+            self.sock = self._context.wrap_socket(raw, server_hostname=self.host)
         except BaseException:
             raw.close()
             raise
 
 
-def fetch_text(path, limit=MAX_BYTES):
-    if path != "/robots.txt" and not re.fullmatch(r"/ua/n/[a-z0-9][a-z0-9-]{3,39}/", path):
+def fetch_text(path, limit=MAX_BYTES, *, host=HOST):
+    if host not in (HOST, autopalma.HOST):
+        raise ValueError("unapproved host")
+    allowed = (bool(re.fullmatch(r"/ua/n/[a-z0-9][a-z0-9-]{3,39}/", path))
+               if host == HOST else autopalma.valid_path(path))
+    if path != "/robots.txt" and not allowed:
         raise ValueError("unapproved route")
     start = monotonic()
-    conn = _PublicHTTPS(HOST, timeout=4, context=ssl.create_default_context())
+    conn = _PublicHTTPS(host, timeout=4, context=ssl.create_default_context())
     try:
         conn.request("GET", path, headers={"User-Agent": AGENT, "Accept-Encoding": "identity",
                                            "Accept": "text/plain" if path == "/robots.txt" else "text/html"})
@@ -148,9 +155,10 @@ def robots_allows(text, path):
                 return False
             agent = True
         elif key in ("allow", "disallow"):
-            if not agent or "*" in value or "$" in value or "%" in value:
+            if not agent or "*" in value or "%" in value or "$" in value[:-1]:
                 return False
-            if key == "disallow" and value and path.startswith(value):
+            matched = (path == value[:-1]) if value.endswith("$") else path.startswith(value)
+            if key == "disallow" and value and matched:
                 return False
         elif key not in ("host", "sitemap"):
             return False
@@ -313,8 +321,49 @@ def references(ctx, rows):
     return result
 
 
+def _fallback(ctx, original, now):
+    """Try at most one independent public product path per explicit lookup.
+
+    An access denial, rate limit, or robots error is never a fallback trigger.
+    The caller owns the shared lock and the same per-click budget.
+    """
+    global _AUTOPALMA_ROBOTS
+    if not autopalma.enabled():
+        return original
+    path = autopalma.lookup_path(ctx)
+    if not path:
+        return original
+    phase = "robots"
+    try:
+        if not _AUTOPALMA_ROBOTS or now - _AUTOPALMA_ROBOTS[0] > 3600:
+            _AUTOPALMA_ROBOTS = (now, fetch_text("/robots.txt", 65536, host=autopalma.HOST))
+        if not robots_allows(_AUTOPALMA_ROBOTS[1], path):
+            return failed("robots_denied", "autopalma_robots")
+        phase = "product"
+        html = fetch_text(path, autopalma.MAX_BYTES, host=autopalma.HOST)
+        stamp = datetime.now(timezone.utc).isoformat()
+        phase = "parse"
+        groups = autopalma.parse_product(html, path, stamp)
+        if not groups:
+            return failed("no_comparable", "autopalma_parse")
+        _AUTOPALMA_CACHE[path] = (monotonic(), groups, stamp)
+        _AUTOPALMA_CACHE.move_to_end(path)
+        while len(_AUTOPALMA_CACHE) > MAX_CACHE:
+            _AUTOPALMA_CACHE.popitem(last=False)
+        _LOG.warning("market_reference outcome=matched phase=autopalma groups=%d", len(groups))
+        return "live", groups, stamp
+    except LookupFailure as exc:
+        return failed("robots_unavailable" if phase == "robots" else exc.code, "autopalma_" + phase)
+    except (TimeoutError, socket.timeout):
+        return failed("source_timeout", "autopalma_" + phase)
+    except (OSError, http.client.HTTPException):
+        return failed("source_network_error", "autopalma_" + phase)
+    except (ValueError, TypeError, RecursionError):
+        return failed("source_parse_error" if phase == "parse" else "source_content_error", "autopalma_" + phase)
+
+
 def lookup(ctx):
-    """Return (mode/status, groups, observation). No automatic retries."""
+    """Bounded individual lookup. At most one product request per provider."""
     global _ROBOTS, _LAST
     if not enabled():
         return failed("disabled", "policy")
@@ -328,10 +377,21 @@ def lookup(ctx):
     try:
         now = monotonic()
         cached = _CACHE.get(path)
+        prior = None
         if cached and now - cached[0] < TTL:
             _CACHE.move_to_end(path)
             rows, stamp = cached[1:]
-            return "cached", references(ctx, rows), stamp
+            groups = references(ctx, rows)
+            prior = ("cached", groups, stamp)
+            if groups or not autopalma.enabled():
+                return prior
+        other_path = autopalma.lookup_path(ctx) if autopalma.enabled() else None
+        other = _AUTOPALMA_CACHE.get(other_path) if other_path else None
+        if other and now - other[0] < TTL:
+            _AUTOPALMA_CACHE.move_to_end(other_path)
+            return "cached", other[1], other[2]
+        if prior and not other_path:
+            return prior
         _ATTEMPTS[:] = [t for t in _ATTEMPTS if now-t < 86400]
         if len(_ATTEMPTS) >= DAILY_LIMIT:
             return failed("daily_limit", "quota")
@@ -340,6 +400,8 @@ def lookup(ctx):
         attempted = True
         _ATTEMPTS.append(now)
         _LAST = now
+        if prior:
+            return _fallback(ctx, prior, now)
         phase = "robots"
         if not _ROBOTS or now - _ROBOTS[0] > 3600:
             _ROBOTS = (now, fetch_text("/robots.txt", 65536))
@@ -358,10 +420,13 @@ def lookup(ctx):
         groups = references(ctx, rows)
         _LOG.warning("market_reference outcome=%s phase=%s cards=%d groups=%d",
                      "matched" if groups else "no_comparable", phase, len(rows), len(groups))
-        return "live", groups, stamp
+        result = ("live", groups, stamp)
+        return result if groups else _fallback(ctx, result, now)
     except LookupFailure as exc:
-        # A robots failure cannot prove an OEM page is absent.
-        return failed("robots_unavailable" if phase == "robots" else exc.code, phase)
+        result = failed("robots_unavailable" if phase == "robots" else exc.code, phase)
+        if phase in ("product", "parse") and exc.code in ("source_not_found", "source_no_cards"):
+            return _fallback(ctx, result, monotonic())
+        return result
     except (TimeoutError, socket.timeout):
         return failed("source_timeout", phase)
     except (OSError, http.client.HTTPException):
