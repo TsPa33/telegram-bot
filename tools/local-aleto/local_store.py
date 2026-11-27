@@ -50,19 +50,26 @@ def migrate(db, path, *, fresh=False):
         raise
 
 
-def add_vehicle(db, manufacturer, model, year, generation, *, vin=None, source='manual', **details):
+def add_vehicle(db, manufacturer, model, year, generation, *, vin=None, source='manual',
+                source_modification_id=None, **details):
     timestamp = datetime.now(timezone.utc).isoformat()
     fields = ('modification', 'engine', 'displacement', 'fuel', 'drive', 'transmission')
     if vin:
-        saved = db.execute('SELECT id FROM vehicles WHERE vin=?', (vin,)).fetchone()
+        saved = db.execute('SELECT id,manufacturer,model FROM vehicles WHERE vin=?', (vin,)).fetchone()
         if saved:
+            if (saved[1].casefold(), saved[2].casefold()) != (manufacturer.casefold(), model.casefold()):
+                raise ValueError('VIN уже збережено для іншої марки або моделі')
+            if source_modification_id is not None:
+                db.execute('''UPDATE vehicles SET modification=?,source_modification_id=?,source=?,updated_at=?
+                              WHERE id=?''',
+                           (details.get('modification'), source_modification_id, source, timestamp, saved[0]))
             return saved[0]
     return db.execute(
         """INSERT INTO vehicles(manufacturer,model,year,generation,vin,modification,engine,displacement,
-                                fuel,drive,transmission,source,created_at,updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                fuel,drive,transmission,source_modification_id,source,created_at,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (manufacturer, model, year, generation, vin, *(details.get(field) for field in fields),
-         source, timestamp, timestamp),
+         source_modification_id, source, timestamp, timestamp),
     ).lastrowid
 
 

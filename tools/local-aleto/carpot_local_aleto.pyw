@@ -35,6 +35,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import local_store
+from catalogue_client import CatalogueClient
+from catalogue_dialog import CatalogueDialog
 
 JOB_STATUS = {
     'queued': 'Очікує продовження', 'paused': 'Призупинено', 'failed': 'Помилка збору',
@@ -596,6 +598,8 @@ class MainWindow:
         self.generation = tk.StringVar()
         self.catalogue = tk.StringVar()
         self.vin_candidate = None
+        self.catalogue_client = CatalogueClient(DATA_DIR / 'catalogue_cache.sqlite3')
+        self.oracle_candidate = None
         self.status = tk.StringVar(value='Готово до роботи')
         self.statistics = tk.StringVar(value='0 записів  ·  0 з ціною  ·  0 OEM')
         self._style()
@@ -639,6 +643,9 @@ class MainWindow:
         ttk.Button(garage, text='Зберегти авто', command=self._save_vehicle, style='Quiet.TButton').pack(side='left', padx=6)
         ttk.Button(garage, text='Додати за VIN', command=self._decode_vin, style='Quiet.TButton').pack(side='left', padx=6)
         ttk.Button(garage, text='Імпорт SQLite v1.0', command=self._import_database, style='Quiet.TButton').pack(side='left')
+        ttk.Button(garage, text='Каталог CarPot', command=self._browse_catalogue, style='Quiet.TButton').pack(side='left', padx=6)
+        self.vehicle_details = tk.StringVar(value='Виберіть збережене авто або заповніть його дані')
+        ttk.Label(self.root, textvariable=self.vehicle_details, style='Help.TLabel', wraplength=850).pack(fill='x', padx=16, pady=(0, 8))
         center = ttk.Frame(self.root, style='Dark.TFrame', padding=(16, 0, 16, 12))
         center.pack(fill='both', expand=True)
         left = ttk.Frame(center, style='Panel.TFrame', padding=18, width=385)
@@ -916,10 +923,32 @@ class MainWindow:
             self.cancel_requested = True
             self.stop.set()
 
+    def _browse_catalogue(self):
+        if not self.busy:
+            CatalogueDialog(self)
+
+    def apply_catalogue(self, kind, make, model, modification, year):
+        proposed = (make['name'], model['name'], year)
+        self.oracle_candidate = (proposed, modification['id'], modification['name'], kind)
+        if self.vin_candidate:
+            _, decoded, _ = self.vin_candidate
+            if (clean(decoded['Make']).casefold(), clean(decoded['Model']).casefold()) != (
+                    clean(make['name']).casefold(), clean(model['name']).casefold()):
+                self.vin_candidate = None
+        self.brand.set(make['name'])
+        self.model.set(model['name'])
+        self.year.set(year)
+        self.generation.set('')
+        self.catalogue.set('')
+        self.vehicle_details.set(f"Oracle · {modification['name']} · #{modification['id']} · вибір користувача")
+        self.status.set('Перевірте дані та натисніть «Зберегти авто»')
+
     def _decode_vin(self):
         if self.busy:
             return
-        raw = simpledialog.askstring(APP_NAME, 'Введіть VIN для пошуку в NHTSA vPIC')
+        from_carpot = self.catalogue_client.connected
+        provider = 'CarPot' if from_carpot else 'NHTSA vPIC'
+        raw = simpledialog.askstring(APP_NAME, f'Введіть VIN для пошуку · {provider}')
         if not raw:
             return
         vin = raw.strip().upper()
@@ -927,19 +956,30 @@ class MainWindow:
             messagebox.showerror(APP_NAME, 'VIN має містити 17 символів без I, O, Q')
             return
         self.vin_candidate = None
+        self.oracle_candidate = None
         self._set_busy(True)
-        self.status.set('Читання VIN · NHTSA vPIC…')
+        self.status.set(f'Читання VIN · {provider}…')
 
         def task():
             try:
+                if from_carpot:
+                    decoded = self.catalogue_client.decode(vin)
+                    row = {target: decoded.get(source) for target, source in {
+                        'Make': 'manufacturer', 'Model': 'model', 'ModelYear': 'year', 'EngineModel': 'engine',
+                        'DisplacementL': 'engine_displacement_l', 'FuelTypePrimary': 'fuel_type',
+                        'DriveType': 'drive_type', 'TransmissionStyle': 'transmission',
+                    }.items()}
+                    self.events.put(('vin', (vin, row, 'carpot_vin')))
+                    return
                 url = f'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/{vin}?format=json'
                 with urlopen(Request(url, headers={'User-Agent': USER_AGENT}), timeout=10) as response:
                     row = json.loads(response.read(256_000))['Results'][0]
                 if not row['Make'] or not row['Model']:
                     raise ValueError('NHTSA не визначив марку або модель')
-                self.events.put(('vin', (vin, row)))
-            except (OSError, ValueError, KeyError, IndexError, TypeError):
-                self.events.put(('error', 'VIN не вдалося розпізнати. Введіть характеристики вручну.'))
+                self.events.put(('vin', (vin, row, 'nhtsa_vpic')))
+            except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError):
+                retry = ' Якщо сесію завершено, повторіть пошук через NHTSA vPIC.' if from_carpot else ''
+                self.events.put(('error', 'VIN не вдалося розпізнати. Введіть характеристики вручну.' + retry))
             finally:
                 self.events.put(('busy', False))
         threading.Thread(target=task, daemon=True).start()
@@ -987,6 +1027,7 @@ class MainWindow:
         for index, row in enumerate(self.vehicles):
             if row['id'] == self.vehicle_id:
                 self.vehicle_box.current(index)
+                self._describe_vehicle(row)
                 break
 
     def _save_vehicle(self):
@@ -997,29 +1038,43 @@ class MainWindow:
             with connect_db() as db:
                 details = {}
                 if self.vin_candidate:
-                    vin, decoded = self.vin_candidate
+                    vin, decoded, provider = self.vin_candidate
                     same_vehicle = (make.casefold(), model.casefold()) == (
                         clean(decoded['Make']).casefold(), clean(decoded['Model']).casefold(),
                     )
                     if same_vehicle:
-                        details = dict(vin=vin, source='nhtsa_vpic_reviewed', engine=decoded.get('EngineModel') or None,
+                        details = dict(vin=vin, source=provider + '_reviewed', engine=decoded.get('EngineModel') or None,
                                        displacement=decoded.get('DisplacementL') or None, fuel=decoded.get('FuelTypePrimary') or None,
                                        drive=decoded.get('DriveType') or None, transmission=decoded.get('TransmissionStyle') or None)
+                if self.oracle_candidate:
+                    vehicle, modification_id, description, kind = self.oracle_candidate
+                    if (make, model, str(year or '')) == vehicle:
+                        details.update(modification=description, source_modification_id=modification_id)
+                        details['source'] = details.get('source', 'manual') + '+oracle_' + kind
                 self.vehicle_id = local_store.add_vehicle(db, make, model, year, generation, **details)
                 self.vin_candidate = None
-                if self.job_id:
-                    db.execute('''UPDATE jobs SET vehicle_id=? WHERE id=? AND vehicle_id IS NULL
-                                  AND manufacturer=? AND model=? AND year IS ? AND generation=?''',
-                               (self.vehicle_id, self.job_id, make, model, year, generation))
+                self.oracle_candidate = None
+            saved_catalogue = self.catalogue.get()
             self._load_vehicles()
+            self._select_vehicle()
+            if not self.job_id:
+                self.catalogue.set(saved_catalogue)
         except (ValueError, sqlite3.Error) as error:
             messagebox.showerror(APP_NAME, str(error))
+
+    def _describe_vehicle(self, row):
+        values = [row['manufacturer'], row['model'], row['year'], row['generation'], row['modification'],
+                  row['engine'], row['fuel'], row['drive'], row['transmission'], row['vin']]
+        if row['source_modification_id']:
+            values.append(f"Oracle #{row['source_modification_id']} · вибір користувача")
+        self.vehicle_details.set(' · '.join(str(value) for value in values if value))
 
     def _select_vehicle(self, _event=None):
         if self.busy or self.vehicle_box.current() < 0:
             return
         row = self.vehicles[self.vehicle_box.current()]
         self.vin_candidate = None
+        self.oracle_candidate = None
         self.vehicle_id = row['id']
         self.brand.set(row['manufacturer'])
         self.model.set(row['model'])
@@ -1031,6 +1086,7 @@ class MainWindow:
         self.job_id = job['id'] if job else None
         self.catalogue.set(job['catalogue'] if job else '')
         self.status.set(JOB_STATUS.get(job['status'], job['status']) if job else 'Збір ще не запускався')
+        self._describe_vehicle(row)
         self._filter()
 
     def _filter(self):
@@ -1154,14 +1210,15 @@ class MainWindow:
                         self.status.set('Каталог не знайдено. Встав посилання вручну.')
                 elif action == 'vin':
                     self.vin_candidate = payload
-                    _, data = payload
+                    _, data, provider = payload
                     self.brand.set(data['Make'])
                     self.model.set(data['Model'])
                     year = str(data.get('ModelYear', ''))
                     self.year.set(year if year.isdigit() and not data.get('ErrorCode', '').startswith(('5', '6', '7')) else '')
                     self.generation.set('')
                     self.catalogue.set('')
-                    self.status.set('Джерело: NHTSA vPIC. Перевірте поля й натисніть «Зберегти авто».')
+                    label = 'CarPot' if provider == 'carpot_vin' else 'NHTSA vPIC'
+                    self.status.set(f'Джерело: {label}. Перевірте поля й натисніть «Зберегти авто».')
                 elif action == 'imported':
                     self._load_last_job()
                     self._load_vehicles()
