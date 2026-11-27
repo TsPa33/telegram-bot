@@ -14,7 +14,8 @@ import re
 import socket
 import ssl
 from threading import Lock
-from time import monotonic
+from time import monotonic, sleep
+from urllib.parse import urlsplit
 
 from app.services.aleto_adapter import Tree, price, source_url
 from app.services.canonical_rules import surface, norm
@@ -25,15 +26,15 @@ AGENT = "CarPot-PriceReference/1.0"
 TTL = 86400
 MAX_CACHE = 128
 MAX_BYTES = 262144
-MIN_INTERVAL = 30
-DAILY_LIMIT = 20
-_ATTEMPTS = []
+_NEXT_REQUEST = {}
+_SOURCE_BACKOFF = {}
+_NAME_PAGES = OrderedDict()
+NAME_MAX_BYTES = 786432
 _LOCK = Lock()
 _CACHE = OrderedDict()
 _ROBOTS = None
 _AUTOPALMA_ROBOTS = None
 _AUTOPALMA_CACHE = OrderedDict()
-_LAST = float("-inf")
 _LOG = logging.getLogger("warehouse.market_reference")
 
 
@@ -96,8 +97,18 @@ def fetch_text(path, limit=MAX_BYTES, *, host=HOST):
         raise ValueError("unapproved host")
     allowed = (bool(re.fullmatch(r"/ua/n/[a-z0-9][a-z0-9-]{3,39}/", path))
                if host == HOST else autopalma.valid_path(path))
+    if host == HOST and catalog_path(path):
+        allowed = True
     if path != "/robots.txt" and not allowed:
         raise ValueError("unapproved route")
+    # Serial, short transport pacing rather than rejecting a user's next click.
+    # Stop requests to a source that has actually rate-limited us.
+    if monotonic() < _SOURCE_BACKOFF.get(host, 0):
+        raise LookupFailure("source_access_denied")
+    pause = _NEXT_REQUEST.get(host, 0) - monotonic()
+    if pause > 0:
+        sleep(pause)
+    _NEXT_REQUEST[host] = monotonic() + 1
     start = monotonic()
     conn = _PublicHTTPS(host, timeout=4, context=ssl.create_default_context())
     try:
@@ -106,6 +117,8 @@ def fetch_text(path, limit=MAX_BYTES, *, host=HOST):
         response = conn.getresponse()
         if response.status == 404:
             raise LookupFailure("source_not_found")
+        if response.status == 429:
+            _SOURCE_BACKOFF[host] = monotonic() + 60
         if response.status in (401, 403, 429, 451):
             raise LookupFailure("source_access_denied")
         if 300 <= response.status < 400:
@@ -189,8 +202,8 @@ def status_for(text):
     return "unknown"
 
 
-def parse_cards(html, path, observed_at):
-    if len(html.encode("utf-8")) > MAX_BYTES:
+def parse_cards(html, path, observed_at, *, by_name=False):
+    if len(html.encode("utf-8")) > (NAME_MAX_BYTES if by_name else MAX_BYTES):
         raise ValueError("response limit")
     tree = Tree()
     tree.feed(html)
@@ -224,10 +237,10 @@ def parse_cards(html, path, observed_at):
                     fields["article"].add(b.text())
                 elif "ориг" in label or "oem" in label:
                     fields["oem"].add(b.text())
-        if len(fields["article"]) != 1 or len(fields["oem"]) != 1:
+        if len(fields["article"]) != 1 or len(fields["oem"]) > 1 or (not by_name and len(fields["oem"]) != 1):
             continue
-        article, oem = next(iter(fields["article"])), next(iter(fields["oem"]))
-        if not article or not oem_key(oem):
+        article, oem = next(iter(fields["article"])), next(iter(fields["oem"]), "")
+        if not article or (not by_name and not oem_key(oem)):
             continue
         try:
             url = source_url(link.attrs["href"], "https://" + HOST + path)
@@ -253,14 +266,14 @@ def parse_cards(html, path, observed_at):
     return [r for a, r in rows.items() if a not in conflicts]
 
 
-def references(ctx, rows):
+def references(ctx, rows, *, by_name=False):
     groups = defaultdict(list)
     own = surface(dict(title=ctx["name"], manufacturer=ctx["manufacturer"], model=ctx["model"]))
     own_tokens = own["phrase"].split()
     if not own_tokens or own["conflicts"]:
         return []
     for row in rows:
-        if oem_key(row["oem"]) != oem_key(ctx["oem"]):
+        if not by_name and oem_key(row["oem"]) != oem_key(ctx["oem"]):
             continue
         title = norm(row["title"])
         if not all(re.search(r"(?<!\w)" + re.escape(norm(ctx[k])) + r"(?!\w)", title)
@@ -268,7 +281,12 @@ def references(ctx, rows):
             continue
         other = surface(dict(title=row["title"], manufacturer=ctx["manufacturer"], model=ctx["model"]))
         tokens = other["phrase"].split()
-        if not tokens or tokens[:len(own_tokens[:2])] != own_tokens[:2] or other["conflicts"]:
+        if not tokens or other["conflicts"]:
+            continue
+        if by_name:
+            if not name_match(ctx["name"], row["title"], ctx):
+                continue
+        elif tokens[:len(own_tokens[:2])] != own_tokens[:2]:
             continue
         if any(own[k] != "unknown" and own[k] != other[k] for k in ("side", "position")):
             continue
@@ -318,6 +336,9 @@ def references(ctx, rows):
             observed_at=max(r["observed_at"] for _, r in values),
             examples=[dict(amount=str(a), currency=currency, observed_at=r["observed_at"], url=r["url"])
                       for a, r in values[:10]]))
+    if by_name:
+        for g in result:
+            g.update(match_basis="name_model", source_name="Aleto")
     return result
 
 
@@ -362,17 +383,12 @@ def _fallback(ctx, original, now):
         return failed("source_parse_error" if phase == "parse" else "source_content_error", "autopalma_" + phase)
 
 
-def lookup(ctx):
-    """Bounded individual lookup. At most one product request per provider."""
-    global _ROBOTS, _LAST
-    if not enabled():
-        return failed("disabled", "policy")
+def _lookup_oem(ctx):
+    """OEM lookup remains an optional precision/fallback route."""
+    global _ROBOTS
     path = lookup_path(ctx)
     if not path:
         return failed("missing_oem", "input")
-    if not _LOCK.acquire(blocking=False):
-        return failed("busy", "quota")
-    attempted = False
     phase = "cache"
     try:
         now = monotonic()
@@ -392,14 +408,6 @@ def lookup(ctx):
             return "cached", other[1], other[2]
         if prior and not other_path:
             return prior
-        _ATTEMPTS[:] = [t for t in _ATTEMPTS if now-t < 86400]
-        if len(_ATTEMPTS) >= DAILY_LIMIT:
-            return failed("daily_limit", "quota")
-        if now - _LAST < MIN_INTERVAL:
-            return failed("cooldown", "quota")
-        attempted = True
-        _ATTEMPTS.append(now)
-        _LAST = now
         if prior:
             return _fallback(ctx, prior, now)
         phase = "robots"
@@ -433,7 +441,237 @@ def lookup(ctx):
         return failed("source_network_error", phase)
     except (ValueError, TypeError):
         return failed("source_parse_error" if phase in ("parse", "matching") else "source_content_error", phase)
+
+
+
+# Only real navigation links from public manufacturer/model catalogues are
+# followed. No internal search endpoint, pagination sweep or invented product URLs.
+_BRAND_SLUGS = {"mercedes benz": "mercedes-benz", "vw": "volkswagen",
+                "alfa romeo": "alfa-romeo"}
+# Confirmed public model path, also present in the existing Aleto adapter.
+_KNOWN_MODELS = {("volvo", "xc90"): ("/ua/car/volvo-xc90-16-/", 2016, 2026),
+                 ("volvo", "xc60"): ("/ua/car/volvo-xc60-2018-2023/", 2018, 2023)}
+_WORDS = {
+    "дзеркал": "mirror", "зеркал": "mirror", "mirror": "mirror",
+    "бічн": "side", "боков": "side", "ресор": "spring", "рессор": "spring",
+    "пружин": "spring", "кронштейн": "bracket", "опор": "bracket",
+    "пробк": "plug", "заглушк": "plug", "маслян": "oil", "масля": "oil",
+    "олив": "oil", "піддон": "pan", "поддон": "pan",
+    "фільтр": "filter", "фильтр": "filter", "повітр": "air", "воздуш": "air",
+    "фар": "headlight", "бампер": "bumper", "двер": "door",
+    "датчик": "sensor", "насос": "pump", "помп": "pump",
+    "капот": "hood", "радіатор": "radiator", "радиатор": "radiator",
+}
+_STOP = {"в", "у", "на", "для", "з", "из", "і", "и", "та", "комплект", "шт"}
+
+
+def catalog_path(path):
+    return bool(re.fullmatch(r"/ua/mark/[a-z0-9][a-z0-9-]{0,59}/", path)
+                or re.fullmatch(r"/ua/car/[a-z0-9][a-z0-9-]{0,99}/(?:[a-z0-9][a-z0-9-]{0,99}/)?", path))
+
+
+def _model_key(value):
+    return re.sub(r"[^a-z0-9]", "", re.sub(r"\([^)]*\)", "", str(value or "").lower()))
+
+
+def _brand(ctx):
+    maker = norm(ctx.get("manufacturer") or "")
+    slug = _BRAND_SLUGS.get(maker, maker.replace(" ", "-"))
+    return slug if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,59}", slug) else None
+
+
+def _name_tokens(value, ctx):
+    parsed = surface(dict(title=value, manufacturer=ctx.get("manufacturer") or "",
+                          model=ctx.get("model") or ""))
+    words = set()
+    for token in parsed["phrase"].split():
+        if token in _STOP or len(token) < 3 or token.isdigit():
+            continue
+        mapped = next((v for prefix,v in _WORDS.items() if token.startswith(prefix)), None)
+        words.add(mapped or token)
+    return words
+
+
+def name_match(name, title, ctx):
+    wanted = _name_tokens(name, ctx)
+    actual = _name_tokens(title, ctx)
+    if not wanted or not actual:
+        return False
+    # A generic word alone is insufficient for a multiword component.
+    overlap = wanted & actual
+    return bool(overlap) and (wanted <= actual or
+        (len(wanted) >= 3 and len(overlap) >= 2 and len(overlap)/len(wanted) >= 0.75))
+
+
+def _navigation(html, parent):
+    tree = Tree()
+    tree.feed(html)
+    tree.close()
+    links = {}
+    for a in tree.root.all():
+        if a.tag != "a" or not a.attrs.get("href"):
+            continue
+        try:
+            url = source_url(a.attrs["href"], "https://" + HOST + parent)
+            u = urlsplit(url)
+            if u.query or u.fragment or not catalog_path(u.path):
+                continue
+            title = a.text()
+            if title and len(title) <= 250:
+                links.setdefault(u.path, title)
+        except (ValueError, TypeError):
+            continue
+    return links
+
+
+def _catalog_html(path):
+    global _ROBOTS
+    now = monotonic()
+    if not _ROBOTS or now - _ROBOTS[0] > 3600:
+        _ROBOTS = (now, fetch_text("/robots.txt", 65536))
+    if not robots_allows(_ROBOTS[1], path):
+        raise LookupFailure("robots_denied")
+    cached = _NAME_PAGES.get(path)
+    if cached and now - cached[0] < TTL:
+        _NAME_PAGES.move_to_end(path)
+        return cached[1], cached[2], False
+    html = fetch_text(path, NAME_MAX_BYTES)
+    stamp = datetime.now(timezone.utc).isoformat()
+    _NAME_PAGES[path] = (monotonic(), html, stamp)
+    _NAME_PAGES.move_to_end(path)
+    while len(_NAME_PAGES) > 24:
+        _NAME_PAGES.popitem(last=False)
+    return html, stamp, True
+
+
+def _model_path(ctx):
+    brand, model = _brand(ctx), _model_key(ctx.get("model"))
+    if not brand or not model:
+        return None
+    # Generation suffix is accepted for the known XC90 II/XC60 II paths only
+    # when the donor year also agrees.
+    known = _KNOWN_MODELS.get((brand, model))
+    if not known and model.endswith("ii"):
+        known = _KNOWN_MODELS.get((brand, model[:-2]))
+    year = ctx.get("year")
+    if known and isinstance(year, int) and known[1] <= year <= known[2]:
+        return known[0]
+    root = "/ua/mark/" + brand + "/"
+    html, _, _ = _catalog_html(root)
+    candidates = []
+    for path, title in _navigation(html, root).items():
+        if not re.fullmatch(r"/ua/car/[a-z0-9][a-z0-9-]{0,99}/", path):
+            continue
+        slug = path.split("/")[3]
+        if not slug.startswith(brand + "-"):
+            continue
+        # Require the exact model prefix with a boundary, not XC90 vs XC90II
+        # or XF vs XF105 by substring. Check explicit full-year ranges.
+        parts = re.split(r"[- ]+", slug[len(brand)+1:])
+        prefix = ""
+        matched = False
+        for i, token in enumerate(parts):
+            prefix += token
+            if prefix == model:
+                matched = True
+                break
+            if not model.startswith(prefix):
+                break
+        if not matched:
+            continue
+        dates = [int(x) for x in re.findall(r"\b(?:19|20)\d{2}\b", title)]
+        if year and len(dates) >= 2 and not min(dates) <= year <= max(dates):
+            continue
+        if year and len(dates) == 1 and dates[0] != year:
+            continue
+        candidates.append(path)
+    return candidates[0] if len(set(candidates)) == 1 else None
+
+
+def _lookup_name(ctx):
+    if not ctx.get("name") or not ctx.get("manufacturer") or not ctx.get("model"):
+        return failed("missing_vehicle", "name")
+    try:
+        model_path = _model_path(ctx)
+        if not model_path:
+            return failed("no_comparable", "name_model")
+        html, stamp, fresh = _catalog_html(model_path)
+        # Exact model labels for the comparison, stripped of source generation
+        # notation only for confirmed known model/year combinations.
+        compare = dict(ctx)
+        if _model_key(compare["model"]) in ("xc90ii", "xc60ii"):
+            compare["model"] = _model_key(compare["model"])[:-2]
+        def result_from(page, path, stamp):
+            try:
+                rows = parse_cards(page, path, stamp, by_name=True)
+            except LookupFailure as exc:
+                if exc.code in ("source_no_cards", "source_parse_error"):
+                    return []
+                raise
+            return references(compare, rows, by_name=True)
+        groups = result_from(html, model_path, stamp)
+        if not groups:
+            links = _navigation(html, model_path)
+            # The live catalogue root exposes broad sections, not all leaves.
+            # These XC90 mirror routes were observed on the public category
+            # page on 2026-11-27; robots are checked even for known links.
+            wanted = _name_tokens(ctx["name"], compare)
+            own = surface(dict(title=ctx["name"], manufacturer=compare["manufacturer"], model=compare["model"]))
+            if model_path == "/ua/car/volvo-xc90-16-/" and wanted and wanted <= {"mirror","side"}:
+                side = own["side"]
+                leaf = {"left":"3-zerkalo-bokovoe-levoe/","right":"3-zerkalo-bokovoe-pravoe/"}.get(side,"bokovoe-zerkalo/")
+                links.setdefault(model_path + leaf, ctx["name"])
+            # Only one best matching category from the selected model's actual
+            # links. Never enumerate all categories or search pages.
+            scored = []
+            wanted = _name_tokens(ctx["name"], compare)
+            for path,title in links.items():
+                if not path.startswith(model_path) or path == model_path:
+                    continue
+                if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,99}/", path[len(model_path):]):
+                    continue
+                actual = _name_tokens(title, compare)
+                shared = wanted & actual
+                if shared and wanted and (wanted <= actual or actual <= wanted):
+                    # Match the installation side when a category specifies it.
+                    direction = surface(dict(title=title))["side"]
+                    if own["side"] != "unknown" and direction not in ("unknown",own["side"]):
+                        continue
+                    scored.append((len(shared), -len(actual ^ wanted), path))
+            if scored:
+                scored.sort(reverse=True)
+                best = scored[0]
+                if len(scored) == 1 or best[:2] > scored[1][:2]:
+                    page, stamp, fresh = _catalog_html(best[2])
+                    groups = result_from(page, best[2], stamp)
+        if groups:
+            _LOG.warning("market_reference outcome=matched phase=name groups=%d", len(groups))
+            return ("live" if fresh else "cached"), groups, stamp
+        return failed("no_comparable", "name")
+    except LookupFailure as exc:
+        return failed(exc.code, "name")
+    except (TimeoutError, socket.timeout):
+        return failed("source_timeout", "name")
+    except (OSError, http.client.HTTPException):
+        return failed("source_network_error", "name")
+    except (ValueError, TypeError, RecursionError):
+        return failed("source_parse_error", "name")
+
+
+def lookup(ctx):
+    """Individual lookup: name/model first, optional OEM and second source."""
+    if not enabled():
+        return failed("disabled", "policy")
+    if not _LOCK.acquire(timeout=3):
+        return failed("busy", "concurrency")
+    try:
+        # Context is assembled by the authenticated server, never client URLs.
+        if ctx.get("allow_name_search"):
+            result = _lookup_name(ctx)
+            if result[1] or not lookup_path(ctx):
+                return result
+            if result[0] in ("robots_denied", "robots_unavailable", "source_access_denied", "source_redirect"):
+                return result
+        return _lookup_oem(ctx)
     finally:
-        if attempted:
-            _LAST = monotonic()
         _LOCK.release()

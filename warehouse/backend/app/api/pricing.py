@@ -110,9 +110,6 @@ def market_reference(id:str,data:MarketReferenceInput,db:DB,who:Auth):
     from app.services.market_reference_context import lookup_context
     account=who.workspace_account_id
     context=lookup_context(db,account,id)
-    if not live.lookup_path(context):
-        result["lookup_status"]="missing_oem"
-        return result
     # The auth dependency takes a workspace lock for POST. Release the
     # read-only transaction before bounded external I/O.
     db.rollback()
