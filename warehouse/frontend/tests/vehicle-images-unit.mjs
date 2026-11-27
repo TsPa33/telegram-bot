@@ -82,3 +82,16 @@ test('body classification consumes saved VIN characteristics; avoids ambiguous t
  for(const type of ['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','tractor','truck','bus'])assert.equal(r({body_type:type}),type);
  assert.equal(r({manufacturer:'Other',model:'Ambiguous'}),undefined);
 });
+
+test('all registered body images have exact transparent WebP provenance, no duplicate types',async()=>{
+ const metadata=JSON.parse(await readFile(new URL('../src/assets/vehicles/body-library-provenance.json',import.meta.url),'utf8'));
+ const {vehicleBodyAssets}=await import(encode(compile(await readFile(new URL('../src/vehicleBodyAssets.ts',import.meta.url),'utf8'))));
+ assert.equal(vehicleBodyAssets.length,Object.keys(metadata).length);
+ assert.equal(new Set(vehicleBodyAssets.map(a=>a.bodyType)).size,vehicleBodyAssets.length);
+ for(const a of vehicleBodyAssets){
+  const m=metadata[a.bodyType],b=await readFile(new URL('../src/assets/vehicles/'+a.file,import.meta.url));
+  assert.equal(m.file,a.file);assert.equal(createHash('sha256').update(b).digest('hex'),m.sha256);
+  assert.equal(b.length,m.bytes);assert(b.length<=150000);assert.equal(b.toString('ascii',8,16),'WEBPVP8X');assert(b[20]&16);
+  assert.equal(b.readUIntLE(24,3)+1,960);assert.equal(b.readUIntLE(27,3)+1,640);
+ }
+});

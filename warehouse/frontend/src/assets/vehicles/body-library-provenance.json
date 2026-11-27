@@ -1,0 +1,65 @@
+{
+  "sedan": {
+    "file": "body-sedan.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 72958,
+    "sha256": "018da0f961e28e0cfea767fa23e1fcdc380e8e0f95c1027ff300b3290c73eb62",
+    "gitSha": "5cb116879f7fca82a278ccd8f9b886b35746bf09",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "hatchback": {
+    "file": "body-hatchback.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 87150,
+    "sha256": "1db46ee98476afee81d0fb422f5db6961c26ee59603733754504d9d6babd0cfd",
+    "gitSha": "6950ab7ec9e2fd2a23f8cebe873e9d46735261ef",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "wagon": {
+    "file": "body-wagon.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 81860,
+    "sha256": "1545a4487a60c7844d46814dd125b915f5d82b952ccdafb739ee47707bff71b5",
+    "gitSha": "b0e78be86a3f3e54d646aa7be20c6ff2033bd520",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "suv": {
+    "file": "body-suv.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 85772,
+    "sha256": "057d1f4d8aca17d17405302b5d9ba1bcf3fe8da6428279097fa9d48cee8d796b",
+    "gitSha": "622f3acdd9f7833c3278e6e8d9c8b2735f1a6ada",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "coupe": {
+    "file": "body-coupe.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 71006,
+    "sha256": "4a91cba988ea4f0fc35f87768c79a0eb18246f553cf9ffc4c683a24ecc93a304",
+    "gitSha": "d207fdb29a7f88dc98ee880b7da9b19406805df6",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "convertible": {
+    "file": "body-convertible.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 76882,
+    "sha256": "df70afbf049a4edde0f2500c73f7cdd3c335fb49cdbf92859a11ca6c09938ca3",
+    "gitSha": "90022a76605a9e93241e55334ca48433b141ebaf",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  },
+  "minivan": {
+    "file": "body-minivan.webp",
+    "width": 960,
+    "height": 640,
+    "bytes": 84214,
+    "sha256": "e96305a77d057a83c4a5ff80c9510aae1731b652badddd7a92275fb6d4295eec",
+    "gitSha": "100292aed3c7f28e803242cbbfc4bd1cafc6edda",
+    "source": "OpenAI generated generic body illustration; not an actual donor or model photograph"
+  }
+}
