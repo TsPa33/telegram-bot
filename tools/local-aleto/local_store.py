@@ -1,5 +1,6 @@
 """Additive storage for the existing Local Aleto database."""
 from datetime import datetime, timezone
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
@@ -18,7 +19,9 @@ def migrate(db, path, *, fresh=False):
             return
         if not fresh:
             backup = Path(path).with_name(f'local_aleto-before-v11-{uuid4().hex}.sqlite3')
-            with sqlite3.connect(backup) as target, sqlite3.connect(path) as source:
+            # sqlite3.Connection.__exit__ commits but DOES NOT close the file handle.
+            # Closing both handles is required before Windows deletes temp files.
+            with closing(sqlite3.connect(backup)) as target, closing(sqlite3.connect(path)) as source:
                 source.backup(target)
         for statement in (
             """CREATE TABLE vehicles (
