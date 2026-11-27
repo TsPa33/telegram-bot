@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {api} from './api';
+import {IntakeDisclosure, IntakeFeedback, ModelYearOptions, modificationName} from './DonorIntakePresentation';
 
 export type Clarifications={answers:Record<string,string|null>;reviewed:boolean;model_correction?:string};
 type Candidate={
@@ -14,7 +15,7 @@ type ResolutionPage={
   model_cursors?:ModelCursor[];
   questions:{field:string;options:string[]}[]; review:string[]; status:string; automatic:string|null;
 };
-type Readiness={status:string;source_snapshot_sha:string|null};
+type Readiness={status:string;source_snapshot_sha:string|null;counts?:{categories:number;positions:number}};
 export type VinChoice={candidate:Candidate;graph:Readiness};
 export const fieldLabels:Record<string,string>={
   manufacturer:'Марка',model:'Модель',year:'Модельний рік',generation:'Покоління',
@@ -26,7 +27,7 @@ export const fieldLabels:Record<string,string>={
 };
 const readinessLabels:Record<string,string>={
   exact:'Доступні запчастини для цієї модифікації.',
-  partial:'Доступний частковий план. OEM підбирається для позицій із підтвердженими зв’язками.',
+  partial:'Доступний частковий план.',
   absent:'Запчастини для цієї модифікації ще недоступні. Можна вибрати базовий каталог CarPot.',
   unavailable:'Каталог запчастин тимчасово недоступний. Повторіть перевірку або додайте авто з базовим каталогом.',
   unsupported:'Для цього типу транспорту доступний довідник модифікацій і базовий каталог CarPot.',
@@ -65,6 +66,10 @@ export default function VinCataloguePicker({
     setBusy(true);
     setPage(null);
     setError('');
+    setChoice(null);
+    setGraph(null);
+    setGraphError('');
+    onPending(true);
     const query=new URLSearchParams();
     if(scope){
       query.set('maker',scope.kind+':'+scope.manufacturer_id);
@@ -86,9 +91,10 @@ export default function VinCataloguePicker({
           ?[...previous.filter(cursor=>cursor.maker!==modelPage.maker),...(result.model_cursors||[])]
           :result.model_cursors||[]);
         const automatic=result.items.find(item=>item.choice===result.automatic);
-        if(automatic){onPending(true);setChoice(automatic)}
+        if(automatic)setChoice(automatic);
+        else onPending(false);
       })
-      .catch(e=>{if(!controller.signal.aborted)setError((e as Error).message)})
+      .catch(e=>{if(!controller.signal.aborted){setError((e as Error).message);onPending(false)}})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
   },[context,clarificationHeader,scope,cursor,modelPage,retry,onPending]);
@@ -122,17 +128,25 @@ export default function VinCataloguePicker({
     onAnswer(field,value);
   }
   const items=page?.items||[];
-  return <fieldset className="vin-catalogue-select" aria-label="Модифікація та план">
+  const multipleModels=new Set(items.map(modelKey)).size>1;
+  const automatic=!!choice && choice.choice===page?.automatic;
+  const choices=items.map(item=>{
+    const name=modificationName(item.modification,item.model);
+    return {item,label:multipleModels?`${item.model} · ${name}`:name};
+  });
+  if(busy)return <IntakeFeedback kind="loading">Шукаємо сумісні модифікації…</IntakeFeedback>;
+  if(automatic&&!graph&&!graphError)return <IntakeFeedback kind="loading">Готуємо план розбору…</IntakeFeedback>;
+  const fields=<fieldset className="vin-catalogue-select" aria-label="Модифікація та план">
     <legend>Модифікація та план</legend>
-    {busy&&<p role="status">Шукаємо сумісні модифікації…</p>}
-    {error&&<p role="alert">{error}</p>}
+    {error&&<IntakeFeedback kind="error">{error}</IntakeFeedback>}
     {(error||page?.status==='unavailable')&&<button type="button" disabled={disabled||busy}
       onClick={()=>{resetChoice();setRetry(n=>n+1)}}>Повторити пошук</button>}
     {page?.status==='manufacturer_required'&&<p role="status">Вкажіть марку для пошуку модифікацій.</p>}
-    {page?.status==='unavailable'&&<p role="alert">Довідник модифікацій тимчасово недоступний.</p>}
-    {page?.status==='incomplete'&&<p role="status">Пошук неповний. Виберіть модель, щоб перевірити її окремо.</p>}
+    {page?.status==='unavailable'&&<IntakeFeedback kind="error">Довідник модифікацій тимчасово недоступний.</IntakeFeedback>}
+    {page&&page.status!=='unavailable'&&!choice&&
+      <IntakeFeedback>Для точного підбору запчастин доповніть характеристики автомобіля</IntakeFeedback>}
     {page?.search_complete&&!items.length&&<p role="status">Сумісних модифікацій не знайдено.</p>}
-    {models.length>1&&<label>Модель із довідника
+    {models.length>1&&(scope||multipleModels||!page?.search_complete||!items.length)&&<label>Модель із довідника
       <select value={scope?modelKey(scope):''} disabled={disabled||busy} onChange={e=>{
         resetChoice();
         setScope(models.find(row=>modelKey(row)===e.target.value)||null);
@@ -148,33 +162,25 @@ export default function VinCataloguePicker({
       disabled={disabled||busy} onClick={()=>{resetChoice();setModelPage(cursor)}}>
       Наступні моделі · {cursor.kind==='passenger'?'легкові':'комерційні'}
     </button>)}
-    {page?.questions.map(question=>question.options.length===0?<form className="vin-actions" key={question.field}
-      onSubmit={e=>{
-        e.preventDefault();
-        const value=String(new FormData(e.currentTarget).get('answer')||'').trim();
-        if(value)answer(question.field,value);
-      }}>
-      <label>{fieldLabels[question.field]}<input name="answer" inputMode="numeric"
-        pattern="[0-9]{4}" maxLength={4} disabled={disabled} required/></label>
-      <button type="submit" disabled={disabled}>Уточнити</button>
-      <button type="button" disabled={disabled} onClick={()=>answer(question.field,null)}>Невідомо</button>
-    </form>:<label key={question.field}>{fieldLabels[question.field]||question.field}
+    {page?.questions.map(question=><label key={question.field}>{fieldLabels[question.field]||question.field}
       <select disabled={disabled||busy} value="" onChange={e=>answer(question.field,e.target.value||null)}>
-        <option value="" disabled>Уточніть характеристику</option>
+        {question.field==='year'&&!question.options.length?<ModelYearOptions/>:<option value="">Уточніть характеристику</option>}
         <option value="unknown">Невідомо</option>
         {question.options.map(value=><option key={value}>{value}</option>)}
       </select>
     </label>)}
     {!!items.length&&<label>Доступні модифікації
       <select value={choice?.choice||''} disabled={disabled||busy} onChange={e=>{
-        resetChoice();
         const picked=items.find(item=>item.choice===e.target.value)||null;
+        if(picked?.choice===choice?.choice)return;
+        resetChoice();
         if(picked)onPending(true);
         setChoice(picked);
       }}>
         <option value="">Оберіть модифікацію автомобіля</option>
-        {items.map(item=><option key={item.choice} value={item.choice}>
-          {item.model} · {item.modification} {item.construction_interval||''}
+        {choices.map(({item,label})=><option key={item.choice} value={item.choice} title={item.modification}>
+          {label}{item.construction_interval && choices.some(other=>other.item!==item&&other.label===label)
+            ? ' · '+item.construction_interval.trim() : ''}
         </option>)}
       </select>
     </label>}
@@ -183,13 +189,15 @@ export default function VinCataloguePicker({
     }}>Наступні модифікації</button>}
     {!scope&&models.length===1&&page&&!page.search_complete&&<button type="button" disabled={disabled||busy}
       onClick={()=>{resetChoice();setScope(models[0]);setCursor(0)}}>Переглянути всі модифікації моделі</button>}
-    {choice&&!graph&&!graphError&&<p role="status">Перевіряємо доступність запчастин…</p>}
-    {graph&&<p role="status">{readinessLabels[graph.status]||readinessLabels.unavailable}</p>}
+    {choice&&!graph&&!graphError&&<IntakeFeedback kind="loading">Перевіряємо доступність запчастин…</IntakeFeedback>}
+    {graph&&graph.status!=='exact'&&<p role="status">{readinessLabels[graph.status]||readinessLabels.unavailable}</p>}
     {graph?.status==='unavailable'&&<button type="button" disabled={disabled}
       onClick={()=>{onSelect(null);onPending(true);setGraphRetry(n=>n+1)}}>Перевірити каталог ще раз</button>}
-    {graphError&&<><p role="alert">{graphError}</p><button type="button" disabled={disabled} onClick={()=>{
+    {graphError&&<><IntakeFeedback kind="error">{graphError}</IntakeFeedback><button type="button" disabled={disabled} onClick={()=>{
       onSelect(null);onPending(true);setGraphRetry(n=>n+1);
     }}>Повторити перевірку</button></>}
-    {!choice&&<p>Оберіть модифікацію для перевірки каталогу запчастин.</p>}
   </fieldset>;
+  return automatic && (graph?.status==='exact'||graph?.status==='partial')
+    ? <IntakeDisclosure label="Переглянути модифікацію" variant="link">{fields}</IntakeDisclosure>
+    : fields;
 }

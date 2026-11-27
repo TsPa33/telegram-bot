@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 import zlib
@@ -22,6 +23,15 @@ _RUNTIME_KEY = secrets.token_bytes(32)
 _MAX_MAKERS = 4
 _MAX_MODELS = 4
 _MAX_VARIANTS = 16
+_MAX_MATCHED_VARIANTS = 50
+_AUTO_TECHNICAL = {"engine_code", "fuel_type", "engine_displacement_l", "engine_power_kw",
+                   "drive_type", "transmission"}
+_AUTO_CONFLICTS = _AUTO_TECHNICAL | {"manufacturer", "model", "year", "vehicle_type", "generation"}
+# Recognize compact engine designations while leaving layout and capacity
+# descriptions (such as V6DOHC or 2.0L AWD) as display-only observations.
+_REPORTED_ENGINE_CODE = re.compile(
+    r"(?=.{5,21}$)(?![VILWH](?:[1-9]|1[0-6])(?:[A-Z]|$))[A-Z]{1,5}[0-9]{2,}[A-Z0-9]*"
+    r"|[1-9](?![LIV]-)[A-Z]{1,3}-[A-Z][A-Z0-9]{0,6}", re.I)
 
 
 def _signature(purpose, payload):
@@ -110,6 +120,14 @@ def effective_evidence(context, clarifications):
     if correction:
         evidence["model"] = {"value": correction, "reported": correction,
                              "source": "operator", "confidence": "corrected"}
+    engine = evidence.get("engine")
+    if "engine_code" not in evidence and engine:
+        reported = engine["reported"].strip()
+        if (engine["confidence"] == "conflict" and any(_REPORTED_ENGINE_CODE.fullmatch(raw)
+                for raw in (reported, engine.get("alternative", "").strip()))):
+            evidence["engine_code"] = {**engine, "value": None}
+        elif engine["value"] is not None and _REPORTED_ENGINE_CODE.fullmatch(reported):
+            evidence["engine_code"] = {**engine, "value": _value("engine_code", reported)}
     hp = evidence.pop("engine_power_hp", None)
     kw = evidence.get("engine_power_kw")
     if not kw and hp and hp["confidence"] == "conflict":
@@ -170,6 +188,17 @@ def _eligible(evidence, candidate):
     return "mismatch" not in policy.compare(evidence, candidate).values()
 
 
+def _automatic_match(evidence, candidate):
+    matches = policy.compare(evidence, candidate)
+    if (matches.get("manufacturer") != "compatible" or matches.get("model") != "compatible"
+            or any(item["confidence"] == "conflict" for field, item in evidence.items() if field in _AUTO_CONFLICTS)):
+        return False
+    supported = {field for field in _AUTO_TECHNICAL if matches.get(field) == "compatible"}
+    # An exact engine code can corroborate identity without a model year.
+    # Otherwise require a compatible year and independent technical evidence.
+    return len(supported) >= 2 and ("engine_code" in supported or matches.get("year") == "compatible")
+
+
 def _model_pages(adapter, maker, selected_model, model_after=0):
     after = selected_model - 1 if selected_model else model_after
     models = []
@@ -225,8 +254,13 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
             policy.compare(evidence, _model_facts(*pair)).get("vehicle_type") == "mismatch",
             pair[1]["id"],
         ))
-        complete &= len(model_rows) <= _MAX_MODELS
-        scanned_models = model_rows[:_MAX_MODELS]
+        matched_models = [pair for pair in model_rows
+                          if policy.compare(evidence, _model_facts(*pair)).get("model") == "compatible"]
+        # A compatible model name provides the search scope. Other directory
+        # entries remain available for an operator to review the decoded model.
+        scope = matched_models or model_rows
+        complete &= len(scope) <= _MAX_MODELS
+        scanned_models = scope[:_MAX_MODELS]
         futures = [executor.submit(directory.source_page, "modifications", source_id=model["id"],
                    kind=maker["kind"], after=after, adapter=adapter) for maker, model in scanned_models]
         for (maker, model), future in zip(scanned_models, futures):
@@ -242,10 +276,13 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
                 next_after = cursor
             complete &= cursor is None
             for variant in page["items"]:
-                directory_rows.append((maker, model, variant))
-        complete &= len(directory_rows) <= _MAX_VARIANTS
-        # A scoped page is fully evaluated before filtering; global search remains bounded.
-        candidates = list(executor.map(lambda row: _candidate(adapter, *row), directory_rows if selected_model else directory_rows[:_MAX_VARIANTS]))
+                year = evidence.get("year", {}).get("value")
+                if policy.year_relation(year, policy.interval(variant.get("construction_interval"))) != "mismatch":
+                    directory_rows.append((maker, model, variant))
+        variant_limit = _MAX_MATCHED_VARIANTS if matched_models else _MAX_VARIANTS
+        complete &= len(directory_rows) <= variant_limit
+        candidates = list(executor.map(lambda row: _candidate(adapter, *row),
+                                       directory_rows if selected_model else directory_rows[:variant_limit]))
     complete &= all(candidate["attributes_complete"] for candidate in candidates)
     def rank(candidate):
         matches = policy.compare(evidence, candidate)
@@ -255,7 +292,6 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
 
     candidates = [candidate for candidate in candidates if _eligible(evidence, candidate)]
     candidates.sort(key=rank)
-    answers = clarifications.answers
     status = ("complete" if complete
               else "unavailable" if unavailable and not candidates else "incomplete")
     revision = digest(evidence)
@@ -267,18 +303,11 @@ def search(adapter, context, clarifications, who, *, selected_maker=None, select
         items.append({**locator, **{field: candidate[field] for field in (
             "model", "manufacturer", "modification", "construction_interval", "attributes_complete")},
             "matches": policy.compare(evidence, candidate), "choice": token})
-    auto = None
-    if complete and len(items) == 1 and not review and not clarifications.model_correction and not clarifications.answers:
-        matches = items[0]["matches"]
-        technical = set(policy.TECHNICAL) - {"generation", "doors", "transmission_speeds", "engine_cylinders"}
-        supported = sum(matches.get(field) == "compatible" and evidence[field]["confidence"] == "reported"
-                        for field in technical if field in evidence)
-        if "mismatch" not in matches.values() and matches.get("model") == "compatible" and matches.get("year") == "compatible" and supported >= 2:
-            auto = items[0]["choice"]
+    auto = items[0]["choice"] if complete and len(items) == 1 and _automatic_match(evidence, candidates[0]) else None
     return dict(items=items, models=[{**_locator(maker, model, {"id": 0}), "model": model["name"],
                                     "construction_interval": model.get("construction_interval")}
                                    for maker, model in model_rows],
-                questions=policy.needed_questions(evidence, candidates, answers), review=review,
+                questions=policy.needed_questions(evidence, candidates, clarifications.answers), review=review,
                 search_complete=complete, next_after=next_after, model_cursors=model_cursors, status=status, automatic=auto)
 
 
@@ -383,11 +412,21 @@ def graph_plan(adapter, identity):
         status = reply["status"]
         if status in ("absent", "unsupported", "unverified", "identity_mismatch"):
             return status, None
-        if status != "available" or requested["kind"] != "passenger" or reply["source_scope"] != "passenger_prd_article_oem":
+        live = reply.get("source_scope") == "oracle_vehicle_prd_article_oem"
+        if status != "available" or (not live and
+                (requested["kind"] != "passenger" or reply["source_scope"] != "passenger_prd_article_oem")):
             raise catalogue.CatalogueUnavailable("invalid_scope")
         payload = catalogue.checked_plan(reply["plan"])
         if any(payload[field] != requested[field] for field in ("car_id", "manufacturer_id", "model_id")):
             raise catalogue.CatalogueUnavailable("invalid_identity")
+        if live:
+            if payload.get("kind") != requested["kind"] or not payload["categories"]:
+                raise catalogue.CatalogueUnavailable("invalid_identity")
+            graph = reply["article_graph"]
+            if (not isinstance(graph.get("items"), list) or not isinstance(graph.get("product_links"), dict)
+                    or digest(graph) != payload.get("article_graph_sha")):
+                raise catalogue.CatalogueUnavailable("invalid_article_graph")
+            return "partial", {**reply["plan"], "article_graph": graph, "counts": reply["counts"]}
         linked = [row for row in payload["categories"]
                   if row.get("source_fitment_linked") is True and row.get("article_count", 0) > 0
                   and row.get("kind") != "equipment"]
@@ -406,7 +445,7 @@ def graph_preview(adapter, candidate):
     return graph_plan(adapter, candidate)
 
 
-def persist_graph(db, vehicle, envelope, *, readiness):
+def persist_graph(db, vehicle, envelope, *, readiness, retain_existing_plan=False):
     from app.services.dismantling_plan_v3 import generator_basis
 
     payload = envelope["payload"]
@@ -423,4 +462,45 @@ def persist_graph(db, vehicle, envelope, *, readiness):
             confirmation="oracle_source_identity", vin_verified=False,
         ),
     }
-    return catalogue.persist(db, vehicle, envelope, allow_partial=readiness != "exact")
+    saved = catalogue.persist(db, vehicle, envelope, allow_partial=readiness != "exact",
+                              retain_existing_plan=retain_existing_plan)
+    if "article_graph" in saved:
+        initialize_graph_oem(db, vehicle, saved)
+    return saved
+
+
+def graph_status(readiness, plan):
+    if not plan:
+        return {"status": readiness, "source_snapshot_sha": None}
+    payload = plan["payload"]
+    return dict(status=readiness, source_snapshot_sha=payload["source_snapshot_sha"],
+                counts=plan.get("counts") or dict(
+                    categories=len({row["category_path"][0] for row in payload["categories"] if row.get("category_path")}),
+                    positions=len(payload["categories"])))
+
+
+def initialize_graph_oem(db, vehicle, saved):
+    from sqlalchemy import select
+    from app.api.unified_catalogue import saved_articles
+    from app.models import DismantlingItem
+    from app.services import auto_oem, plan_item_binding
+
+    payload = saved["payload"]
+    state = vehicle.dismantling_v3
+    products = {p["product_id"]: p for p in payload["categories"]}
+    refs = dict(auto_oem.references(vehicle))
+    bindings = dict(state.get(plan_item_binding.KEY, {}))
+    for row in db.scalars(select(DismantlingItem).where(
+            DismantlingItem.account_id == vehicle.account_id,
+            DismantlingItem.vehicle_id == vehicle.id,
+            DismantlingItem.source == "carpot.catalogue.v1")):
+        product = products.get(catalogue.row_product_id(row))
+        if not product or row.id in refs or not auto_oem.eligible_row(row):
+            continue
+        offers = saved_articles(product, saved, oem_manufacturer_id=payload["manufacturer_id"])
+        alternatives = auto_oem.choices(offers, row=row, product=product)
+        reference = auto_oem.ref_for(vehicle, row, payload, product, alternatives) if alternatives else None
+        if reference:
+            refs[row.id] = reference
+        plan_item_binding.record_evidence(bindings, row.id, offers, reference)
+    vehicle.dismantling_v3 = {**state, auto_oem.REF_KEY: refs, plan_item_binding.KEY: bindings}

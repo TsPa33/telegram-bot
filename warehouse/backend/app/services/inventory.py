@@ -25,6 +25,13 @@ def snapshot(row):
         result[c.name] = (
             str(value) if isinstance(value, (Decimal, date, datetime)) else value
         )
+    if isinstance(row, Vehicle):
+        state = result.get("dismantling_v3") or {}
+        catalogue = state.get("unified_catalogue") or {}
+        if "article_graph" in catalogue:
+            result["dismantling_v3"] = {**state, "unified_catalogue": {
+                key: value for key, value in catalogue.items() if key != "article_graph"
+            }}
     return result
 
 

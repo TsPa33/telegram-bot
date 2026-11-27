@@ -2,6 +2,7 @@ from app.api.secure_route import SecureRoute
 import json
 import secrets
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated, Literal
 from fastapi import (
     APIRouter,
@@ -33,6 +34,7 @@ from app.schemas import (
     StockInput,
     VehicleInput,
     VinClarifications,
+    VinSourceIdentity,
     VehiclePowertrainInput,
     VehicleSpecificationsInput,
 )
@@ -351,12 +353,31 @@ def _reject_duplicate_vin(db, account_id, vin):
         })
 
 
+def intake_replay(db, account_id, request_key, request_sha):
+    if not request_key:
+        return None
+    row = db.scalar(select(Vehicle).where(Vehicle.account_id == account_id,
+                                         Vehicle.dismantling_v3["intake_request_key"].as_string() == request_key))
+    if row and (row.dismantling_v3 or {}).get("intake_request_sha") != request_sha:
+        raise HTTPException(409, "Цей запит уже створив автомобіль. Почніть нове додавання")
+    return row
+
+
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: BackgroundTasks):
     values = data.model_dump()
+    from app.services.catalogue_format import digest
+
+    accept_base = values.pop("accept_base_catalogue")
+    request_key = values.pop("intake_request_key")
+    graph_sha = values.pop("catalogue_graph_sha")
+    request_sha = digest(data.model_dump(mode="json", exclude={"intake_request_key"})) if request_key else None
+    if existing := intake_replay(db, who.workspace_account_id, request_key, request_sha):
+        return vehicle_view(db, existing, who.workspace_account_id)
     resolution = data.vin_resolution
     values.pop("vin_resolution", None)
-    manual_intake = values.pop("vin_intake_mode", None) == "manual"
+    intake_mode = values.pop("vin_intake_mode", None)
+    explicit_catalogue = intake_mode == "catalogue" or intake_mode == "manual" and data.source_identity is not None
     _reject_duplicate_vin(db, who.workspace_account_id, values.get('vin'))
     # Catalogue selections are not Vehicle columns. Revalidate by ID and
     # snapshot; never trust source names or attributes supplied by the browser.
@@ -368,10 +389,16 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
     values.pop("source_identity", None)
     oracle_identity = None
     stage13_plan = None
-    if manual_intake and (resolution or selection or oracle_selection):
-        raise HTTPException(422, "Ручне додавання використовує базовий каталог")
-    intake_state = {"vin_intake": "manual"} if manual_intake else {}
-    if values["vin"] and (selection or oracle_selection):
+    if intake_mode and (resolution or selection):
+        raise HTTPException(422, "Оберіть один спосіб додавання автомобіля")
+    if accept_base and (intake_mode != "manual" or oracle_selection or resolution):
+        raise HTTPException(422, "Базовий каталог можна обрати при ручному додаванні")
+    if request_key and intake_mode == "manual" and not (oracle_selection or accept_base):
+        raise HTTPException(422, "Оберіть модифікацію або підтвердьте базовий каталог")
+    if (explicit_catalogue and not oracle_selection) or (graph_sha and not explicit_catalogue):
+        raise HTTPException(422, "Оберіть модифікацію з каталогу")
+    intake_state = {"vin_intake": intake_mode} if intake_mode else {}
+    if values["vin"] and (selection or oracle_selection and not explicit_catalogue):
         raise HTTPException(422, "Для VIN виберіть модифікацію за перевіреним контекстом")
     if resolution:
         from app.permissions import require_permission
@@ -407,10 +434,32 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         intake_state = {"vin_intake": "reviewed"}
     if oracle_selection is not None:
         from app.permissions import require_permission
-        from app.services.vin_source_directory import confirm_identity
+        from app.services import vin_resolution, vin_source_directory
+        from app.services.unified_catalogue import CatalogueAdapter
+
         require_permission(who,"vehicles.create","catalog.view")
-        oracle_identity=confirm_identity(
-            oracle_selection,manufacturer=values["manufacturer"],model=values["model"])
+        if explicit_catalogue:
+            require_permission(who, "dismantling.manage")
+            adapter = CatalogueAdapter()
+            oracle_identity, attributes, fields = vin_source_directory.catalogue_identity(
+                adapter, oracle_selection, manufacturer=values["manufacturer"], model=values["model"], year=values["year"])
+            readiness, stage13_plan = vin_resolution.graph_preview(adapter, oracle_identity)
+            if not stage13_plan:
+                if readiness in ("unavailable", "unsupported", "identity_only"):
+                    raise HTTPException(503, "Каталог запчастин тимчасово недоступний. Спробуйте ще раз або додайте автомобіль вручну")
+                raise HTTPException(409, "Для обраної модифікації запчастин у каталозі не знайдено")
+            if graph_sha and graph_sha != stage13_plan["payload"]["source_snapshot_sha"]:
+                raise HTTPException(409, "Каталог змінився. Оновіть план розбору")
+            oracle_identity.update(source_attributes=attributes, catalogue_readiness=readiness,
+                                   allow_upgrade=True, directory_snapshot=digest(oracle_identity))
+            for field, (value, label) in fields.items():
+                if field in ("engine_code", "fuel_type", "drive_type", "transmission") and not values.get(field):
+                    values[field] = value if field == "drive_type" else label
+                elif field == "engine_displacement_l" and not values.get(field) and 0.05 <= value <= 99.9:
+                    values[field] = Decimal(str(value)).quantize(Decimal("0.1"))
+        else:
+            oracle_identity = vin_source_directory.confirm_identity(
+                oracle_selection, manufacturer=values["manufacturer"], model=values["model"])
     source_entry = source_plan = None
     if selection is not None:
         from app.permissions import require_permission
@@ -426,12 +475,19 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
     # Serialize allocation even when callers supply their own donor_id.
     db.scalar(select(Account).where(Account.id == who.workspace_account_id).with_for_update())
+    if existing := intake_replay(db, who.workspace_account_id, request_key, request_sha):
+        return vehicle_view(db, existing, who.workspace_account_id)
+    if request_key:
+        intake_state.update(intake_request_key=request_key, intake_request_sha=request_sha)
     # Catalogue reads run before the lock. Another request can commit this VIN
     # in that interval, so the preflight check cannot authorize the insert.
     _reject_duplicate_vin(db, who.workspace_account_id, values.get('vin'))
     if values.get('vin_details') and not resolution:
         values['vin_details']={**values['vin_details'],'trust':'user_confirmed_reported_not_factory_verified'}
     number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
+    if values["engine_displacement_l"] is not None:
+        # Pin the plan against the same Numeric(4, 1) representation used on reload.
+        values["engine_displacement_l"] = values["engine_displacement_l"].quantize(Decimal("0.1"))
     row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
     db.add(row)
     if intake_state:
@@ -467,6 +523,10 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: Back
         if stage13_plan:
             vin_resolution.persist_graph(db, row, stage13_plan, readiness=oracle_identity["catalogue_readiness"])
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
+    if accept_base and "dismantling.manage" in who.permissions:
+        from app.services import dismantling
+        dismantling.start(db, row.id, who.workspace_account_id)
+        row.dismantling_v3 = {**row.dismantling_v3, "unified_base": True}
     db.commit()
     # Staging-only OEM enrichment starts immediately AFTER the vehicle is committed.
     # The periodic, idempotent sweep remains the retry path after transient failures.
@@ -486,6 +546,37 @@ def vin_source_manufacturers(who: Auth, manufacturer: str=Query(min_length=2,max
     from app.services.vin_source_directory import manufacturer_choices
     require_permission(who,"vehicles.view","catalog.view")
     return manufacturer_choices(manufacturer)
+
+
+@router.get("/vehicles/vin/source-manufacturer-directory", tags=["Vehicles"])
+def vin_manufacturer_directory(who: Auth, kind: Literal["passenger", "commercial"],
+                               name: str = Query("", max_length=100), after: int = Query(0, ge=0)):
+    from app.permissions import require_permission
+    from app.services.unified_catalogue import CatalogueAdapter
+    from app.services.vin_source_directory import manufacturer_page
+
+    require_permission(who, "vehicles.view", "catalog.view")
+    return manufacturer_page(CatalogueAdapter(), kind=kind, name=name, after=after)
+
+
+@router.get("/vehicles/vin/source-graph", tags=["Vehicles"])
+def vin_source_graph(who: Auth, kind: Literal["passenger", "commercial"],
+                     manufacturer_id: int = Query(gt=0), model_id: int = Query(gt=0),
+                     modification_id: int = Query(gt=0), manufacturer: str = Query(min_length=1, max_length=128),
+                     model: str = Query(min_length=1, max_length=128), year: int | None = Query(None, ge=1886, le=2100)):
+    from app.permissions import require_permission
+    from app.services import vin_resolution, vin_source_directory
+    from app.services.unified_catalogue import CatalogueAdapter
+
+    require_permission(who, "vehicles.view", "catalog.view", "dismantling.manage")
+    adapter = CatalogueAdapter()
+    selection = VinSourceIdentity(confirmed=True, kind=kind, manufacturer_id=manufacturer_id, model_id=model_id,
+                                  source_modification_id=modification_id)
+    identity, attributes, fields = vin_source_directory.catalogue_identity(
+        adapter, selection, manufacturer=manufacturer, model=model, year=year)
+    readiness, plan = vin_resolution.graph_preview(adapter, identity)
+    return {**vin_resolution.graph_status(readiness, plan), "modification": identity["modification"],
+            "attributes": attributes, "characteristics": {field: label for field, (_, label) in fields.items()}}
 
 
 @router.get("/vehicles/vin/source-models", tags=["Vehicles"])
@@ -584,7 +675,7 @@ def vehicle_vin_resolution_graph(
         return {"status": "identity_only", "source_snapshot_sha": None}
     candidate, _ = vin_resolution.selected_candidate(adapter, trusted, vin_clarifications(clarification), choice, who)
     readiness, plan = vin_resolution.graph_preview(adapter, candidate)
-    return {"status": readiness, "source_snapshot_sha": plan["payload"]["source_snapshot_sha"] if plan else None}
+    return vin_resolution.graph_status(readiness, plan)
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
@@ -610,6 +701,8 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     changes = data.model_dump(exclude_unset=True)
     resolution = changes.pop("vin_resolution", None)
     intake_mode = changes.pop("vin_intake_mode", None)
+    if changes.pop("accept_base_catalogue", None) or changes.pop("intake_request_key", None) or changes.pop("catalogue_graph_sha", None):
+        raise HTTPException(422, "Ці поля застосовуються лише під час додавання")
     if resolution is not None or intake_mode is not None or changes.pop("catalogue_selection", None) is not None or changes.pop("source_identity", None) is not None:
         raise HTTPException(422, "Для наявного автомобіля використайте підтверджений вибір модифікації у картці")
     if ((row.dismantling_v3 or {}).get("vin_intake") == "reviewed"

@@ -68,8 +68,8 @@ class Source:
             }
             return {"identity": params, "status": "available", "source_scope": "passenger_prd_article_oem",
                     "plan": {"payload": payload, "sha256": digest(payload)}}
-        if endpoint == "manufacturers":
-            rows = self.makers[kind] if params["name"].casefold() == MAKE.casefold() else []
+        if endpoint in ("manufacturers", "manufacturer-directory"):
+            rows = [row for row in self.makers[kind] if row["name"].casefold().startswith(params["name"].casefold())]
         elif endpoint == "models":
             rows = self.models
         elif endpoint == "modifications":
@@ -80,10 +80,10 @@ class Source:
         else:
             pytest.fail(path)
         rows = [r for r in rows if r.get("id", 1) > params.get("after", 0)]
-        page = rows[:50]
+        page = rows[:params.get("limit", 50)]
         truncated = len(rows) > len(page) or endpoint in self.truncated
         return dict(source="oracle", kind=kind, vehicle_identity_only=True, fitment_verified=False,
-                    items=page, next_after=page[-1]["id"] if endpoint in ("models", "modifications") and truncated else None,
+                    items=page, next_after=page[-1]["id"] if endpoint in ("models", "modifications", "manufacturer-directory") and truncated else None,
                     truncated=truncated, source_modification_id=params.get("car_id"))
 
 
@@ -133,6 +133,91 @@ def test_ranks_numeric_series_without_hiding_models_or_requesting_graph(source):
     assert page["models"][0]["model_id"] == 701
     assert page["automatic"] == page["items"][0]["choice"]
     assert {endpoint for endpoint, _ in source.calls} == {"manufacturers", "models", "modifications", "attributes"}
+
+
+def test_decoder_engine_code_resolves_volvo_despite_a_noncritical_doors_conflict(source):
+    source.makers = {"passenger": [{"id": 120, "name": "VOLVO"}], "commercial": []}
+    source.models = [dict(id=index, name=f"Unrelated {index}", construction_interval="2001 -")
+                     for index in range(1, 6)]
+    source.models.append(dict(id=13084, name="XC90 II", construction_interval="09.2014 -"))
+    source.variants = {13084: [
+        dict(id=107555, model_id=13084, name="T6 AWD", construction_interval="09.2014 -"),
+        dict(id=111864, model_id=13084, name="T8 Hybrid AWD", construction_interval="06.2015 -"),
+    ]}
+    specs = [("Power", "235 kW"), ("Capacity_Technical", "1969 ccm"), ("DriveType", "Привод на все колеса")]
+    source.attributes = {
+        107555: [*specs, ("EngineCode", "B 4204 T27"), ("FuelType", "бензин")],
+        111864: [*specs, ("EngineCode", "B 4204 T35"), ("FuelType", "hybrid")],
+    }
+    report = decoded(vin="YV4A22PK2G1092943")
+    report["vehicle"] = dict(manufacturer="VOLVO", model="XC90", year=2016, engine="B4204T27",
+                             fuel_type="Бензин", engine_displacement_l="2", engine_power_hp="316",
+                             vehicle_type="Багатоцільовий пасажирський автомобіль (MPV)")
+    report["conflicts"] = {"doors": {"primary": "4", "secondary": "5"}}
+    identity = who()
+    ctx = context(identity, report)
+    page = resolution.search(source, ctx, VinClarifications(), identity)
+    assert [item["source_modification_id"] for item in page["items"]] == [107555]
+    assert page["automatic"] == page["items"][0]["choice"]
+    assert page["review"] == ["doors"] and page["questions"] == []
+    assert {params["model_id"] for endpoint, params in source.calls if endpoint == "modifications"} == {13084}
+    candidate, evidence = resolution.selected_candidate(source, ctx, VinClarifications(), page["automatic"], identity)
+    assert candidate["modification"] == "T6 AWD" and evidence["engine_code"]["value"] == "b4204t27"
+    report["vehicle"].pop("year")
+    page = resolution.search(source, context(identity, report), VinClarifications(), identity)
+    assert page["automatic"] == page["items"][0]["choice"]
+    report["vehicle"]["engine"] = "2.0L I4"
+    assert "engine_code" not in resolution.effective_evidence(context(identity, report), VinClarifications())
+
+
+@pytest.mark.parametrize("kind,make,model,variant,power,displacement,start,year", [
+    ("passenger", "BMW", "3 (E30)", 21, "73 kW", "1596 ccm", 1987, 1990),
+    ("commercial", "DAF", "XF 105", 8387, "340 kW", "12900 ccm", 2005, 2010),
+])
+def test_model_year_and_source_technical_facts_can_resolve_passenger_and_truck(
+        source, kind, make, model, variant, power, displacement, start, year):
+    source.makers = {"passenger": [], "commercial": []}
+    source.makers[kind] = [{"id": 840, "name": make}]
+    source.models = [dict(id=701, name=model, construction_interval=f"{start} -")]
+    source.variants[701] = [dict(id=id_, model_id=701, name=f"Test variant {id_}", construction_interval=f"{start} -")
+                            for id_ in (variant, variant + 1)]
+    source.attributes = {
+        variant: [("Power", power), ("Capacity_Technical", displacement)],
+        variant + 1: [("Power", "100 kW"), ("Capacity_Technical", displacement)],
+    }
+    identity = who()
+    report = decoded()
+    report["vehicle"] = dict(manufacturer=make, model=model, year=year, vehicle_type=kind,
+                             engine_power_kw=power, engine_displacement_l=displacement)
+    ctx = context(identity, report)
+    page = resolution.search(source, ctx, VinClarifications(), identity)
+    assert page["automatic"] == page["items"][0]["choice"]
+    assert page["items"][0]["source_modification_id"] == variant
+    assert page["questions"] == []
+    report["vehicle"].pop("engine_power_kw")
+    ambiguous = resolution.search(source, context(identity, report), VinClarifications(), identity)
+    assert ambiguous["automatic"] is None
+    assert [question["field"] for question in ambiguous["questions"]] == ["engine_power_kw"]
+
+
+def test_reported_hyphenated_engine_code_is_not_asked_again(source):
+    source.makers = {"passenger": [{"id": 111, "name": "TOYOTA"}], "commercial": []}
+    source.models = [dict(id=3985, name="LAND CRUISER (_J6_)", construction_interval="1980 - 1991")]
+    source.variants = {3985: [
+        dict(id=9281, model_id=3985, name="4.0 (FJ62_G)", construction_interval="1987 - 1990"),
+        dict(id=30632, model_id=3985, name="4.0 4x4", construction_interval="1987 - 1990"),
+    ]}
+    source.attributes = {
+        9281: [("EngineCode", "3F-E"), ("FuelType", "Бензин"), ("Capacity_Technical", "3955 ccm")],
+        30632: [("EngineCode", "3F"), ("FuelType", "Бензин"), ("Capacity_Technical", "3955 ccm")],
+    }
+    identity = who()
+    report = decoded()
+    report["vehicle"] = dict(manufacturer="TOYOTA", model="Land Cruiser", year=1989,
+                             engine="3F-E", fuel_type="Бензин", engine_displacement_l="3.955")
+    page = resolution.search(source, context(identity, report), VinClarifications(), identity)
+    assert [item["source_modification_id"] for item in page["items"]] == [9281]
+    assert page["automatic"] == page["items"][0]["choice"] and page["questions"] == []
 
 
 @pytest.mark.parametrize("field,conflicting", [
@@ -248,7 +333,7 @@ def test_review_can_correct_generic_model_without_replacing_original_evidence(so
     reviewed = VinClarifications(answers={"fuel_type": "Diesel"}, model_correction="3 Series")
     page = resolution.search(source, ctx, reviewed, identity)
     candidate, evidence = resolution.selected_candidate(source, ctx, reviewed, page["items"][0]["choice"], identity)
-    assert candidate["source_modification_id"] == 900 and page["automatic"] is None
+    assert candidate["source_modification_id"] == 900 and page["automatic"] == page["items"][0]["choice"]
     assert resolution.vehicle_details(ctx, evidence)["decoded"]["model"] == "Generic chassis"
     corrected = resolution.effective_evidence(context(identity), VinClarifications(model_correction="30 Series"))
     assert corrected["model"]["value"] == "30 Series"
@@ -281,7 +366,8 @@ def test_post_rechecks_trust_snapshot_and_conflicting_client_values(logged, sour
     choice = search.json()["items"][0]["choice"]
     graph = logged.get("/api/v1/vehicles/vin/resolution-graph",
                        headers={**headers, "X-Vin-Choice": choice})
-    assert graph.json() == {"status": "partial", "source_snapshot_sha": SHA}
+    assert graph.json() == {"status": "partial", "source_snapshot_sha": SHA,
+                            "counts": {"categories": 0, "positions": 1}}
     body = dict(manufacturer=MAKE, model="3 Series", vin=VIN, year=2015,
                 vin_resolution={"context": token, "choice": choice, "graph_sha": SHA},
                 vin_details={"decoded": {"fuel_type": "Petrol"}})
@@ -347,7 +433,7 @@ def test_unknown_year_question_appears_only_if_periods_differ(source):
     source.attributes[901] = source.attributes[900]
     source.variants[701][1]["construction_interval"] = "2017 - 2018"
     result = resolution.search(source, context(identity, decoded(year=None)), VinClarifications(), identity)
-    assert result["questions"] == [{"field": "year", "options": []}]
+    assert result["questions"] == [{"field": "year", "options": ["2018", "2017", "2016", "2015", "2014"]}]
     assert result["automatic"] is None
 
 
@@ -528,7 +614,7 @@ def test_selected_graph_adds_oem_before_explicit_receipt(logged, source, monkeyp
     token, _ = lookup_context(logged, monkeypatch)
     page = logged.get("/api/v1/vehicles/vin/resolution", headers={"X-Vin-Context": token}).json()
     result = logged.post("/api/v1/vehicles", json=dict(
-        manufacturer=MAKE, model="3 Series", year=2015, vin=VIN,
+        manufacturer=MAKE, model="3 Series", year=2015, vin=VIN, engine_displacement_l=2,
         vin_resolution={"context": token, "choice": page["items"][0]["choice"]}))
     assert result.status_code == 201, result.text
     donor = result.json()["id"]
@@ -544,6 +630,7 @@ def test_selected_graph_adds_oem_before_explicit_receipt(logged, source, monkeyp
     auto_oem.enrich_vehicle(engine(), account, donor, cache)
     base = f"/api/v1/vehicles/{donor}"
     plan = logged.get(base + "/global-dismantling").json()
+    assert plan["selection"]["identity_fingerprint"] == plan["selection_basis"]
     assert plan["catalogue_oems"]["41"]["oem_number"] == "OEM-41"
     receipt = {"keys": [plan["keys"]["41"]], "confirm_physical_receipt": True}
     assert logged.post(base + "/unified-catalogue/stock", json=receipt).json() == {"added": 1, "skipped": 0}
@@ -566,3 +653,98 @@ def test_oracle_real_attribute_names_and_fuel_conflict():
     assert list(specs["drive_type"]) == ["AWD"]
     assert "engine_power_kw" in specs
     assert compare({"fuel_type": {"value": "petrol"}}, {"specs": specs}) == {"fuel_type": "mismatch"}
+
+
+
+def test_oracle_catalogue_intake_without_vin_keeps_oem_and_receives_once(logged, source):
+    from uuid import uuid4
+
+    original_get = source.get
+
+    def live_graph(path, params):
+        reply = original_get(path, params)
+        if not path.endswith("source-graph"):
+            return reply
+        payload = reply["plan"]["payload"]
+        article_graph = {"items": [[13, "Offer-1", "Supplier One", ["OE-1", "OE-2"]],
+                                   [14, "Offer-2", "Supplier Two", ["OE-1"]]],
+                         "product_links": {"41": [0, 1]}}
+        payload.update(kind=params["kind"], article_graph_sha=digest(article_graph))
+        payload["categories"][0]["article_count"] = 2
+        return {**reply, "source_scope": "oracle_vehicle_prd_article_oem", "article_graph": article_graph,
+                "counts": {"categories": 0, "positions": 2}, "plan": {"payload": payload, "sha256": digest(payload)}}
+
+    source.makers["commercial"] = [{"id": 840, "name": MAKE}]
+    source.get = live_graph
+    request = {"intake_request_key": str(uuid4()), "vin_intake_mode": "catalogue",
+               "source_identity": {**ORACLE, "kind": "commercial", "confirmed": True},
+               "catalogue_graph_sha": SHA, "manufacturer": MAKE, "model": "3 (F30)", "year": 2015}
+    response = logged.post("/api/v1/vehicles", json=request)
+    assert response.status_code == 201, response.text
+    vid = response.json()["id"]
+    assert response.json()["vin"] is None
+    replay = logged.post("/api/v1/vehicles", json=request)
+    assert replay.status_code == 201 and replay.json()["id"] == vid
+    assert logged.post("/api/v1/vehicles", json={**request, "year": 2016}).status_code == 409
+    view = logged.get(f"/api/v1/vehicles/{vid}/global-dismantling").json()
+    assert "article_graph" not in view["saved"]
+    assert view["oems"]["41"]["oem_options"] == ["OE-1", "OE-2"]
+    assert "42" not in view["oems"]
+    key = view["keys"]["41"]
+    offers = logged.get(f"/api/v1/vehicles/{vid}/unified-catalogue/articles", params={"key": key})
+    assert [(offer["article_nr"], offer["oem_numbers"]) for offer in offers.json()["articles"]] == [
+        ("Offer-1", ["OE-1", "OE-2"]), ("Offer-2", ["OE-1"])]
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Part)) == 0
+    endpoint = f"/api/v1/vehicles/{vid}/unified-catalogue/stock"
+    receipt = {"keys": [key], "confirm_physical_receipt": True}
+    assert logged.post(endpoint, json=receipt).json() == {"added": 1, "skipped": 0}
+    assert logged.post(endpoint, json=receipt).json() == {"added": 0, "skipped": 1}
+    with Session(engine()) as db:
+        part = db.scalar(select(Part).where(Part.vehicle_id == vid))
+        assert (part.quantity, part.oem_number) == (1, "OE-1")
+        assert len(part.oem_provenance["alternatives"]) == 2
+
+
+def test_manual_intake_requires_explicit_base_and_replays_without_vin(logged):
+    from uuid import uuid4
+
+    request = {"intake_request_key": str(uuid4()), "vin_intake_mode": "manual",
+               "manufacturer": MAKE, "model": "Unknown model", "year": 2015}
+    assert logged.post("/api/v1/vehicles", json=request).status_code == 422
+    accepted = {**request, "accept_base_catalogue": True}
+    response = logged.post("/api/v1/vehicles", json=accepted)
+    assert response.status_code == 201, response.text
+    vid = response.json()["id"]
+    assert logged.post("/api/v1/vehicles", json=accepted).json()["id"] == vid
+    with Session(engine()) as db:
+        assert db.get(Vehicle, vid).dismantling_v3["unified_base"] is True
+        assert db.scalar(select(func.count()).select_from(Part)) == 0
+
+
+
+def test_later_oracle_selection_preserves_the_manual_plan(logged, source):
+    from uuid import uuid4
+
+    created = logged.post("/api/v1/vehicles", json={
+        "intake_request_key": str(uuid4()), "vin_intake_mode": "manual",
+        "accept_base_catalogue": True, "manufacturer": MAKE, "model": "3 Series", "year": 2015,
+    })
+    assert created.status_code == 201, created.text
+    vid = created.json()["id"]
+    with Session(engine()) as db:
+        old_ids = set(db.scalars(select(DismantlingItem.id).where(DismantlingItem.vehicle_id == vid)))
+    state = logged.get(f"/api/v1/vehicles/{vid}/global-dismantling").json()
+    body = {"identity": {**ORACLE, "confirmed": True}, "manufacturer": MAKE, "model": "3 (F30)",
+            "source_snapshot_sha": SHA, "expected_basis": state["selection_basis"]}
+    path = f"/api/v1/vehicles/{vid}/oracle-catalogue-selection"
+    attached = logged.post(path, json=body)
+    assert attached.status_code == 200, attached.text
+    assert attached.json()["dismantling_v3"]["legacy_base_plan"] is True
+    assert logged.post(path, json=body).status_code == 200
+    with Session(engine()) as db:
+        now_ids = set(db.scalars(select(DismantlingItem.id).where(DismantlingItem.vehicle_id == vid)))
+        assert old_ids < now_ids and len(now_ids - old_ids) == 1
+    legacy = logged.get(f"/api/v1/vehicles/{vid}/dismantling-workspace", params={"source": "base"})
+    assert legacy.status_code == 200, legacy.text
+    assert {item["key"].removeprefix("base:") for item in legacy.json()["items"]} == old_ids

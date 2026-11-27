@@ -3,6 +3,8 @@ import {api,ApiError,type Row} from './api';
 import {Permit,TeamIdentity,useCan} from './permissions';
 import VinCataloguePicker,{fieldLabels,type Clarifications,type VinChoice} from './VinCataloguePicker';
 import VinDiagnostics from './VinDiagnostics';
+import OracleVehiclePicker,{type OracleVehicle} from './OracleVehiclePicker';
+import {DonorSummary, IntakeDisclosure, IntakeFeedback, ModelYearOptions, PlanReady, displacement, measurement, modificationName} from './DonorIntakePresentation';
 import './vin-intake.css';
 
 export type VinDecode={
@@ -11,12 +13,12 @@ export type VinDecode={
   provider_status?:Row;provider_contributions?:Record<string,string[]>;cached?:boolean;
 };
 const emptyClarifications:Clarifications={answers:{},reviewed:false};
-const summaryFields=['body_class','engine','engine_code','engine_displacement_l','fuel_type','transmission','drive_type'];
 const reviewable=new Set(Object.keys(fieldLabels).filter(field=>field!=='trim'));
 const manualFields=['manufacturer','model','year','generation','engine','engine_code','engine_displacement_l','fuel_type','transmission','drive_type'];
 
-export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
-  mode:'vin'|'manual';onBack:()=>void;onCreated:(row:Row)=>void;
+export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting,saving,onSavingChange}:{
+  mode:'vin'|'manual';onBack:()=>void;onCreated:(row:Row)=>void;onOpenExisting:(row:Row)=>void;
+  saving:boolean;onSavingChange:(saving:boolean)=>void;
 }){
   const identity=useContext(TeamIdentity);
   const can=useCan();
@@ -27,10 +29,12 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
   const [choice,setChoice]=useState<VinChoice|null>(null);
   const [checkingChoice,setCheckingChoice]=useState(false);
   const [acceptBase,setAcceptBase]=useState(false);
+  const [manualSearch,setManualSearch]=useState<string|null>(null);
+  const [manualSelection,setManualSelection]=useState<OracleVehicle|null>(null);
+  const requestKey=useRef<string|null>(null);
   const [error,setError]=useState('');
   const [existing,setExisting]=useState<Row|null>(null);
   const [loading,setLoading]=useState(false);
-  const [saving,setSaving]=useState(false);
   const decodeRequest=useRef<AbortController|null>(null);
   const writing=useRef(false);
   const valid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
@@ -83,8 +87,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
     ...(clarifications.model_correction?{model:clarifications.model_correction}:{}),
   };
   const hasGraph=choice?.graph.status==='exact'||choice?.graph.status==='partial';
-  const ready=(manual||result)&&(!vin||valid)&&!!String(characteristics.manufacturer||'').trim()
-    &&!!String(characteristics.model||choice?.candidate.model||'').trim()&&!checkingChoice&&(manual||hasGraph||acceptBase);
+  const ready=(manual||result)&&(!vin||valid)&&!!String(manualSelection?.manufacturer||characteristics.manufacturer||'').trim()
+    &&!!String(manualSelection?.model||characteristics.model||choice?.candidate.model||'').trim()&&!checkingChoice&&
+    (manual?!!manualSelection||acceptBase:hasGraph||acceptBase);
 
   async function create(){
     if(!ready||writing.current)return;
@@ -93,12 +98,22 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
       setError('Вкажіть модельний рік чотирма цифрами.');
       return;
     }
+    requestKey.current ||= crypto.randomUUID();
     const values:Row={
-      manufacturer:characteristics.manufacturer,model:characteristics.model||choice?.candidate.model,
+      intake_request_key:requestKey.current,
+      manufacturer:manualSelection?.manufacturer||characteristics.manufacturer,
+      model:manualSelection?.model||characteristics.model||choice?.candidate.model,
       year:year?Number(year):null,status:'planned',
     };
     if(valid)values.vin=vin;
-    if(manual)values.vin_intake_mode='manual';
+    if(manual){
+      values.vin_intake_mode='manual';
+      if(!manualSelection)values.accept_base_catalogue=acceptBase;
+      if(manualSelection){
+        values.source_identity=manualSelection.identity;
+        values.catalogue_graph_sha=manualSelection.graph.source_snapshot_sha;
+      }
+    }
     for(const field of ['generation','engine','engine_code','fuel_type','transmission','drive_type']){
       if(characteristics[field])values[field]=characteristics[field];
     }
@@ -113,8 +128,9 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
         ...(choice?{choice:choice.candidate.choice,graph_sha:choice.graph.source_snapshot_sha}:{})};
     }
     writing.current=true;
-    setSaving(true);
+    onSavingChange(true);
     setError('');
+    setExisting(null);
     try{
       onCreated(await api('/vehicles','POST',values));
     }catch(e){
@@ -123,50 +139,74 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
       if(e instanceof ApiError&&e.status===409&&typeof detail?.vehicle_id==='string'){
         try{
           const found=await api<Row>('/vehicles/'+encodeURIComponent(detail.vehicle_id));
-          if(found.vin?.trim().toUpperCase()===vin)setExisting(found);
+          if(found.id===detail.vehicle_id&&found.vin?.trim().toUpperCase()===vin)setExisting(found);
         }catch{/* Keep the duplicate message if the donor is no longer visible. */}
       }
     }finally{
       writing.current=false;
-      setSaving(false);
+      onSavingChange(false);
     }
   }
 
   return <section className="vin-intake" aria-label={manual?'Ручне додавання автомобіля':'Додавання автомобіля за VIN'}>
-    <div className="vin-actions">
+    <div className="vin-content">
+    <div className={!manual?'vin-actions vin-decode-row':'vin-actions'}>
       <label>{manual?'VIN (необов’язково)':'VIN'}<input aria-label="VIN" autoCapitalize="characters"
+        placeholder={manual?undefined:'17 символів VIN'}
         value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{
-          setVin(e.target.value.trim().toUpperCase());
+          const value=e.target.value.trim().toUpperCase();
+          setVin(value);
+          requestKey.current=null;
           if(!manual)clearResult();
           else {setError('');setExisting(null)}
         }}/></label>
-      {!manual&&<button type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>
+      {!manual&&<button className="vin-decode-button" type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>
         {loading?'Визначаємо…':'Визначити автомобіль'}
       </button>}
     </div>
-    {vin&&!valid&&<p role="status">Введіть 17 символів без I, O, Q.</p>}
+    {vin&&!valid&&<IntakeFeedback>Введіть 17 символів без I, O, Q.</IntakeFeedback>}
+    {loading&&<IntakeFeedback kind="loading">Декодуємо VIN та завантажуємо характеристики</IntakeFeedback>}
     {manual&&<div className="vin-fields vin-manual-fields">
-      {manualFields.map(field=><label key={field}>{fieldLabels[field]}
+      {manualFields.slice(0,3).map(field=><label key={field}>{fieldLabels[field]}
         {field==='drive_type'?<select disabled={saving} value={draft[field]||''} onChange={e=>{
           setDraft(before=>({...before,[field]:e.target.value}));
         }}><option value="">Невідомо</option><option>FWD</option><option>RWD</option><option>AWD</option><option>4WD</option></select>:
         <input disabled={saving} value={draft[field]||''} maxLength={field==='year'?4:100}
           onChange={e=>{setDraft(before=>({...before,[field]:e.target.value}))}}/>}
       </label>)}
-      <p>План за базовим каталогом CarPot.</p>
     </div>}
+    {manual&&<>
+      {can('catalog.view')&&can('dismantling.manage')&&<button type="button" disabled={saving||!draft.manufacturer}
+        onClick={()=>{setManualSelection(null);setManualSearch(String(draft.manufacturer));}}>
+        Знайти модифікацію в каталозі
+      </button>}
+      {manualSearch!==null&&<OracleVehiclePicker key={manualSearch} year={String(draft.year||'')}
+        initialManufacturer={manualSearch} disabled={saving} onChange={setManualSelection}/>}
+      <details className="vin-details"><summary>Додаткові характеристики</summary>
+        <div className="vin-fields">{manualFields.slice(3).map(field=><label key={field}>{fieldLabels[field]}
+          {field==='drive_type'?<select disabled={saving} value={draft[field]||''}
+            onChange={e=>setDraft(before=>({...before,[field]:e.target.value}))}>
+            <option value="">Невідомо</option><option>FWD</option><option>RWD</option><option>AWD</option><option>4WD</option>
+          </select>:<input disabled={saving} value={draft[field]||''} maxLength={100}
+            onChange={e=>setDraft(before=>({...before,[field]:e.target.value}))}/>}
+        </label>)}</div>
+      </details>
+      {!manualSelection&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
+        disabled={saving} onChange={e=>setAcceptBase(e.target.checked)}/>Додати з базовим каталогом CarPot</label>}
+    </>}
     {result&&<>
-      {!Object.keys(result.vehicle).length&&<p role="status">{result.message}</p>}
-      <div className="vin-summary" role="region" aria-label="Зведення автомобіля">
-        <strong>{[characteristics.manufacturer,characteristics.model,characteristics.year].filter(Boolean).join(' · ')
-          ||'Характеристики потребують уточнення'}</strong>
-        <dl>{summaryFields.filter(key=>characteristics[key]).map(key=><div key={key}>
-          <dt>{fieldLabels[key]}</dt><dd>{String(characteristics[key])}</dd>
-        </div>)}</dl>
-      </div>
-      <details>
-        <summary>Виправити характеристики</summary>
-        <form className="vin-fields" onSubmit={e=>{
+      {!Object.keys(result.vehicle).length&&<IntakeFeedback>{result.message}</IntakeFeedback>}
+      <DonorSummary title={[characteristics.manufacturer,characteristics.model,characteristics.year].filter(Boolean).join(' · ')
+        ||'Характеристики потребують уточнення'} facts={[
+          ['Паливо', characteristics.fuel_type],
+          ['Привід', characteristics.drive_type],
+          ['Модифікація', choice && modificationName(choice.candidate.modification, choice.candidate.model)],
+          ['Об’єм', displacement(characteristics.engine_displacement_l)],
+          ['Потужність', measurement(characteristics.engine_power_kw,'кВт') || measurement(characteristics.engine_power_hp,'к.с.')],
+          ['Тип', characteristics.vehicle_type || (choice ? choice.candidate.kind==='commercial'?'Комерційний':'Легковий' : null)],
+        ]}/>
+      <IntakeDisclosure label="Виправити характеристики" variant="link">
+        <form className="vin-fields vin-corrections" onSubmit={e=>{
           e.preventDefault();
           const form=new FormData(e.currentTarget);
           const answers={...clarifications.answers};
@@ -180,37 +220,41 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated}:{
           setClarifications(before=>({...before,answers}));
         }}>
           {manualFields.map(field=><label key={field}>{fieldLabels[field]}
-            <input name={field} maxLength={100} defaultValue={characteristics[field]||''} disabled={saving}/>
+            {field==='year'?<select name={field} defaultValue={characteristics[field]||''} disabled={saving}>
+              <ModelYearOptions current={String(characteristics[field]||'')}/>
+            </select>:<input name={field} maxLength={100} defaultValue={characteristics[field]||''} disabled={saving}/>}
           </label>)}
           <button type="submit" disabled={saving}>Застосувати зміни</button>
         </form>
-      </details>
-      {(!characteristics.manufacturer||!characteristics.model)&&<p role="status">Укажіть марку й модель у розділі «Виправити характеристики».</p>}
+      </IntakeDisclosure>
+      {!characteristics.manufacturer&&<IntakeFeedback>Для точного підбору запчастин доповніть характеристики автомобіля</IntakeFeedback>}
       {characteristics.manufacturer&&can('catalog.view')&&<VinCataloguePicker
         key={JSON.stringify([result.resolution_context,clarifications.reviewed,clarifications.model_correction,
           clarifications.answers.manufacturer,clarifications.answers.model,clarifications.answers.vehicle_type])}
         context={result.resolution_context} clarifications={clarifications} disabled={saving}
         onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onSelect={select} onPending={setCheckingChoice}/>}
-      {!hasGraph&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
+      {hasGraph&&<PlanReady counts={choice?.graph.counts}/>}
+      {!hasGraph&&!checkingChoice&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
         disabled={saving||checkingChoice} onChange={e=>{setAcceptBase(e.target.checked)}}/>
         Додати з базовим каталогом без підтвердженого переліку запчастин</label>}
-      <details className="vin-details">
-        <summary>Усі характеристики</summary>
+      <IntakeDisclosure label="Усі характеристики">
         <dl>{Object.entries(result.vehicle).filter(([,value])=>value!=null&&String(value).trim()).map(([key,value])=><div key={key}>
           <dt>{fieldLabels[key]||key}</dt><dd>{String(value)}</dd>
         </div>)}
         {Object.entries(result.additional||{}).map(([key,item])=><div key={key}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
-      </details>
+      </IntakeDisclosure>
       {identity?.catalogue_platform_admin===true&&result.provider_status&&<VinDiagnostics key={vin} vin={vin} result={result}/>}
     </>}
-    {error&&<p role="alert">{error}</p>}
-    {existing&&<button type="button" className="primary" onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
-    {!manual&&result&&!ready&&!saving&&<p role="status">{checkingChoice?'Перевіряємо каталог запчастин…':!choice?'Оберіть сумісну модифікацію або уточніть характеристики VIN.':!hasGraph&&!acceptBase?'Додавання заблоковано: для обраної модифікації каталог запчастин не підтверджено. Повторіть перевірку каталогу.':'Заповніть марку та модель автомобіля.'}</p>}
+    {error&&<IntakeFeedback kind="error">
+      <p>{error}</p>
+      {existing&&<button type="button" disabled={saving} onClick={()=>onOpenExisting(existing)}>Відкрити наявний автомобіль</button>}
+    </IntakeFeedback>}
+    </div>
     <div className="vin-footer">
       <div className="vin-actions">
-        <Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!ready}
-          onClick={()=>void create()}>{saving?'Зберігаємо…':'Додати автомобіль'}</button></Permit>
         <button type="button" disabled={saving} onClick={onBack}>Скасувати</button>
+        <Permit permission="vehicles.create"><button className="vin-submit" type="button" disabled={saving||!ready}
+          onClick={()=>void create()}>{saving?'Зберігаємо…':'Додати автомобіль'}</button></Permit>
       </div>
     </div>
   </section>;

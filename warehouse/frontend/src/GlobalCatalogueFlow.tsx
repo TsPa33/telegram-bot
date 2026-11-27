@@ -5,6 +5,8 @@ import {useCan} from './permissions';
 import AssemblyTree from './AssemblyTree';
 import OemField from './OemField';
 import UniversalPlanGenerator from './UniversalPlanGenerator';
+import OracleVehiclePicker,{type OracleVehicle} from './OracleVehiclePicker';
+import './vin-intake.css';
 
 export function GlobalVehicleForm({onSaved,vehicle,expectedBasis,expectedSelectionRevision}:{onSaved:(row:Row)=>void;vehicle?:Row;expectedBasis?:string;expectedSelectionRevision?:number}) {
  const [items,setItems]=useState<Row[]>([]),[picked,setPicked]=useState(''),[brand,setBrand]=useState(''),[model,setModel]=useState(''),[gen,setGen]=useState(''),[year,setYear]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -31,8 +33,24 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  const [state,setState]=useState<Row>({}),[revision,setRevision]=useState(0),[chooseModification,setChooseModification]=useState(false);
  const saved=state.saved;
  const oracleIdentity=vehicle.dismantling_v3?.oracle_vehicle_identity;
- const canChangeSource=!oracleIdentity?.directory_snapshot;
+ const canAttachOracle=!vehicle.dismantling_v3?.global_selection&&
+   ['manual','reviewed'].includes(vehicle.dismantling_v3?.vin_intake);
+ const canChangeSource=canAttachOracle||!oracleIdentity?.directory_snapshot;
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[detail,setDetail]=useState<Row|null>(null),[q,setQ]=useState(''),[page,setPage]=useState(0);
+ const [oracleChoice,setOracleChoice]=useState<OracleVehicle|null>(null);
+ const [oracleError,setOracleError]=useState('');
+ async function attachOracle(){
+  if(!oracleChoice||busy)return;
+  setBusy(true);setOracleError('');
+  try{
+   const row=await api(`/vehicles/${vehicle.id}/oracle-catalogue-selection`,'POST',{
+    identity:oracleChoice.identity,manufacturer:oracleChoice.manufacturer,model:oracleChoice.model,
+    source_snapshot_sha:oracleChoice.graph.source_snapshot_sha,expected_basis:state.selection_basis,
+   });
+   setChooseModification(false);setRevision(n=>n+1);onSaved(row);
+  }catch(e){setOracleError((e as Error).message);}
+  finally{setBusy(false);}
+ }
  useEffect(()=>{
   let active=true,loading=false;
   setState({});
@@ -62,7 +80,13 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
    </span>
    {canChangeSource&&<button className="secondary" disabled={vehicle.archived||!can('vehicles.edit')||!can('dismantling.manage')} onClick={()=>setChooseModification(v=>!v)}>{chooseModification?'Закрити вибір':'Вибрати модифікацію'}</button>}
   </div>
-  {canChangeSource&&chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis+':'+state.selection_revision} vehicle={vehicle} expectedBasis={state.selection_basis} expectedSelectionRevision={state.selection_revision} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
+  {canChangeSource&&chooseModification&&state.selection_basis&&<div className="uf-source-picker">{canAttachOracle?<div className="vin-intake">
+    <OracleVehiclePicker year={String(vehicle.year||'')} initialManufacturer={vehicle.manufacturer}
+      disabled={busy} onChange={setOracleChoice}/>
+    {oracleError&&<p role="alert">{oracleError}</p>}
+    <button type="button" className="primary" disabled={!oracleChoice||busy}
+      onClick={()=>void attachOracle()}>{busy?'Зберігаємо…':'Оновити план розбору'}</button>
+   </div>:<GlobalVehicleForm key={vehicle.id+':'+state.selection_basis+':'+state.selection_revision} vehicle={vehicle} expectedBasis={state.selection_basis} expectedSelectionRevision={state.selection_revision} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/>}</div>}
    </div>
   </details>
   {(working||!!saved)&&<>

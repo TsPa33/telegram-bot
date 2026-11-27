@@ -103,17 +103,18 @@ def source_page(endpoint, *, source_id, kind, after=0, adapter=None):
                 next_after=next_after, identity_only=True, vin_fitment_verified=False)
 
 
-def confirm_identity(selection, *, manufacturer, model, adapter=None):
+def confirm_identity(selection, *, manufacturer, model, adapter=None, maker_checked=False):
     """O(1) indexed re-read of the chosen model and modification in its maker.
 
     The client supplies numeric identifiers, never trusted names. Check each
     containment edge through the authenticated Oracle catalogue.
     """
     adapter=adapter or CatalogueAdapter()
-    makers=manufacturer_choices(manufacturer,adapter)
-    if not any(item["manufacturer_id"]==selection.manufacturer_id
-               and item["kind"]==selection.kind for item in makers["items"]):
-        raise HTTPException(409,"Виробник модифікації не збігається з VIN")
+    if not maker_checked:
+        makers=manufacturer_choices(manufacturer,adapter)
+        if not any(item["manufacturer_id"]==selection.manufacturer_id
+                   and item["kind"]==selection.kind for item in makers["items"]):
+            raise HTTPException(409,"Виробник модифікації не збігається з VIN")
     model_page=source_page("models",source_id=selection.manufacturer_id,
                            kind=selection.kind,after=selection.model_id-1,adapter=adapter)
     model_row=next((r for r in model_page["items"] if r["id"]==selection.model_id),None)
@@ -133,3 +134,42 @@ def confirm_identity(selection, *, manufacturer, model, adapter=None):
                 vin_fitment_verified=False, parts_graph_verified=False)
 
 
+
+
+def manufacturer_page(adapter, *, kind, name="", after=0, limit=50):
+    result = fetch(adapter, "manufacturer-directory", dict(kind=kind, name=name, after=after, limit=limit), kind)
+    items = result["items"]
+    ids = [item.get("id") for item in items if isinstance(item, dict)]
+    cursor = result.get("next_after")
+    if (len(ids) != len(items) or len(items) > limit
+            or any(type(i) is not int or i <= after for i in ids)
+            or ids != sorted(set(ids))
+            or any(not isinstance(item.get("name"), str) or not item["name"] for item in items)
+            or (cursor is not None and (len(ids) != limit or cursor != ids[-1]))):
+        raise HTTPException(503, "Некоректна відповідь довідника виробників")
+    return dict(items=items, next_after=cursor)
+
+
+def catalogue_identity(adapter, selection, *, manufacturer, model, year=None):
+    from app.services.vin_resolution_policy import interval, source_specs
+
+    makers = manufacturer_page(adapter, kind=selection.kind, after=selection.manufacturer_id - 1, limit=1)
+    maker = next((row for row in makers["items"] if row["id"] == selection.manufacturer_id), None)
+    if not maker or norm(maker["name"]) != norm(manufacturer):
+        raise HTTPException(409, "Виробник змінився. Повторіть вибір із каталогу")
+    identity = confirm_identity(selection, manufacturer=manufacturer, model=model, adapter=adapter, maker_checked=True)
+    start, end = interval(identity["construction_interval"])
+    if year and ((start and year < start) or (end and year > end)):
+        raise HTTPException(422, "Рік автомобіля поза періодом виробництва обраної модифікації")
+    try:
+        attributes = fetch(adapter, "attributes",
+                           dict(kind=identity["kind"], car_id=identity["source_modification_id"], limit=50),
+                           identity["kind"])
+    except HTTPException as error:
+        if error.status_code != 503:
+            raise
+        return identity, [], {}
+    if attributes.get("source_modification_id") != identity["source_modification_id"]:
+        raise HTTPException(503, "Некоректні характеристики модифікації")
+    fields = {field: next(iter(values.items())) for field, values in source_specs(attributes["items"]).items()}
+    return identity, attributes["items"], fields

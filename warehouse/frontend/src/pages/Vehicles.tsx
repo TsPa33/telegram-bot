@@ -1,11 +1,11 @@
 import {Permit,useCan} from '../permissions';
-import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Cog, Info, Images, Coins } from "lucide-react";
+import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Cog, Info, Images, Coins, ScanLine, BookOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, all, labels, money, when, type Row } from "../api";
 import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
 import VehicleVinQuickAdd from '../VehicleVinQuickAdd';
-import {GlobalVehicleForm} from '../GlobalCatalogueFlow';
+import {CatalogueVehicleIntake} from '../OracleVehiclePicker';
 
 
 import AletoCatalogue from "../AletoCatalogue";
@@ -64,24 +64,35 @@ const vehicleFields: Field[] = [
   },
   { key: "notes", label: "Примітки", type: "textarea", wide: true },
 ];
+const filterKey=(value:unknown)=>String(value??'').trim().toLocaleLowerCase('uk');
+
+function filterOptions(values: unknown[]) {
+  const options=new Map<string,string>();
+  for(const value of values){
+    const key=filterKey(value);
+    if(key&&!options.has(key))options.set(key,String(value).trim());
+  }
+  return [...options].sort(([,a],[,b])=>a.localeCompare(b,'uk'));
+}
+
 export default function Vehicles({notify}:{notify:Notify}) {
   const can=useCan();
   const [deleting,setDeleting]=useState<Row|null>(null);
   const [intakeMode,setIntakeMode]=useState<"vin"|"catalogue"|"manual">("vin");
+  const [intakeSaving,setIntakeSaving]=useState(false);
   const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[yearFilter,setYearFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   // The workshop currently holds tens of donors. Fetch all account-scoped pages so every
   // filter works on the entire dataset (not merely one displayed page).
   const {data,error,loading,reload}=useLoad(()=>all('/vehicles'),[]);
   const vehicles:Row[]=data||[];
-  const unique=(values:string[])=>[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk'));
-  const brands=unique(vehicles.map(v=>String(v.manufacturer||'')));
-  const models=unique(vehicles.filter(v=>!brandFilter||v.manufacturer===brandFilter).map(v=>String(v.model||'')));
-  const years=unique(vehicles.filter(v=>(!brandFilter||v.manufacturer===brandFilter)&&(!modelFilter||v.model===modelFilter)).map(v=>String(v.year||''))).sort((a,b)=>Number(b)-Number(a));
+  const matchingBrand=vehicles.filter(v=>!brandFilter||filterKey(v.manufacturer)===brandFilter);
+  const matchingModel=matchingBrand.filter(v=>!modelFilter||filterKey(v.model)===modelFilter);
+  const brands=filterOptions(vehicles.map(v=>v.manufacturer));
+  const models=filterOptions(matchingBrand.map(v=>v.model));
+  const years=[...new Set(matchingModel.flatMap(v=>v.year?[String(v.year)]:[]))].sort((a,b)=>Number(b)-Number(a));
   const query=q.trim().toLocaleLowerCase('uk');
-  const filtered=vehicles.filter(v=>{
+  const filtered=matchingModel.filter(v=>{
    if(statusFilter&&v.status!==statusFilter)return false;
-   if(brandFilter&&v.manufacturer!==brandFilter)return false;
-   if(modelFilter&&v.model!==modelFilter)return false;
    if(yearFilter&&String(v.year)!==yearFilter)return false;
    if(!query)return true;
    return [v.manufacturer,v.model,v.year,v.number,v.donor_id,v.vin].some(value=>String(value??'').toLocaleLowerCase('uk').includes(query));
@@ -89,6 +100,8 @@ export default function Vehicles({notify}:{notify:Notify}) {
   const visible=filtered.slice(page*50,(page+1)*50);
   const navigate=useNavigate(),[params,setParams]=useSearchParams(),donorId=params.get('donor');
   function openDetail(row:Row,info=false){setShowInfo(info);setDetail(row);setParams({donor:row.id,...(info?{info:'1'}:{})});}
+  function openExisting(row:Row){setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');}
+  function finishIntake(row:Row){setCreated(row);saved(row);openExisting(row);}
   function closeDetail(){setDetail(null);setParams({});}
   function saved(row:Row){setDetail(current=>current?.id===row.id?row:current);setCreated(current=>current?.id===row.id?row:current);reload();}
   async function refresh(){reload();if(detail){try{setDetail(await api(`/vehicles/${detail.id}`));}catch(e){notify((e as Error).message);}}}
@@ -106,8 +119,8 @@ export default function Vehicles({notify}:{notify:Notify}) {
     <div className="r114-toolbar r1146-toolbar">
      <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель, номер або VIN" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
      <select aria-label="Фільтр статусу автомобіля" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}><option value="">Усі статуси</option><option value="planned">Заплановано</option><option value="dismantling">На розборі</option><option value="completed">Завершено</option></select>
-     <select aria-label="Фільтр марки" value={brandFilter} onChange={e=>{setBrandFilter(e.target.value);setModelFilter('');setYearFilter('');setPage(0)}}><option value="">Усі марки</option>{brands.map(v=><option key={v} value={v}>{v}</option>)}</select>
-     <select aria-label="Фільтр моделі" value={modelFilter} onChange={e=>{setModelFilter(e.target.value);setYearFilter('');setPage(0)}}><option value="">Усі моделі</option>{models.map(v=><option key={v} value={v}>{v}</option>)}</select>
+     <select aria-label="Фільтр марки" value={brandFilter} onChange={e=>{setBrandFilter(e.target.value);setModelFilter('');setYearFilter('');setPage(0)}}><option value="">Усі марки</option>{brands.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>
+     <select aria-label="Фільтр моделі" value={modelFilter} onChange={e=>{setModelFilter(e.target.value);setYearFilter('');setPage(0)}}><option value="">Усі моделі</option>{models.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>
      <select aria-label="Фільтр року" value={yearFilter} onChange={e=>{setYearFilter(e.target.value);setPage(0)}}><option value="">Усі роки</option>{years.map(v=><option key={v} value={v}>{v}</option>)}</select>
      <div className="r114-view-toggle" role="group" aria-label="Режим відображення"><button type="button" aria-pressed={view==='cards'} onClick={()=>setView('cards')}><LayoutGrid size={15}/> Плитка</button><button type="button" aria-pressed={view==='table'} onClick={()=>setView('table')}><List size={15}/> Таблиця</button></div>
     </div>
@@ -123,21 +136,22 @@ export default function Vehicles({notify}:{notify:Notify}) {
      </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
     </section>}
     {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
-    {edit&&<Modal className={edit.id?undefined:"vin-intake-dialog"} title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
+    {edit&&<Modal className={edit.id?undefined:"vin-intake-dialog"} title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'}
+      titleIcon={!edit.id && <CarFront size={24}/>} onClose={()=>setEdit(null)} closeDisabled={intakeSaving}>
       {edit.id?<RecordForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} submit="Зберегти зміни" onSave={async values=>{
         const row=await api('/vehicles/'+edit.id,'PUT',values);
         saved(row);setEdit(null);notify('Дані автомобіля збережено');
       }}/>:<>
         <div className="vin-mode" role="group" aria-label="Спосіб додавання автомобіля">
-          {([['vin','За VIN'],['catalogue','Із каталогу'],['manual','Вручну']] as const)
+          {([['vin','За VIN',ScanLine],['catalogue','Із каталогу',BookOpen],['manual','Вручну',Pencil]] as const)
             .filter(([mode])=>mode!=='catalogue'||can('catalog.view'))
-            .map(([mode,label])=><button key={mode} type="button" aria-pressed={intakeMode===mode}
-              onClick={()=>setIntakeMode(mode)}>{label}</button>)}
+            .map(([mode,label,Icon])=><button key={mode} type="button" aria-pressed={intakeMode===mode} disabled={intakeSaving}
+              onClick={()=>setIntakeMode(mode)}><Icon size={17} aria-hidden="true"/>{label}</button>)}
         </div>
-        {intakeMode==='catalogue'?<GlobalVehicleForm onSaved={row=>{saved(row);setEdit(null);openDetail(row,true);}}/>:
-          <VehicleVinQuickAdd key={intakeMode} mode={intakeMode} onBack={()=>setEdit(null)} onCreated={row=>{
-            setCreated(row);saved(row);setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');
-          }}/>}
+        {intakeMode==='catalogue'?<CatalogueVehicleIntake saving={intakeSaving} onSavingChange={setIntakeSaving}
+          onBack={()=>setEdit(null)} onCreated={finishIntake}/>:<VehicleVinQuickAdd key={intakeMode} mode={intakeMode}
+          saving={intakeSaving} onSavingChange={setIntakeSaving} onBack={()=>setEdit(null)}
+          onCreated={finishIntake} onOpenExisting={openExisting}/>}
       </>}
     </Modal>}
     {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>

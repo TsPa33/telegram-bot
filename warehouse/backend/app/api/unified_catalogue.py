@@ -8,7 +8,7 @@ from app.api.deps import identity, Identity
 from app.db import get_db
 from app.models import Vehicle
 from app.permissions import require_permission
-from app.schemas import Input
+from app.schemas import Input, VinSourceIdentity
 from app.services.inventory import owned
 from app.services import unified_catalogue as service
 
@@ -108,7 +108,18 @@ def saved_articles(product, state, *, oem_manufacturer_id=None, adapter=None, li
     payload=state['payload']
     if payload.get('schema') in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1'):
         try:
-            items=linked_items if linked_items is not None else (adapter or service.CatalogueAdapter()).articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
+            graph = state.get("article_graph")
+            if graph is not None:
+                indices = graph["product_links"].get(str(product["product_id"]), [])
+                items = []
+                for idx in indices:
+                    sid, number, brand, codes = graph["items"][idx]
+                    items.append(dict(supplier_id=sid, article_number=number,
+                                      supplier=[{"description": brand}] if brand else [],
+                                      oem=[dict(OENbr=code, manufacturerId=payload["manufacturer_id"],
+                                                source="article_oe") for code in codes]))
+            else:
+                items=linked_items if linked_items is not None else (adapter or service.CatalogueAdapter()).articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
         except service.CatalogueUnavailable:
             raise HTTPException(503,'Артикули збереженої версії тимчасово недоступні. Платний запит не виконувався.') from None
         if len(items)!=product['article_count']:
@@ -413,12 +424,72 @@ def global_saved(id: str, db: DB, who: Auth):
                 oems[product_id] = dict(item_id=row.id, part_id=None, oem_number=ref['oem_number'],
                     oem_options=options(ref), oem_status='catalogue_applicable')
     from app.services.dismantling_plan_v3 import generator_basis
-    return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),saved=state,
+    return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),
+        saved={k: value for k, value in state.items() if k != "article_graph"} if state else None,
         keys=keys,oems=oems,catalogue_oems=catalogue_oems,
         selection_revision=(v.dismantling_v3 or {}).get('catalogue_selection_revision', 0),
         item_bindings=(v.dismantling_v3 or {}).get(KEY, {}) if 'inventory.view' in who.permissions else {},
-        unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool(not state and (service.has_plan_state(v) or v.ktype)),
-        legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
+        unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool((v.dismantling_v3 or {}).get("legacy_base_plan") or
+                    not state and (service.has_plan_state(v) or v.ktype)),
+        legacy_source='base' if any((v.dismantling_v3 or {}).get(key)
+                                    for key in ("unified_base", "legacy_base_plan")) else 'professional')
+
+
+class ExistingOracleSelection(Input):
+    identity: VinSourceIdentity
+    manufacturer: str = Field(min_length=1, max_length=128)
+    model: str = Field(min_length=1, max_length=128)
+    source_snapshot_sha: str = Field(pattern=r"^[a-f0-9]{64}$")
+    expected_basis: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+@router.post('/{id}/oracle-catalogue-selection')
+def select_existing_oracle(id: str, data: ExistingOracleSelection, db: DB, who: Auth):
+    from app.api.routes import vehicle_view
+    from app.services import vin_resolution, vin_source_directory
+    from app.services.dismantling_plan_v3 import generator_basis
+
+    require_permission(who, 'vehicles.view', 'vehicles.edit', 'catalog.view', 'dismantling.manage')
+    vehicle = owned(db, Vehicle, id, who.workspace_account_id, active=True)
+    state = vehicle.dismantling_v3 or {}
+    saved = service.saved_state(vehicle)
+    if saved and saved["payload"]["source_snapshot_sha"] == data.source_snapshot_sha:
+        return vehicle_view(db, vehicle, who.workspace_account_id)
+    if saved or state.get("global_selection") or state.get("vin_intake") not in ("manual", "reviewed"):
+        raise HTTPException(409, "Автомобіль уже має обрану модифікацію")
+    if generator_basis(vehicle) != data.expected_basis:
+        raise HTTPException(409, "Дані автомобіля змінилися. Оновіть картку")
+    adapter = service.CatalogueAdapter()
+    source, attributes, _ = vin_source_directory.catalogue_identity(
+        adapter, data.identity, manufacturer=data.manufacturer, model=data.model, year=vehicle.year)
+    if (vin_source_directory.maker_key(vehicle.manufacturer) != vin_source_directory.maker_key(data.manufacturer)
+            or vin_resolution.policy.model_relation(vehicle.model, data.model) != "compatible"):
+        raise HTTPException(409, "Марка або модель відрізняється. Спочатку уточніть автомобіль у картці")
+    readiness, plan = vin_resolution.graph_preview(adapter, source)
+    if not plan:
+        raise HTTPException(503, "Не вдалося отримати план розбору для обраної модифікації")
+    if plan["payload"]["source_snapshot_sha"] != data.source_snapshot_sha:
+        raise HTTPException(409, "Каталог змінився. Повторіть перевірку модифікації")
+
+    vehicle = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
+    db.refresh(vehicle)
+    state = vehicle.dismantling_v3 or {}
+    if (saved := service.saved_state(vehicle)) and saved["payload"]["source_snapshot_sha"] == data.source_snapshot_sha:
+        return vehicle_view(db, vehicle, who.workspace_account_id)
+    if saved or state.get("global_selection") or generator_basis(vehicle) != data.expected_basis:
+        raise HTTPException(409, "Дані автомобіля змінилися. Оновіть картку")
+
+    prior_base = state.get("unified_base") or service.has_plan_history(db, vehicle)
+    vehicle.dismantling_v3 = {
+        **{key: value for key, value in state.items() if key != "unified_base"},
+        "legacy_base_plan": bool(prior_base),
+        "oracle_vehicle_identity": {**source, "source_attributes": attributes,
+                                    "catalogue_readiness": readiness,
+                                    "identity_fingerprint": generator_basis(vehicle)},
+    }
+    vin_resolution.persist_graph(db, vehicle, plan, readiness=readiness, retain_existing_plan=True)
+    db.commit()
+    return vehicle_view(db, vehicle, who.workspace_account_id)
 
 
 from app.schemas.orders import Key
