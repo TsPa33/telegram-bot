@@ -1,5 +1,6 @@
 import ImportRunnerPanel from '../ImportRunnerPanel';
 import DismantlingCatalogImport from '../DismantlingCatalogImport';
+import AletoWorkerPanel from '../AletoWorkerPanel';
 import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
@@ -50,8 +51,10 @@ const adminTabs: {id:AdminTab;label:string;hint:string}[]=[
  {id:'global',label:'Глобальний каталог',hint:'Перевірка та публікація'},
  {id:'normalization',label:'Нормалізація',hint:'Дублікати та українські назви'}
 ];
-export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;actorKey:string}){
+export default function CatalogueImport({enabled,actorKey,parserPermissions}:{enabled:boolean;actorKey:string;parserPermissions:string[]}){
  const [tab,setTab]=useState<AdminTab>('parts');
+ const [preparedId,setPreparedId]=useState<string>();
+ if(!enabled&&parserPermissions.includes('catalog_parser_view'))return <AletoWorkerPanel key={actorKey} permissions={parserPermissions}/>;
  if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Керування каталогом доступне адміністратору платформи.</p></section>;
  return <ParserAdminCenter key={actorKey}>
   <nav className="catalogue-admin-tabs" aria-label="Розділи каталогу">
@@ -70,13 +73,13 @@ export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;acto
    <p className="catalogue-tab-subtitle">Приватне завантаження автомобільного каталогу з попередньою перевіркою. Дані вже створених донорів та склад не змінюються.</p>
    <VehicleDirectoryImport/>
   </section>}
-  {tab==='offers'&&<section id="pa-file-import" className="catalogue-tab-content" aria-label="Ринкові пропозиції"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section>}
-  {tab==='runner'&&<div className="catalogue-tab-content"><ImportRunnerPanel actorKey={actorKey}/></div>}
+  {tab==='offers'&&<section id="pa-file-import" className="catalogue-tab-content" aria-label="Ринкові пропозиції"><ImportWorkspace key={actorKey} actorKey={actorKey} initialJob={preparedId}/></section>}
+  {tab==='runner'&&<div className="catalogue-tab-content"><AletoWorkerPanel permissions={parserPermissions} onPrepared={id=>{setPreparedId(id);setTab('offers');}}/><ImportRunnerPanel actorKey={actorKey}/></div>}
   {tab==='global'&&<div className="catalogue-tab-content"><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></div>}
   {tab==='normalization'&&<div className="catalogue-tab-content"><CatalogueNormalizationReview key={actorKey+':normalization'}/></div>}
  </ParserAdminCenter>;
 }
-function ImportWorkspace({actorKey}:{actorKey:string}){
+function ImportWorkspace({actorKey,initialJob}:{actorKey:string;initialJob?:string}){
  const [historyPage,setHistoryPage]=useState(0);
  const history=useLoad(()=>api('/catalogue/admin/jobs?limit=50&offset='+historyPage*50),[historyPage]);
  const [state,setState]=useState<Review>(emptyReview),ref=useRef(state);
@@ -100,9 +103,9 @@ function ImportWorkspace({actorKey}:{actorKey:string}){
  }
  useEffect(()=>{
   mounted.current=true;
-  try{const id=sessionStorage.getItem(lastKey(actorKey));if(id)void load(id);}catch{setStorageError('Сховище чернеток недоступне. Не оновлюйте сторінку з незбереженими полями.');}
+  try{const id=initialJob||sessionStorage.getItem(lastKey(actorKey));if(id)void load(id);}catch{setStorageError('Сховище чернеток недоступне. Не оновлюйте сторінку з незбереженими полями.');}
   return ()=>{mounted.current=false;generation.current++;};
- },[actorKey]);
+ },[actorKey,initialJob]);
  useEffect(()=>{const open=(e:Event)=>{const id=(e as CustomEvent).detail?.id;if(typeof id==='string'&&id.length<=36&&!sending.current&&!ref.current.pending&&!active(ref.current.job))void load(id);};window.addEventListener('warehouse:catalogue-job-open',open);return()=>window.removeEventListener('warehouse:catalogue-job-open',open);},[actorKey]);
  const awaiting=!!state.pending||active(state.job);
  useEffect(()=>{

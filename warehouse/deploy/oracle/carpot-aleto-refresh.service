@@ -1,0 +1,22 @@
+[Unit]
+Description=Schedule opted-in CarPot Aleto price refresh
+After=carpot-aleto-parser.service
+Requires=carpot-aleto-parser.service
+
+[Service]
+Type=oneshot
+User=carpot-aleto-parser
+StateDirectory=carpot-market-reference
+WorkingDirectory=/opt/carpot-aleto-parser/backend
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=CARPOT_ALETO_DATABASE=/var/lib/carpot-market-reference/catalogue.sqlite3
+ExecStart=/opt/carpot-aleto-parser/venv/bin/python -m app.aleto_control
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+InaccessiblePaths=-/etc/mysql -/etc/my.cnf -/etc/my.cnf.d -/var/lib/mysql -/run/mysqld -/run/mysql
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX

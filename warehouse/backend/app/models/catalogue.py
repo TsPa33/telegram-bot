@@ -1,7 +1,8 @@
 """Global reference catalogue; no stock/finance ownership or cascade to v1."""
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import String, Text, JSON, Integer, DateTime, Numeric, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, text
+from sqlalchemy import String, Text, JSON, Integer, BigInteger, DateTime, Numeric, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 from app.models import uid, now
@@ -132,3 +133,25 @@ class CatalogueOperation(Base):
     __table_args__ = (Index('uq_catalogue_active_operation','job_id',unique=True,postgresql_where=text("status IN ('queued','running')")),
         CheckConstraint("kind IN ('preview','apply')",name='ck_catalogue_operation_kind'),
         CheckConstraint("status IN ('queued','running','done','error')",name='ck_catalogue_operation_status'),)
+
+class AletoImportRun(Base):
+    __tablename__ = 'aleto_import_runs'
+    actor_id: Mapped[str] = mapped_column(String(36), ForeignKey('accounts.id', ondelete='CASCADE'), primary_key=True)
+    job_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    cursor: Mapped[int] = mapped_column(BigInteger, server_default='0')
+    seen: Mapped[int] = mapped_column(BigInteger, server_default='0')
+    rejected: Mapped[int] = mapped_column(BigInteger, server_default='0')
+    done: Mapped[bool] = mapped_column(server_default=text('false'))
+
+
+class AletoImportBatch(Base):
+    __tablename__ = 'aleto_import_batches'
+    actor_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    job_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    start_cursor: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    end_cursor: Mapped[int] = mapped_column(BigInteger)
+    catalogue_job_id: Mapped[str | None] = mapped_column(String(36), ForeignKey('catalogue_jobs.id', ondelete='SET NULL'))
+    entries: Mapped[list] = mapped_column(JSONB)
+    __table_args__ = (ForeignKeyConstraint(['actor_id', 'job_id'],
+                                          ['aleto_import_runs.actor_id', 'aleto_import_runs.job_id'],
+                                          ondelete='CASCADE'),)

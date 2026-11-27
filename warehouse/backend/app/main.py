@@ -136,6 +136,8 @@ app.include_router(sales_center_router)
 
 from app.api.import_jobs import router as import_jobs_router
 app.include_router(import_jobs_router)
+from app.api.aleto_control import router as aleto_control_router
+app.include_router(aleto_control_router)
 
 from app.api.dismantling_workspace import router as dismantling_workspace_router
 app.include_router(dismantling_workspace_router)
