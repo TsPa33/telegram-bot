@@ -157,12 +157,16 @@ def probe_aleto_connect():
     if not hostname or hostname != "carpot-oracle.tailf95906.ts.net":
         log.warning("Aleto CONNECT diagnostic skipped for unexpected destination")
         return
-    for label, host in (("dns-name", hostname), ("tailnet-ip", "100.87.244.120")):
+    for label, host, port in (
+        ("ssh-ip", "100.87.244.120", 22),
+        ("https-443-ip", "100.87.244.120", 443),
+        ("aleto-ip", "100.87.244.120", 8443),
+    ):
         try:
-            with socket.create_connection((proxy.hostname, proxy.port), timeout=6) as conn:
+            with socket.create_connection((proxy.hostname, proxy.port), timeout=5) as conn:
                 conn.settimeout(6)
-                connect = f"CONNECT {host}:8443 HTTP/1.1\\r\\nHost: {host}:8443\\r\\n\\r\\n"
-                conn.sendall(connect.encode("ascii"))
+                request = f"CONNECT {host}:{port} HTTP/1.1\\r\\nHost: {host}:{port}\\r\\n\\r\\n"
+                conn.sendall(request.encode("ascii"))
                 reply = b""
                 while b"\\r\\n\\r\\n" not in reply and len(reply) < 1024:
                     chunk = conn.recv(1024)
@@ -171,7 +175,7 @@ def probe_aleto_connect():
                     reply += chunk
                 status = reply.split(b"\\r\\n", 1)[0][:80].decode("ascii", "replace")
                 log.info("Aleto CONNECT target %s: %s", label, status)
-                if b" 200 " not in reply.split(b"\\r\\n", 1)[0]:
+                if port != 8443 or b" 200 " not in reply.split(b"\\r\\n", 1)[0]:
                     continue
                 with ssl.create_default_context().wrap_socket(conn, server_hostname=hostname) as tls:
                     log.info("Aleto TLS target %s: %s", label, tls.version())
