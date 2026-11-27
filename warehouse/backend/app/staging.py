@@ -110,29 +110,6 @@ def drop_volume_bootstrap_privileges():
             )
 
 
-def probe_private_aleto():
-    """One-time read-only network check during staging acceptance; no auth token."""
-    from urllib.parse import urlsplit
-    import httpx
-
-    raw = os.getenv("WAREHOUSE_ALETO_WORKER_URL", "").rstrip("/")
-    proxy = os.getenv("WAREHOUSE_ALETO_WORKER_PROXY", "")
-    u = urlsplit(raw)
-    if not (os.getenv("RAILWAY_ENVIRONMENT_NAME") == "warehouse-staging"
-            and u.scheme == "http"
-            and u.hostname == "carpot-oracle.tailf95906.ts.net"
-            and u.port == 8444 and proxy):
-        return
-    try:
-        with httpx.Client(proxy=proxy, timeout=8, follow_redirects=False,
-                          trust_env=False) as client:
-            response = client.get(raw + "/jobs")
-        log.info("ALETO_PRIVATE_HTTP_PROBE status=%s (401 is expected)", response.status_code)
-    except Exception as exc:
-        log.warning("ALETO_PRIVATE_HTTP_PROBE failed: %s: %s",
-                    type(exc).__name__, str(exc).splitlines()[0][:200])
-
-
 def main():
     logging.basicConfig(level=logging.INFO)
     if os.getenv("WAREHOUSE_ENV") != "staging":
@@ -147,7 +124,6 @@ def main():
         raise RuntimeError("Invalid staging PORT or startup timeout")
     drop_volume_bootstrap_privileges()
     migrate(timeout)
-    probe_private_aleto()
     # Dual-stack works in both new IPv4/IPv6 Railway environments and legacy
     # IPv6-only private networks; also accepts IPv4 deployment health checks.
     listener = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
