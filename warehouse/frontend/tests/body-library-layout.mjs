@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 await mkdir('test-results',{recursive:true});
 const browser=await chromium.launch({args:['--no-sandbox']});
-const types=['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','tractor','truck','bus'];
+const types=['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','tractor','truck','bus','suv','suv','suv','tractor','truck'];
 try{
  for(const width of [1440,768,390]){
   const page=await browser.newPage({viewport:{width,height:900}});
   const errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:5173'))external.push(r.url());});
   await page.goto('http://127.0.0.1:5173/tests/body-library-layout.html');
-  const cards=page.locator('.corporate-donor-card');await expect(cards).toHaveCount(13);
+  const cards=page.locator('.corporate-donor-card');await expect(cards).toHaveCount(18);
   for(const theme of ['light','onyx','gold','forest']){
    await page.evaluate(t=>{document.documentElement.dataset.theme=t==='light'?'light':'dark';document.documentElement.dataset.nightStyle=t;},theme);
    for(let i=0;i<types.length;i++){
@@ -26,6 +26,6 @@ try{
    await page.screenshot({path:'test-results/body-library-'+theme+'-'+width+'.png',fullPage:true,animations:'disabled'});
   }
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await page.close();console.log('PASS all 12 bodies and unknown, four themes, viewport '+width);
+  await page.close();console.log('PASS all 12 bodies, 5 staging regression cases and unknown, four themes, viewport '+width);
  }
 }finally{await browser.close();}

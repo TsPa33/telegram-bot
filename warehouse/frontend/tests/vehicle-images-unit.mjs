@@ -78,7 +78,7 @@ test('body classification consumes saved VIN characteristics; avoids ambiguous t
  assert.equal(r({manufacturer:'Alfa Romeo',model:'147 (937_)'}),'hatchback');
  assert.equal(r({manufacturer:'Volvo',model:'XC90'}),'suv');
  assert.equal(r({manufacturer:'Volvo',model:'XC90',body_type:'wagon',vin_details:{characteristics:{body_class:'sedan'}}}),'unknown');
- assert.equal(r({manufacturer:'Audi',model:'Q5',vin_details:{conflicts:{body_class:['sedan','suv']}}}),'unknown');
+ assert.equal(r({manufacturer:'Audi',model:'Q5',vin_details:{conflicts:{body_class:['sedan','suv']}}}),'suv');
  for(const type of ['sedan','hatchback','wagon','suv','coupe','convertible','minivan','pickup','van','tractor','truck','bus'])assert.equal(r({body_type:type}),type);
  assert.equal(r({manufacturer:'Other',model:'Ambiguous'}),undefined);
 });
@@ -96,4 +96,24 @@ test('all registered body images have exact transparent WebP provenance, no dupl
   assert.equal(b.length,m.bytes);assert(b.length<=150000);assert.equal(b.toString('ascii',8,16),'WEBPVP8X');assert(b[20]&16);
   assert.equal(b.readUIntLE(24,3)+1,960);assert.equal(b.readUIntLE(27,3)+1,640);
  }
+});
+
+test('staging regression: model families and exact Oracle commercial variants select body art',()=>{
+ const r=classification.resolvePlaceholderBody;
+ for(const v of [
+  {manufacturer:'AUDI',model:'Q5',year:null,vin_details:{conflicts:{body_class:['SUV','MPV']}}},
+  {manufacturer:'VOLVO',model:'XC90',year:2016,vin_details:{consistency_issues:{body_class:'ambiguous'},decoded:{body_class:'MPV'}}},
+  {manufacturer:'VOLVO',model:'XC90 II',year:2016},
+  {manufacturer:'Volvo',model:'XC90',year:2017},
+  {manufacturer:'Volvo',model:'XC60',year:2022}
+ ])assert.equal(r(v),'suv');
+ const daf={manufacturer:'DAF',model:'XF 105',year:2007};
+ assert.equal(r({...daf,dismantling_v3:{global_selection:{modification_description:'FTS 105.460, FTR 105.460'}}}),'tractor');
+ assert.equal(r({...daf,dismantling_v3:{global_selection:{modification_description:'FA 105.460'}}}),'truck');
+ assert.equal(r({...daf,dismantling_v3:{oracle_vehicle_identity:{modification:'FT 105.460'}}}),'tractor');
+ assert.equal(r({...daf,body_type:'Седельный тягач'}),'tractor');
+ assert.equal(r(daf),undefined);
+ assert.equal(r({manufacturer:'Example',model:'Q5'}),undefined);
+ assert.equal(r({manufacturer:'Volvo',model:'XC90 unknown extension'}),undefined);
+ assert.equal(r({manufacturer:'Other',model:'Unknown',vin_details:{conflicts:{body_class:['sedan','wagon']}}}),'unknown');
 });

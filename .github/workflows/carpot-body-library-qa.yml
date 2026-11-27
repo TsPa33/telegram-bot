@@ -1,7 +1,7 @@
 name: CarPot body library QA
 on:
   push:
-    branches: [feature/carpot-body-placeholder-library-20261127]
+    branches: [feature/carpot-body-placeholder-library-20261127, feature/carpot-body-classification-staging-fix-20261127]
 permissions:
   contents: read
 jobs:
