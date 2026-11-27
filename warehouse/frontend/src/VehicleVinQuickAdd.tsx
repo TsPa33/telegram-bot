@@ -227,14 +227,14 @@ export default function VehicleVinQuickAdd({mode,onBack,onCreated,onOpenExisting
           <button type="submit" disabled={saving}>Застосувати зміни</button>
         </form>
       </IntakeDisclosure>
-      {(!characteristics.manufacturer||!characteristics.model)&&<IntakeFeedback>Укажіть марку й модель у розділі «Виправити характеристики».</IntakeFeedback>}
+      {!characteristics.manufacturer&&<IntakeFeedback>Для точного підбору запчастин доповніть характеристики автомобіля</IntakeFeedback>}
       {characteristics.manufacturer&&can('catalog.view')&&<VinCataloguePicker
         key={JSON.stringify([result.resolution_context,clarifications.reviewed,clarifications.model_correction,
           clarifications.answers.manufacturer,clarifications.answers.model,clarifications.answers.vehicle_type])}
         context={result.resolution_context} clarifications={clarifications} disabled={saving}
         onAnswer={(field,value)=>setAnswer(field,value==='unknown'?null:value)} onSelect={select} onPending={setCheckingChoice}/>}
       {hasGraph&&<PlanReady counts={choice?.graph.counts}/>}
-      {!hasGraph&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
+      {!hasGraph&&!checkingChoice&&<label className="vin-confirm"><input type="checkbox" checked={acceptBase}
         disabled={saving||checkingChoice} onChange={e=>{setAcceptBase(e.target.checked)}}/>
         Додати з базовим каталогом без підтвердженого переліку запчастин</label>}
       <IntakeDisclosure label="Усі характеристики">
