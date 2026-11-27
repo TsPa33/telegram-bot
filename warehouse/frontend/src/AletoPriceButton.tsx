@@ -42,22 +42,21 @@ export default function AletoPriceButton({part,vehicle,onSaved,inline=false}:{pa
     {error&&<p role="alert">{error} <button type="button" onClick={lookup}>Повторити</button></p>}
     {data&&<div aria-live="polite">
      {data.truncated&&<p>Вибірку обмежено. Середня ціна не обчислюється.</p>}
-     {data.lookup_status==='missing_oem'&&<p>Для зовнішнього пошуку потрібен коректний OEM та модель автомобіля.</p>}
+     {data.lookup_status==='missing_oem'&&<p>Не вдалося уточнити номер деталі. Пошук за назвою доступний за наявності моделі.</p>}
      {data.lookup_status==='unavailable_or_limited'&&<p>Зовнішня перевірка тимчасово недоступна. Показано збережені дані, якщо вони є.</p>}
-     {data.lookup_status==='cooldown'&&<p>Зачекайте 30 секунд між зовнішніми перевірками.</p>}
-     {data.lookup_status==='daily_limit'&&<p>Вичерпано добовий ліміт зовнішніх перевірок.</p>}
+     {data.lookup_status==='missing_vehicle'&&<p>Для пошуку за назвою потрібні марка і модель автомобіля.</p>}
      {data.lookup_status==='busy'&&<p>Виконується інший зовнішній пошук. Повторіть пізніше.</p>}
-     {data.lookup_status==='source_not_found'&&<p>У перевірених джерелах немає доступної сторінки для цього OEM.</p>}
+     {data.lookup_status==='source_not_found'&&<p>У перевірених джерелах не знайдено сторінку запчастини.</p>}
      {data.lookup_status==='source_no_cards'&&<p>На сторінці цього OEM не виявлено товарних карток.</p>}
      {['robots_denied','robots_unavailable','source_access_denied','source_redirect'].includes(data.lookup_status)&&<p>Правила або відповідь джерела не дозволили виконати автоматичну перевірку.</p>}
      {['source_timeout','source_network_error','source_http_error'].includes(data.lookup_status)&&<p>Не вдалося отримати відповідь джерела. Повторіть пізніше.</p>}
      {['source_content_error','source_response_limit','source_parse_error'].includes(data.lookup_status)&&<p>Відповідь джерела не вдалося безпечно обробити. Ціну не вигадуємо.</p>}
-     {data.lookup_status==='no_comparable'&&<p>У перевірених джерелах не знайдено порівнюваних пропозицій для цього OEM.</p>}
+     {data.lookup_status==='no_comparable'&&<p>У перевірених джерелах не знайдено порівнюваних пропозицій.</p>}
      {data.lookup_status==='disabled'&&<p>Зовнішній пошук не активовано.</p>}
-     {!references.length&&!data.truncated&&<p>Немає доступних цінових орієнтирів для цієї деталі.</p>}
+     {!references.length&&!data.truncated&&<p>Немає доступних цінових орієнтирів для цієї деталі. <a href={'https://www.google.com/search?q='+encodeURIComponent([vehicle?.manufacturer||part.manufacturer,vehicle?.model||part.model,vehicle?.year,part.name,'ціна'].filter(Boolean).join(' '))} target="_blank" rel="noopener noreferrer">Перевірити за назвою в інтернеті</a></p>}
      {references.map((r,index)=><section className="aleto-reference-group" key={index}>
       <strong>Група {index+1} · {labels[r.condition]||'Стан невідомий'}</strong>
-      <small>{r.match_basis==='brand_oem'?'Точний номер і бренд · сумісність не підтверджена':r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
+      <small>{r.match_basis==='name_model'?'Збіг за назвою та моделлю · сумісність не підтверджена':r.match_basis==='brand_oem'?'Точний номер і бренд · сумісність не підтверджена':r.match==='exact'?'Точний OEM та узгоджені ознаки':'Схожі деталі · сумісність не підтверджена'} · {labels[r.condition]||'Стан невідомий'} · {r.currency}{r.assembly==='complete'?' · У зборі':r.assembly==='bare'?' · Без комплектування':''}{r.availability==='available'?' · Наявність зазначена':r.availability==='unknown'?' · Наявність не підтверджена':''}</small>
       {r.average!=null?<><small>Середня ціна</small><strong className="aleto-reference-average">{money(r.average,r.currency)}</strong></>:<strong>{r.offer_count===1?'Ціна окремої пропозиції':'Мало пропозицій для середньої ціни'}</strong>}
       <p>{r.offer_count} пропозицій · {money(r.minimum,r.currency)} – {money(r.maximum,r.currency)}</p>
       <small>Останнє спостереження: {date(r.observed_at)}. Показано {r.examples.length} із {r.offer_count}.</small>

@@ -23,13 +23,15 @@ def card(i, amount, *, oem="8115006C41", title="Фара передня ліва
 
 @pytest.fixture(autouse=True)
 def isolate(monkeypatch):
-    monkeypatch.setattr(live, "_ATTEMPTS", [])
+    monkeypatch.setattr(live, "_NAME_PAGES", live.OrderedDict())
+    monkeypatch.setattr(live, "_NEXT_REQUEST", {})
+    monkeypatch.setattr(live, "_SOURCE_BACKOFF", {})
     monkeypatch.setattr(live, "_CACHE", live.OrderedDict())
     monkeypatch.setattr(live, "_AUTOPALMA_CACHE", live.OrderedDict())
     monkeypatch.setattr(live, "_AUTOPALMA_ROBOTS", None)
     monkeypatch.delenv("WAREHOUSE_MARKET_AUTOPALMA_ENABLED", raising=False)
     monkeypatch.setattr(live, "_ROBOTS", None)
-    monkeypatch.setattr(live, "_LAST", float("-inf"))
+
     monkeypatch.delenv("WAREHOUSE_MARKET_LIVE_ENABLED", raising=False)
     monkeypatch.delenv("WAREHOUSE_MARKET_ACCESS_MODE", raising=False)
     monkeypatch.delenv("WAREHOUSE_ENV", raising=False)
@@ -91,7 +93,8 @@ def test_cache_no_tenant_data_and_no_retry(monkeypatch):
     assert calls==["/robots.txt",PATH]
     assert live.lookup(dict(CTX,model="Other"))[1]==[]
     assert calls==["/robots.txt",PATH]
-    assert live.lookup(dict(CTX,oem="OTHER123"))[0]=="cooldown"
+    assert live.lookup(dict(CTX,oem="OTHER123"))[0]=="live"
+    assert calls[-1]=="/ua/n/other123/"
 
 
 def test_blocked_robots_and_failed_source(monkeypatch):
@@ -103,7 +106,7 @@ def test_blocked_robots_and_failed_source(monkeypatch):
     monkeypatch.setattr(live,"fetch_text",blocked)
     assert live.lookup(CTX)[0]=="robots_denied"
     assert calls==["/robots.txt"]
-    monkeypatch.setattr(live,"_LAST",float("-inf"))
+
     monkeypatch.setattr(live,"_ROBOTS",None)
     def unavailable(path,limit=live.MAX_BYTES):
         if path=="/robots.txt":
@@ -119,15 +122,15 @@ def test_empty_and_oversized_markup():
     with pytest.raises(ValueError):
         live.parse_cards("x"*(live.MAX_BYTES+1),PATH,STAMP)
 
-def test_limited_pilot_daily_cap_and_production_off(monkeypatch):
+def test_staging_gate_and_no_daily_cap(monkeypatch):
     authorize(monkeypatch)
     assert live.enabled()
     monkeypatch.setenv("WAREHOUSE_ENV","production")
     assert not live.enabled()
     monkeypatch.setenv("WAREHOUSE_ENV","staging")
-    monkeypatch.setattr(live,"_ATTEMPTS",[live.monotonic()]*live.DAILY_LIMIT)
-    monkeypatch.setattr(live,"fetch_text",lambda *a:pytest.fail("quota must prevent network"))
-    assert live.lookup(CTX)[0]=="daily_limit"
+    monkeypatch.setattr(live,"fetch_text",lambda path,*a: ROBOTS if path=="/robots.txt" else card(1,1000))
+    for i in range(21):
+        assert live.lookup(dict(CTX,oem="TEST"+str(i)))[0]=="live"
     assert live.lookup_path(dict(CTX,oem="81150 06C41"))==PATH
 
 def test_source_not_found_vs_robots_failure(monkeypatch):
@@ -137,7 +140,7 @@ def test_source_not_found_vs_robots_failure(monkeypatch):
         raise live.LookupFailure("source_not_found")
     monkeypatch.setattr(live,"fetch_text",fetch)
     assert live.lookup(CTX)[0]=="source_not_found"
-    monkeypatch.setattr(live,"_LAST",float("-inf"))
+
     monkeypatch.setattr(live,"_ROBOTS",None)
     def unavailable(*args):
         raise live.LookupFailure("source_not_found")
@@ -209,12 +212,46 @@ def test_fallback_on_404_and_cache_not_after_denial(monkeypatch):
     monkeypatch.setattr(live,"fetch_text",fetch)
     assert live.lookup(AP_CTX)[0] == "live"
     assert live.lookup(AP_CTX)[0] == "cached"
-    assert len(calls) == 4 and len(live._ATTEMPTS) == 1
+    assert len(calls) == 4
     assert calls[-1] == ("autopalma.parts",AP_PATH)
     monkeypatch.setattr(live,"_AUTOPALMA_CACHE",live.OrderedDict())
-    monkeypatch.setattr(live,"_LAST",float("-inf"))
+
     def denied(path,limit=live.MAX_BYTES,*,host=live.HOST):
         assert host == live.HOST
         raise live.LookupFailure("source_access_denied")
     monkeypatch.setattr(live,"fetch_text",denied)
     assert live.lookup(AP_CTX)[0] == "source_access_denied"
+
+
+def test_name_search_without_oem_uses_public_model_and_category(monkeypatch):
+    authorize(monkeypatch)
+    model="/ua/car/volvo-xc90-16-/"
+    category=model+"3-zerkalo-bokovoe-levoe/"
+    ctx=dict(oem="",name="Дзеркало бічне ліве",manufacturer="Volvo",model="XC90",
+             year=2017,condition="used",allow_name_search=True)
+    calls=[]
+    def fetch(path,*args,**kwargs):
+        calls.append(path)
+        if path=="/robots.txt":
+            return ROBOTS
+        if path==model:
+            return '<a href="'+category+'">Дзеркало бічне ліве</a>'
+        if path==category:
+            return "".join(card(i,amount,oem="",title="Дзеркало бічне ліве Volvo XC90 16-23") for i,amount in enumerate([1000,1500,2000],1))
+        pytest.fail("unexpected path "+path)
+    monkeypatch.setattr(live,"fetch_text",fetch)
+    mode,groups,_=live.lookup(ctx)
+    assert mode=="live" and groups[0]["average"]=="1500.00"
+    assert groups[0]["match_basis"]=="name_model" and groups[0]["match"]=="similar"
+    assert calls==["/robots.txt",model,category]
+    assert live.lookup(ctx)[0]=="cached"
+    assert len(calls)==3
+
+
+def test_catalogue_path_rejects_internal_search():
+    assert live.catalog_path("/ua/mark/volvo/")
+    assert live.catalog_path("/ua/car/volvo-xc90-16-/3-zerkalo-bokovoe-levoe/")
+    assert not live.catalog_path("/ua/search/")
+    assert not live.catalog_path("/ua/car/volvo-xc90-16-/../../search/")
+    assert not live.catalog_path("/ua/car/volvo-xc90-16-/?q=test")
+    assert not live.name_match("Пробка масляного піддону","Дзеркало бічне ліве Volvo XC90",CTX)

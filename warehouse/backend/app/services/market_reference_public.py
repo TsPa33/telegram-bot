@@ -22,8 +22,8 @@ def public_groups(groups, *, links=False):
     result=[]
     for g in groups:
         row={k:g[k] for k in ("currency","condition","match","offer_count","minimum","maximum","average","observed_at","availability","assembly") if k in g}
-        if links and g.get("match_basis")=="brand_oem" and g.get("source_name")=="AutoPalma":
-            row.update(match_basis="brand_oem",source_name="AutoPalma")
+        if links and (g.get("match_basis"),g.get("source_name")) in (("brand_oem","AutoPalma"),("name_model","Aleto")):
+            row.update(match_basis=g["match_basis"],source_name=g["source_name"])
         row["examples"]=[public_example(e,links=links) for e in g.get("examples",[])]
         result.append(row)
     return result

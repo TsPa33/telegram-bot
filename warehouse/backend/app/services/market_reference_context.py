@@ -11,4 +11,4 @@ def lookup_context(db, account, part_id):
                 manufacturer=vehicle.manufacturer if vehicle else "",
                 model=vehicle.model if vehicle else "",
                 year=vehicle.year if vehicle else None,
-                vehicle_id=part.vehicle_id)
+                vehicle_id=part.vehicle_id, allow_name_search=True)
