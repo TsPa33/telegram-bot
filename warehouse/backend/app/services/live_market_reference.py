@@ -612,6 +612,15 @@ def _lookup_name(ctx):
         groups = result_from(html, model_path, stamp)
         if not groups:
             links = _navigation(html, model_path)
+            # The live catalogue root exposes broad sections, not all leaves.
+            # These XC90 mirror routes were observed on the public category
+            # page on 2026-11-27; robots are checked even for known links.
+            wanted = _name_tokens(ctx["name"], compare)
+            own = surface(dict(title=ctx["name"], manufacturer=compare["manufacturer"], model=compare["model"]))
+            if model_path == "/ua/car/volvo-xc90-16-/" and wanted and wanted <= {"mirror","side"}:
+                side = own["side"]
+                leaf = {"left":"3-zerkalo-bokovoe-levoe/","right":"3-zerkalo-bokovoe-pravoe/"}.get(side,"bokovoe-zerkalo/")
+                links.setdefault(model_path + leaf, ctx["name"])
             # Only one best matching category from the selected model's actual
             # links. Never enumerate all categories or search pages.
             scored = []
@@ -624,6 +633,10 @@ def _lookup_name(ctx):
                 actual = _name_tokens(title, compare)
                 shared = wanted & actual
                 if shared and wanted and (wanted <= actual or actual <= wanted):
+                    # Match the installation side when a category specifies it.
+                    direction = surface(dict(title=title))["side"]
+                    if own["side"] != "unknown" and direction not in ("unknown",own["side"]):
+                        continue
                     scored.append((len(shared), -len(actual ^ wanted), path))
             if scored:
                 scored.sort(reverse=True)
