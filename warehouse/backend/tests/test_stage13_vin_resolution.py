@@ -69,7 +69,7 @@ class Source:
             return {"identity": params, "status": "available", "source_scope": "passenger_prd_article_oem",
                     "plan": {"payload": payload, "sha256": digest(payload)}}
         if endpoint in ("manufacturers", "manufacturer-directory"):
-            rows = self.makers[kind] if MAKE.casefold().startswith(params["name"].casefold()) else []
+            rows = [row for row in self.makers[kind] if row["name"].casefold().startswith(params["name"].casefold())]
         elif endpoint == "models":
             rows = self.models
         elif endpoint == "modifications":
@@ -133,6 +133,71 @@ def test_ranks_numeric_series_without_hiding_models_or_requesting_graph(source):
     assert page["models"][0]["model_id"] == 701
     assert page["automatic"] == page["items"][0]["choice"]
     assert {endpoint for endpoint, _ in source.calls} == {"manufacturers", "models", "modifications", "attributes"}
+
+
+def test_decoder_engine_code_resolves_volvo_despite_a_noncritical_doors_conflict(source):
+    source.makers = {"passenger": [{"id": 120, "name": "VOLVO"}], "commercial": []}
+    source.models = [dict(id=index, name=f"Unrelated {index}", construction_interval="2001 -")
+                     for index in range(1, 6)]
+    source.models.append(dict(id=13084, name="XC90 II", construction_interval="09.2014 -"))
+    source.variants = {13084: [
+        dict(id=107555, model_id=13084, name="T6 AWD", construction_interval="09.2014 -"),
+        dict(id=111864, model_id=13084, name="T8 Hybrid AWD", construction_interval="06.2015 -"),
+    ]}
+    specs = [("Power", "235 kW"), ("Capacity_Technical", "1969 ccm"), ("DriveType", "Привод на все колеса")]
+    source.attributes = {
+        107555: [*specs, ("EngineCode", "B 4204 T27"), ("FuelType", "бензин")],
+        111864: [*specs, ("EngineCode", "B 4204 T35"), ("FuelType", "hybrid")],
+    }
+    report = decoded(vin="YV4A22PK2G1092943")
+    report["vehicle"] = dict(manufacturer="VOLVO", model="XC90", year=2016, engine="B4204T27",
+                             fuel_type="Бензин", engine_displacement_l="2", engine_power_hp="316",
+                             vehicle_type="Багатоцільовий пасажирський автомобіль (MPV)")
+    report["conflicts"] = {"doors": {"primary": "4", "secondary": "5"}}
+    identity = who()
+    ctx = context(identity, report)
+    page = resolution.search(source, ctx, VinClarifications(), identity)
+    assert [item["source_modification_id"] for item in page["items"]] == [107555]
+    assert page["automatic"] == page["items"][0]["choice"]
+    assert page["review"] == ["doors"] and page["questions"] == []
+    assert {params["model_id"] for endpoint, params in source.calls if endpoint == "modifications"} == {13084}
+    candidate, evidence = resolution.selected_candidate(source, ctx, VinClarifications(), page["automatic"], identity)
+    assert candidate["modification"] == "T6 AWD" and evidence["engine_code"]["value"] == "b4204t27"
+    report["vehicle"].pop("year")
+    page = resolution.search(source, context(identity, report), VinClarifications(), identity)
+    assert page["automatic"] == page["items"][0]["choice"]
+    report["vehicle"]["engine"] = "2.0L I4"
+    assert "engine_code" not in resolution.effective_evidence(context(identity, report), VinClarifications())
+
+
+@pytest.mark.parametrize("kind,make,model,variant,power,displacement,start,year", [
+    ("passenger", "BMW", "3 (E30)", 21, "73 kW", "1596 ccm", 1987, 1990),
+    ("commercial", "DAF", "XF 105", 8387, "340 kW", "12900 ccm", 2005, 2010),
+])
+def test_model_year_and_source_technical_facts_can_resolve_passenger_and_truck(
+        source, kind, make, model, variant, power, displacement, start, year):
+    source.makers = {"passenger": [], "commercial": []}
+    source.makers[kind] = [{"id": 840, "name": make}]
+    source.models = [dict(id=701, name=model, construction_interval=f"{start} -")]
+    source.variants[701] = [dict(id=id_, model_id=701, name=f"Test variant {id_}", construction_interval=f"{start} -")
+                            for id_ in (variant, variant + 1)]
+    source.attributes = {
+        variant: [("Power", power), ("Capacity_Technical", displacement)],
+        variant + 1: [("Power", "100 kW"), ("Capacity_Technical", displacement)],
+    }
+    identity = who()
+    report = decoded()
+    report["vehicle"] = dict(manufacturer=make, model=model, year=year, vehicle_type=kind,
+                             engine_power_kw=power, engine_displacement_l=displacement)
+    ctx = context(identity, report)
+    page = resolution.search(source, ctx, VinClarifications(), identity)
+    assert page["automatic"] == page["items"][0]["choice"]
+    assert page["items"][0]["source_modification_id"] == variant
+    assert page["questions"] == []
+    report["vehicle"].pop("engine_power_kw")
+    ambiguous = resolution.search(source, context(identity, report), VinClarifications(), identity)
+    assert ambiguous["automatic"] is None
+    assert [question["field"] for question in ambiguous["questions"]] == ["engine_power_kw"]
 
 
 @pytest.mark.parametrize("field,conflicting", [
@@ -248,7 +313,7 @@ def test_review_can_correct_generic_model_without_replacing_original_evidence(so
     reviewed = VinClarifications(answers={"fuel_type": "Diesel"}, model_correction="3 Series")
     page = resolution.search(source, ctx, reviewed, identity)
     candidate, evidence = resolution.selected_candidate(source, ctx, reviewed, page["items"][0]["choice"], identity)
-    assert candidate["source_modification_id"] == 900 and page["automatic"] is None
+    assert candidate["source_modification_id"] == 900 and page["automatic"] == page["items"][0]["choice"]
     assert resolution.vehicle_details(ctx, evidence)["decoded"]["model"] == "Generic chassis"
     corrected = resolution.effective_evidence(context(identity), VinClarifications(model_correction="30 Series"))
     assert corrected["model"]["value"] == "30 Series"
@@ -348,7 +413,7 @@ def test_unknown_year_question_appears_only_if_periods_differ(source):
     source.attributes[901] = source.attributes[900]
     source.variants[701][1]["construction_interval"] = "2017 - 2018"
     result = resolution.search(source, context(identity, decoded(year=None)), VinClarifications(), identity)
-    assert result["questions"] == [{"field": "year", "options": []}]
+    assert result["questions"] == [{"field": "year", "options": ["2018", "2017", "2016", "2015", "2014"]}]
     assert result["automatic"] is None
 
 

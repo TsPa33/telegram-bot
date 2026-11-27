@@ -37,10 +37,11 @@ try{
   }
   async function ready(){
     await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('Aster Mobility · 3 Series · 2015');
-    await dialog.getByRole('combobox',{name:/^Доступні модифікації/}).selectOption({index:1});
-    await expect(dialog.getByText(/Доступний частковий план/)).toBeVisible();
     await expect(dialog.locator('.vin-ready')).toContainText('Категорії: 0');
     await expect(dialog.locator('.vin-ready')).toContainText('Запчастини: 1');
+    await expect(dialog.getByRole('button',{name:'Додати автомобіль',exact:true})).toBeEnabled();
+    await expect(dialog.getByRole('combobox',{name:/^Доступні модифікації/})).not.toBeVisible();
+    await expect(dialog.getByText('Переглянути модифікацію',{exact:true})).toBeVisible();
     await expect(dialog.getByText(/50 грн|Перевірка API-балансу|Тест VINState/)).toHaveCount(0);
   }
   async function checkFooter(){
@@ -90,7 +91,6 @@ try{
   await dialog.getByRole('button',{name:'Застосувати зміни'}).click();
   await expect(dialog.getByRole('region',{name:'Зведення автомобіля'})).toContainText('2016');
   await dialog.getByText('Виправити характеристики',{exact:true}).click();
-  await dialog.getByRole('combobox',{name:/^Доступні модифікації/}).selectOption({index:1});
   await expect(dialog.locator('.vin-ready')).toBeVisible();
   const createVehiclePattern='**/api/v1/vehicles';
   let failedVinKey;
@@ -182,6 +182,7 @@ try{
     }});
   });
   await decode();
+  await expect(dialog.getByText('Для точного підбору запчастин доповніть характеристики автомобіля',{exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:'Наступні моделі · легкові',exact:true}).click();
   await expect(dialog.getByRole('button',{name:'Наступні моделі · легкові',exact:true})).toHaveCount(0);
   await dialog.getByRole('button',{name:'Наступні моделі · комерційні',exact:true}).click();

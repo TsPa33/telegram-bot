@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 import {api} from './api';
-import {IntakeFeedback, ModelYearOptions, modificationName} from './DonorIntakePresentation';
+import {IntakeDisclosure, IntakeFeedback, ModelYearOptions, modificationName} from './DonorIntakePresentation';
 
 export type Clarifications={answers:Record<string,string|null>;reviewed:boolean;model_correction?:string};
 type Candidate={
@@ -66,6 +66,10 @@ export default function VinCataloguePicker({
     setBusy(true);
     setPage(null);
     setError('');
+    setChoice(null);
+    setGraph(null);
+    setGraphError('');
+    onPending(true);
     const query=new URLSearchParams();
     if(scope){
       query.set('maker',scope.kind+':'+scope.manufacturer_id);
@@ -87,9 +91,10 @@ export default function VinCataloguePicker({
           ?[...previous.filter(cursor=>cursor.maker!==modelPage.maker),...(result.model_cursors||[])]
           :result.model_cursors||[]);
         const automatic=result.items.find(item=>item.choice===result.automatic);
-        if(automatic){onPending(true);setChoice(automatic)}
+        if(automatic)setChoice(automatic);
+        else onPending(false);
       })
-      .catch(e=>{if(!controller.signal.aborted)setError((e as Error).message)})
+      .catch(e=>{if(!controller.signal.aborted){setError((e as Error).message);onPending(false)}})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
   },[context,clarificationHeader,scope,cursor,modelPage,retry,onPending]);
@@ -124,21 +129,24 @@ export default function VinCataloguePicker({
   }
   const items=page?.items||[];
   const multipleModels=new Set(items.map(modelKey)).size>1;
+  const automatic=!!choice && choice.choice===page?.automatic;
   const choices=items.map(item=>{
     const name=modificationName(item.modification,item.model);
     return {item,label:multipleModels?`${item.model} · ${name}`:name};
   });
-  return <fieldset className="vin-catalogue-select" aria-label="Модифікація та план">
+  if(busy)return <IntakeFeedback kind="loading">Шукаємо сумісні модифікації…</IntakeFeedback>;
+  if(automatic&&!graph&&!graphError)return <IntakeFeedback kind="loading">Готуємо план розбору…</IntakeFeedback>;
+  const fields=<fieldset className="vin-catalogue-select" aria-label="Модифікація та план">
     <legend>Модифікація та план</legend>
-    {busy&&<IntakeFeedback kind="loading">Шукаємо сумісні модифікації…</IntakeFeedback>}
     {error&&<IntakeFeedback kind="error">{error}</IntakeFeedback>}
     {(error||page?.status==='unavailable')&&<button type="button" disabled={disabled||busy}
       onClick={()=>{resetChoice();setRetry(n=>n+1)}}>Повторити пошук</button>}
     {page?.status==='manufacturer_required'&&<p role="status">Вкажіть марку для пошуку модифікацій.</p>}
     {page?.status==='unavailable'&&<IntakeFeedback kind="error">Довідник модифікацій тимчасово недоступний.</IntakeFeedback>}
-    {page?.status==='incomplete'&&!scope&&!choice&&<p role="status">За потреби виберіть модель, щоб звузити пошук.</p>}
+    {page&&page.status!=='unavailable'&&!choice&&
+      <IntakeFeedback>Для точного підбору запчастин доповніть характеристики автомобіля</IntakeFeedback>}
     {page?.search_complete&&!items.length&&<p role="status">Сумісних модифікацій не знайдено.</p>}
-    {models.length>1&&<label>Модель із довідника
+    {models.length>1&&(scope||multipleModels||!page?.search_complete||!items.length)&&<label>Модель із довідника
       <select value={scope?modelKey(scope):''} disabled={disabled||busy} onChange={e=>{
         resetChoice();
         setScope(models.find(row=>modelKey(row)===e.target.value)||null);
@@ -188,6 +196,8 @@ export default function VinCataloguePicker({
     {graphError&&<><IntakeFeedback kind="error">{graphError}</IntakeFeedback><button type="button" disabled={disabled} onClick={()=>{
       onSelect(null);onPending(true);setGraphRetry(n=>n+1);
     }}>Повторити перевірку</button></>}
-    {!choice&&!busy&&items.length>0&&<p>Оберіть модифікацію, щоб підготувати план.</p>}
   </fieldset>;
+  return automatic && (graph?.status==='exact'||graph?.status==='partial')
+    ? <IntakeDisclosure label="Переглянути модифікацію" variant="link">{fields}</IntakeDisclosure>
+    : fields;
 }

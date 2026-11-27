@@ -1,13 +1,17 @@
 """Comparison of explicitly sourced VIN and catalogue attributes."""
 import re
 import unicodedata
+from datetime import date
+from itertools import combinations
 from math import isfinite
 
 from app.services.vin_normalize import drive_code
 
 ALIASES = {
     "vehicle_type": {
-        "passenger": ("passenger car", "passenger", "легковий автомобіль",),
+        "passenger": ("passenger car", "passenger", "легковий автомобіль",
+                      "multipurpose passenger vehicle", "multipurpose passenger vehicle (mpv)",
+                      "багатоцільовий пасажирський автомобіль (mpv)"),
         "commercial": ("commercial vehicle", "commercial", "heavy truck", "truck tractor", "вантажний автомобіль", "автобус", "bus", "tractor truck"),
     },
     "body_class": {
@@ -20,7 +24,7 @@ ALIASES = {
         "van": ("van", "фургон", "box van"),
         "minivan": ("minivan", "мінівен"),
         "pickup": ("pickup", "пікап"),
-        "tractor": ("tractor unit", "truck tractor", "сідельний тягач"),
+        "tractor": ("tractor unit", "truck tractor", "сідельний тягач", "седельный тягач"),
     },
     "fuel_type": {
         "diesel": ("diesel", "дизель", "дизельне паливо", "дизельный двигатель", "дизельное топливо"),
@@ -38,7 +42,7 @@ ALIASES = {
 }
 ATTRIBUTE_NAMES = {
     "generation": ("generation", "platform", "покоління"),
-    "body_class": ("body type", "body class", "body construction type", "construction type", "тип кузова", "кузов"),
+    "body_class": ("body type", "body class", "body construction type", "construction type", "platform type", "тип кузова", "кузов"),
     "fuel_type": ("fuel type", "fuel", "тип палива", "вид палива", "паливо"),
     "engine_code": ("engine code", "engine number", "motor code", "код двигуна"),
     "engine_displacement_l": ("capacity (cc)", "capacity (ccm)", "Capacity_Technical", "engine capacity", "engine displacement", "displacement", "cylinder capacity", "engine displacement (cc)", "engine displacement (l)", "displacement (cc)", "displacement (ccm)", "displacement (l)", "об'єм двигуна", "робочий об'єм (см³)"),
@@ -52,9 +56,9 @@ ATTRIBUTE_NAMES = {
 }
 TECHNICAL = tuple(key for key in ATTRIBUTE_NAMES if key != "engine_power_hp")
 FIELDS = ("manufacturer", "model", "year", "vehicle_type", "engine", *TECHNICAL, "engine_power_hp")
-QUESTIONS = ("vehicle_type", "model", "generation", "year", "body_class", "fuel_type",
-             "engine_code", "engine_displacement_l", "engine_power_kw", "transmission",
-             "drive_type", "transmission_speeds", "doors", "engine_cylinders")
+QUESTIONS = ("engine_code", "fuel_type", "engine_power_kw", "engine_displacement_l", "drive_type",
+             "transmission", "year", "generation", "vehicle_type", "body_class",
+             "transmission_speeds", "engine_cylinders", "doors")
 
 
 def key(value):
@@ -276,23 +280,28 @@ def compare(evidence, candidate):
 
 
 def needed_questions(evidence, candidates, answered):
-    questions = []
+    best = None
+    best_score = 0
     for field in QUESTIONS:
         if field in answered or evidence.get(field, {}).get("value") is not None:
             continue
-        values = {}
-        for candidate in candidates:
-            if field == "model":
-                values.setdefault(model_parts(candidate["model"])[0], candidate["model"])
-            else:
-                for value, label in candidate["specs"].get(field, {}).items():
-                    if not any(equivalent(field, value, prior) for prior in values):
-                        values[value] = label
         if field == "year":
-            periods = {candidate["variant_period"] if any(candidate["variant_period"]) else candidate["model_period"]
-                       for candidate in candidates}
-            if len({period for period in periods if any(period)}) > 1:
-                questions.append(dict(field=field, options=[]))
-        elif len(values) > 1 and field != "model":
-            questions.append(dict(field=field, options=list(map(str, values.values()))))
-    return questions
+            periods = [candidate["variant_period"] if any(candidate["variant_period"]) else candidate["model_period"]
+                       for candidate in candidates]
+            last = date.today().year + 1
+            years = sorted({year for start, end in periods if start
+                            for year in range(max(1886, start), min(2100, end or max(last, start)) + 1)}, reverse=True)
+            score = sum(any({year_relation(year, a), year_relation(year, b)} == {"compatible", "mismatch"}
+                            for year in years) for a, b in combinations(periods, 2) if a != b)
+            options = list(map(str, years))
+        else:
+            values = [entry for candidate in candidates for entry in candidate["specs"].get(field, {}).items()]
+            score = sum(not equivalent(field, a, b) for (a, _), (b, _) in combinations(values, 2))
+            distinct = {}
+            for value, label in values:
+                if not any(equivalent(field, value, prior) for prior in distinct):
+                    distinct[value] = label
+            options = list(map(str, distinct.values()))
+        if score > best_score and len(options) > 1:
+            best, best_score = dict(field=field, options=options), score
+    return [best] if best else []
